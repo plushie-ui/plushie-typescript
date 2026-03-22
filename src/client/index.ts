@@ -1,15 +1,33 @@
-// Layer 1: Protocol Client
-//
-// Foundational infrastructure for communicating with the plushie
-// binary over stdin/stdout. Everything else in the SDK depends on
-// this layer.
-//
-// Modules:
-//   binary.ts    -- binary resolution, download, architecture validation
-//   transport.ts -- Transport interface, SpawnTransport, PooledTransport
-//   framing.ts   -- wire framing (msgpack length-prefix, JSONL)
-//   protocol.ts  -- message encode/decode (wire format <-> TS types)
-//   session.ts   -- single session management
-//   pool.ts      -- multiplexed session pool
+/**
+ * Layer 1: Protocol Client.
+ *
+ * Foundational infrastructure for communicating with the plushie
+ * binary. Everything else in the SDK depends on this layer.
+ *
+ * @module
+ */
 
-export { }
+export { encodePacket, decodePackets, encodeLine, decodeLines } from "./framing.js"
+export type { DecodePacketsResult, DecodeLinesResult } from "./framing.js"
+
+export {
+  encodeSettings, encodeSnapshot, encodePatch, encodeSubscribe,
+  encodeUnsubscribe, encodeWidgetOp, encodeWindowOp, encodeEffect,
+  encodeImageOp, encodeExtensionCommand, encodeExtensionCommands,
+  encodeQuery, encodeInteract, encodeTreeHash, encodeScreenshot,
+  encodeReset, encodeAdvanceFrame, decodeMessage, decodeEvent,
+  splitScopedId, stringifyKeys, PROTOCOL_VERSION,
+} from "./protocol.js"
+export type {
+  WireMessage, WirePatchOp, HelloInfo, WireSelector, ScopedId,
+  DecodedResponse,
+} from "./protocol.js"
+
+export { resolveBinary, platformBinaryName } from "./binary.js"
+export { buildRendererEnv } from "./env.js"
+
+export { SpawnTransport } from "./transport.js"
+export type { Transport, WireFormat, SpawnTransportOptions } from "./transport.js"
+
+export { Session } from "./session.js"
+export type { ConnectOptions } from "./session.js"
