@@ -1,4 +1,4 @@
-import type { UINode, Handler } from "../types.js"
+import type { UINode } from "../types.js"
 
 /**
  * Internal: create a UINode. Handlers are stored separately from
