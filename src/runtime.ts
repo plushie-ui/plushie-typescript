@@ -97,6 +97,22 @@ export class Runtime<M> {
     return this.state.tree
   }
 
+  /** Inject an external event into the update cycle. */
+  injectEvent(event: Event): void {
+    this.handleEvent(event)
+  }
+
+  /** Re-initialize the app: reset model from init, re-render as snapshot. */
+  reinit(): void {
+    const [model, commands] = this.unwrapResult(this.config.init)
+    this.state.model = model
+    this.freezeModelIfDev()
+    this.renderAndSync(true)
+    if (commands.length > 0) {
+      this.executeCommands(commands)
+    }
+  }
+
   /**
    * Start the runtime: send settings, await hello, init, first render.
    */
@@ -565,6 +581,26 @@ export class Runtime<M> {
           cmd.payload as Record<string, unknown>,
         ))
         break
+
+      case "window_query":
+        this.send(encodeWindowOp(
+          this.sessionId,
+          cmd.payload["op"] as string,
+          cmd.payload["window_id"] as string,
+          cmd.payload as Record<string, unknown>,
+        ))
+        break
+
+      case "done": {
+        const value = cmd.payload["value"]
+        const mapper = cmd.payload["mapper"] as ((v: unknown) => unknown) | undefined
+        if (mapper) {
+          const event = mapper(value)
+          // Dispatch the mapped value as an event through the update cycle
+          this.handleEvent(event as Event)
+        }
+        break
+      }
 
       case "effect":
         this.executeEffect(cmd)

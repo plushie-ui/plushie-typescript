@@ -26,8 +26,8 @@ export type {
 export { resolveBinary, platformBinaryName } from "./binary.js"
 export { buildRendererEnv } from "./env.js"
 
-export { SpawnTransport } from "./transport.js"
-export type { Transport, WireFormat, SpawnTransportOptions } from "./transport.js"
+export { SpawnTransport, StdioTransport } from "./transport.js"
+export type { Transport, WireFormat, SpawnTransportOptions, StdioTransportOptions } from "./transport.js"
 
 export { Session } from "./session.js"
 export type { ConnectOptions } from "./session.js"

@@ -7,16 +7,18 @@
  * @module
  */
 
-import type { UINode, DeepReadonly, Event } from "../types.js"
+import * as fs from "node:fs"
+import * as path from "node:path"
+import type { DeepReadonly, Event, TimerEvent, AsyncEvent } from "../types.js"
 import type { AppConfig } from "../app.js"
 import type { WireNode } from "../tree/normalize.js"
 import { Runtime } from "../runtime.js"
 import { SessionPool, PooledTransport } from "../client/pool.js"
 import type { WireFormat } from "../client/transport.js"
 import {
-  encodeQuery, encodeInteract, encodeSettings,
+  encodeQuery, encodeInteract,
+  encodeTreeHash, encodeScreenshot,
   decodeMessage,
-  PROTOCOL_VERSION,
   type WireSelector,
   type WireMessage,
 } from "../client/protocol.js"
@@ -40,6 +42,7 @@ export class TestSession<M> {
   private readonly runtime: Runtime<M>
   private readonly pool: SessionPool
   private readonly sessionId: string
+  private readonly config: AppConfig<M>
   private requestCounter = 0
 
   constructor(
@@ -50,6 +53,7 @@ export class TestSession<M> {
   ) {
     this.pool = pool
     this.sessionId = sessionId
+    this.config = config
     const transport = new PooledTransport(pool, sessionId, format)
     this.runtime = new Runtime(config, transport, sessionId)
   }
@@ -126,6 +130,204 @@ export class TestSession<M> {
   /** Move cursor to position. */
   async moveTo(x: number, y: number): Promise<void> {
     await this.interact("move_to", {}, { x, y })
+  }
+
+  /** Scroll a widget by delta amounts. */
+  async scroll(selector: string, deltaX: number, deltaY: number): Promise<void> {
+    await this.interact("scroll", { by: "id", value: selector }, { delta_x: deltaX, delta_y: deltaY })
+  }
+
+  /** Paste text into a widget. */
+  async paste(selector: string, text: string): Promise<void> {
+    await this.interact("paste", { by: "id", value: selector }, { text })
+  }
+
+  /** Sort a table column. */
+  async sort(selector: string, column: string): Promise<void> {
+    await this.interact("sort", { by: "id", value: selector }, { column })
+  }
+
+  /** Press on a canvas at coordinates. */
+  async canvasPress(selector: string, x: number, y: number): Promise<void> {
+    await this.interact("canvas_press", { by: "id", value: selector }, { x, y })
+  }
+
+  /** Release on a canvas at coordinates. */
+  async canvasRelease(selector: string, x: number, y: number): Promise<void> {
+    await this.interact("canvas_release", { by: "id", value: selector }, { x, y })
+  }
+
+  /** Move on a canvas to coordinates. */
+  async canvasMove(selector: string, x: number, y: number): Promise<void> {
+    await this.interact("canvas_move", { by: "id", value: selector }, { x, y })
+  }
+
+  /** Cycle focus within a pane grid. */
+  async paneFocusCycle(selector: string): Promise<void> {
+    await this.interact("pane_focus_cycle", { by: "id", value: selector }, {})
+  }
+
+  // =======================================================================
+  // Utilities
+  // =======================================================================
+
+  /** Simulate a timer event by injecting a TimerEvent into the runtime. */
+  timer(tag: string): void {
+    const event: TimerEvent = {
+      kind: "timer",
+      tag,
+      timestamp: Date.now(),
+    }
+    this.runtime.injectEvent(event)
+  }
+
+  /**
+   * Wait for the next AsyncEvent with a matching tag.
+   * Resolves when the event arrives or rejects on timeout.
+   */
+  awaitAsync(tag: string, timeout = 5000): Promise<AsyncEvent> {
+    return new Promise<AsyncEvent>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`awaitAsync: timed out waiting for async event with tag "${tag}"`))
+      }, timeout)
+
+      const originalHandler = this.getMessageHandler()
+
+      this.pool.onSessionMessage(this.sessionId, (raw) => {
+        const decoded = decodeMessage(raw)
+        if (decoded?.type === "event") {
+          const event = decoded.data
+          if (event.kind === "async" && event.tag === tag) {
+            clearTimeout(timer)
+            this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}))
+            // Still dispatch the event through the runtime
+            originalHandler?.(raw)
+            resolve(event as AsyncEvent)
+            return
+          }
+        }
+        originalHandler?.(raw)
+      })
+    })
+  }
+
+  /** Re-initialize the app (call init again, re-render with snapshot). */
+  reset(): void {
+    this.runtime.reinit()
+  }
+
+  // =======================================================================
+  // Golden file testing
+  // =======================================================================
+
+  /** Send a tree hash request and return the hash string. */
+  async treeHash(name: string): Promise<string> {
+    const id = this.nextId()
+    const msg = encodeTreeHash(this.sessionId, id, name)
+
+    return new Promise<string>((resolve) => {
+      const originalHandler = this.getMessageHandler()
+
+      this.pool.onSessionMessage(this.sessionId, (raw) => {
+        const decoded = decodeMessage(raw)
+        if (decoded?.type === "tree_hash_response" && decoded.id === id) {
+          this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}))
+          resolve(decoded.hash)
+        } else {
+          originalHandler?.(raw)
+        }
+      })
+
+      this.pool.sendToSession(this.sessionId, msg)
+    })
+  }
+
+  /** Send a screenshot request and return the screenshot data. */
+  async screenshot(
+    name: string,
+    opts?: { width?: number; height?: number },
+  ): Promise<{ hash: string; width: number; height: number; rgba: unknown }> {
+    const id = this.nextId()
+    const msg = encodeScreenshot(this.sessionId, id, name, opts?.width, opts?.height)
+
+    return new Promise((resolve) => {
+      const originalHandler = this.getMessageHandler()
+
+      this.pool.onSessionMessage(this.sessionId, (raw) => {
+        const decoded = decodeMessage(raw)
+        if (decoded?.type === "screenshot_response" && decoded.id === id) {
+          this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}))
+          resolve({
+            hash: decoded.hash,
+            width: decoded.width,
+            height: decoded.height,
+            rgba: decoded.rgba,
+          })
+        } else {
+          originalHandler?.(raw)
+        }
+      })
+
+      this.pool.sendToSession(this.sessionId, msg)
+    })
+  }
+
+  /**
+   * Assert that a tree hash matches a saved golden file.
+   * On first run, saves the hash. On subsequent runs, compares.
+   */
+  async assertTreeHash(name: string): Promise<void> {
+    const hash = await this.treeHash(name)
+    const goldenDir = path.resolve("test", "golden")
+    const goldenPath = path.join(goldenDir, "tree_hashes.json")
+
+    let hashes: Record<string, string> = {}
+    if (fs.existsSync(goldenPath)) {
+      hashes = JSON.parse(fs.readFileSync(goldenPath, "utf-8")) as Record<string, string>
+    }
+
+    if (name in hashes) {
+      if (hashes[name] !== hash) {
+        throw new Error(
+          `assertTreeHash: hash mismatch for "${name}"\n` +
+          `  expected: ${hashes[name]}\n` +
+          `  actual:   ${hash}`,
+        )
+      }
+    } else {
+      hashes[name] = hash
+      fs.mkdirSync(goldenDir, { recursive: true })
+      fs.writeFileSync(goldenPath, JSON.stringify(hashes, null, 2) + "\n", "utf-8")
+    }
+  }
+
+  /**
+   * Assert that a screenshot matches a saved golden file.
+   * On first run, saves the screenshot. On subsequent runs, compares the hash.
+   */
+  async assertScreenshot(name: string): Promise<void> {
+    const result = await this.screenshot(name)
+    const screenshotDir = path.resolve("test", "screenshots")
+    const metaPath = path.join(screenshotDir, `${name}.json`)
+
+    if (fs.existsSync(metaPath)) {
+      const saved = JSON.parse(fs.readFileSync(metaPath, "utf-8")) as { hash: string }
+      if (saved.hash !== result.hash) {
+        throw new Error(
+          `assertScreenshot: hash mismatch for "${name}"\n` +
+          `  expected: ${saved.hash}\n` +
+          `  actual:   ${result.hash}`,
+        )
+      }
+    } else {
+      fs.mkdirSync(screenshotDir, { recursive: true })
+      const meta = {
+        hash: result.hash,
+        width: result.width,
+        height: result.height,
+      }
+      fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + "\n", "utf-8")
+    }
   }
 
   // =======================================================================
