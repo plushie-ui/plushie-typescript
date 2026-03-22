@@ -240,32 +240,40 @@ async function main(argv: string[]): Promise<void> {
     case "download":
       await handleDownload(args.slice(1))
       break
-    case "dev":
+    case "dev": {
       if (args[1] === undefined) {
         console.error("Error: missing <app> argument\n")
         console.log(USAGE)
         process.exitCode = 1
         return
       }
-      console.error(
-        "The dev server requires tsx to run TypeScript files directly.\n" +
-        "Install it: pnpm add -D tsx\n" +
-        "Then run: npx tsx --watch " + args[1],
-      )
+      const devTsx = findTsx()
+      if (!devTsx) {
+        console.error("tsx is required for dev mode.\nInstall: pnpm add -D tsx")
+        process.exitCode = 1
+        return
+      }
+      const devChild = spawn(devTsx, ["--watch", args[1]], { stdio: "inherit" })
+      devChild.on("exit", (code) => { process.exitCode = code ?? 1 })
       break
-    case "run":
+    }
+    case "run": {
       if (args[1] === undefined) {
         console.error("Error: missing <app> argument\n")
         console.log(USAGE)
         process.exitCode = 1
         return
       }
-      console.error(
-        "Running TypeScript apps directly requires tsx.\n" +
-        "Install it: pnpm add -D tsx\n" +
-        "Then run: npx tsx " + args[1],
-      )
+      const runTsx = findTsx()
+      if (!runTsx) {
+        console.error("tsx is required to run TypeScript apps directly.\nInstall: pnpm add -D tsx")
+        process.exitCode = 1
+        return
+      }
+      const runChild = spawn(runTsx, [args[1]], { stdio: "inherit" })
+      runChild.on("exit", (code) => { process.exitCode = code ?? 1 })
       break
+    }
     default:
       console.error(`Unknown command: ${command}\n`)
       console.log(USAGE)

@@ -29,5 +29,10 @@ export { buildRendererEnv } from "./env.js"
 export { SpawnTransport, StdioTransport } from "./transport.js"
 export type { Transport, WireFormat, SpawnTransportOptions, StdioTransportOptions } from "./transport.js"
 
+export { WasmTransport } from "./wasm_transport.js"
+export type {
+  PlushieAppConstructor, PlushieAppInstance, WasmTransportOptions,
+} from "./wasm_transport.js"
+
 export { Session } from "./session.js"
 export type { ConnectOptions } from "./session.js"
