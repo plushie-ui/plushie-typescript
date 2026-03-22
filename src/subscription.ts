@@ -113,6 +113,46 @@ export function onFileDrop(tag: string): Subscription {
   return sub("on_file_drop", tag)
 }
 
+/** Subscribe to general window events (resize, move, focus, etc.). */
+export function onWindowEvent(
+  tag: string,
+  opts?: { maxRate?: number },
+): Subscription {
+  return sub("on_window_event", tag, opts)
+}
+
+/** Subscribe to window open events. */
+export function onWindowOpen(
+  tag: string,
+  opts?: { maxRate?: number },
+): Subscription {
+  return sub("on_window_open", tag, opts)
+}
+
+/** Subscribe to window move events. */
+export function onWindowMove(
+  tag: string,
+  opts?: { maxRate?: number },
+): Subscription {
+  return sub("on_window_move", tag, opts)
+}
+
+/** Subscribe to keyboard modifier state changes (shift, ctrl, alt, etc.). */
+export function onModifiersChanged(
+  tag: string,
+  opts?: { maxRate?: number },
+): Subscription {
+  return sub("on_modifiers_changed", tag, opts)
+}
+
+/** Subscribe to any renderer event (catch-all). */
+export function onEvent(
+  tag: string,
+  opts?: { maxRate?: number },
+): Subscription {
+  return sub("on_event", tag, opts)
+}
+
 /**
  * Unique key for diffing subscriptions.
  * Two subscriptions with the same key are considered identical.
