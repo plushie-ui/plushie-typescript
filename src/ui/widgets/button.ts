@@ -1,0 +1,80 @@
+/**
+ * Button widget -- clickable button with a text label.
+ *
+ * @module
+ */
+
+import type { UINode, Handler } from "../../types.js"
+import type { Length, Padding, StyleMap, A11y } from "../types.js"
+import { encodeLength, encodePadding, encodeStyleMap, encodeA11y } from "../types.js"
+import { leafNode, putIf, autoId, extractHandlers } from "../build.js"
+
+/** Handler prop names -> wire event types for Button. */
+const BUTTON_HANDLERS = { onClick: "click" } as const
+
+/** Props for the Button widget. */
+export interface ButtonProps {
+  id?: string
+  width?: Length
+  height?: Length
+  padding?: Padding
+  clip?: boolean
+  style?: StyleMap
+  disabled?: boolean
+  a11y?: A11y
+  eventRate?: number
+  /** Click handler. Pure function: (state, event) => newState. */
+  onClick?: Handler<unknown>
+  /** Button label. In JSX, this comes from children. */
+  children?: string
+}
+
+/**
+ * Button JSX component.
+ *
+ * ```tsx
+ * <Button id="save" onClick={handleSave}>Save</Button>
+ * <Button onClick={handleClick}>Auto-ID</Button>
+ * ```
+ */
+export function Button(props: ButtonProps): UINode {
+  const label = props.children ?? ""
+  const id = props.id ?? autoId("button")
+  const clean = extractHandlers(id, props, BUTTON_HANDLERS)
+  const p: Record<string, unknown> = { label }
+  putIf(p, clean.width, "width", encodeLength)
+  putIf(p, clean.height, "height", encodeLength)
+  putIf(p, clean.padding, "padding", encodePadding)
+  putIf(p, clean.clip, "clip")
+  putIf(p, clean.style, "style", encodeStyleMap)
+  putIf(p, clean.disabled, "disabled")
+  putIf(p, clean.a11y, "a11y", encodeA11y)
+  putIf(p, clean.eventRate, "event_rate")
+  return leafNode(id, "button", p)
+}
+
+/**
+ * Button function API.
+ *
+ * ```ts
+ * button("Click me")                                  // auto-id
+ * button("save", "Save", { style: "primary" })        // explicit id
+ * button("save", "Save", { onClick: handleSave })     // with handler
+ * ```
+ */
+export function button(label: string): UINode
+export function button(label: string, opts: Omit<ButtonProps, "children" | "id">): UINode
+export function button(id: string, label: string, opts?: Omit<ButtonProps, "children" | "id">): UINode
+export function button(
+  first: string,
+  second?: string | Omit<ButtonProps, "children" | "id">,
+  third?: Omit<ButtonProps, "children" | "id">,
+): UINode {
+  if (second === undefined) {
+    return Button({ children: first })
+  }
+  if (typeof second === "string") {
+    return Button({ id: first, children: second, ...third })
+  }
+  return Button({ children: first, ...second })
+}
