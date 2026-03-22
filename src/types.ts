@@ -92,10 +92,19 @@ export interface WidgetEvent extends EventBase {
     | "slide"
     | "slide_release"
     | "paste"
+    | "option_hovered"
     | "open"
     | "close"
     | "scroll"
     | "sort"
+    | "key_binding"
+    | "canvas_shape_enter"
+    | "canvas_shape_leave"
+    | "canvas_shape_click"
+    | "canvas_shape_drag"
+    | "canvas_shape_drag_end"
+    | "canvas_shape_focused"
+    | string // Allow unrecognized families to pass through
   readonly id: string
   readonly scope: readonly string[]
   readonly value: string | number | boolean | null
