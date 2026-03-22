@@ -65,3 +65,50 @@ export type {
 } from "./types.js"
 
 export { COMMAND } from "./types.js"
+
+// Effects as a namespace-style object.
+import * as Effects from "./effects.js"
+export { Effects }
+
+// Animation functions.
+export {
+  linear,
+  easeIn,
+  easeOut,
+  easeInOut,
+  easeInQuad,
+  easeOutQuad,
+  easeInOutQuad,
+  spring,
+  createAnimation,
+  startAnimation,
+  advanceAnimation,
+  animationValue,
+  animationFinished,
+  interpolate,
+} from "./animation.js"
+export type { Animation, EasingFn, AdvanceResult } from "./animation.js"
+
+// Selection state.
+import * as Selection from "./selection.js"
+export { Selection }
+export type { Selection as SelectionType } from "./selection.js"
+
+// Undo/redo stack.
+import * as UndoStack from "./undo.js"
+export { UndoStack }
+export type { UndoStack as UndoStackType, UndoCommand } from "./undo.js"
+
+// Client-side routing.
+import * as Route from "./route.js"
+export { Route }
+export type { Route as RouteType, RouteEntry } from "./route.js"
+
+// Query pipeline.
+import * as Data from "./data.js"
+export { Data }
+export type { QueryOptions, QueryResult, SortSpec } from "./data.js"
+
+// Keyboard key constants.
+import * as Keys from "./keys.js"
+export { Keys }
