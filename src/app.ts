@@ -1,3 +1,12 @@
+/**
+ * App definition and factory.
+ *
+ * The `app()` function creates a plushie application definition.
+ * Call `.run()` on the result to start the app with a renderer.
+ *
+ * @module
+ */
+
 import type {
   Command,
   DeepReadonly,
@@ -8,6 +17,10 @@ import type {
   UpdateResult,
   WidgetEvent,
 } from "./types.js"
+import { Runtime } from "./runtime.js"
+import { resolveBinary } from "./client/binary.js"
+import { SpawnTransport } from "./client/transport.js"
+import type { WireFormat } from "./client/transport.js"
 
 /**
  * Application settings passed to the renderer on startup.
@@ -56,18 +69,37 @@ export interface AppConfig<M> {
   handleRendererExit?: (state: DeepReadonly<M>, reason: string) => M
 }
 
+/** Options for running an app. */
+export interface RunOptions {
+  /** Path to the plushie binary. Resolved automatically if omitted. */
+  binary?: string
+  /** Wire format. Defaults to "msgpack". */
+  format?: WireFormat
+  /** Additional CLI arguments for the renderer binary. */
+  args?: string[]
+  /** Override RUST_LOG for the renderer. */
+  rustLog?: string
+  /** Transport mode: "spawn" (default) or "stdio". */
+  transport?: "spawn" | "stdio"
+}
+
+/** Handle for a running app. */
+export interface AppHandle<M> {
+  /** Stop the app and close the renderer. */
+  stop(): void
+  /** Get the current model (readonly). */
+  model(): DeepReadonly<M>
+}
+
 /**
  * An instantiated app definition, ready to be started.
  */
 export interface AppDefinition<M> {
+  /** The app configuration. */
   readonly config: AppConfig<M>
+  /** Start the app with a renderer. */
+  run(opts?: RunOptions): Promise<AppHandle<M>>
 }
-
-/**
- * Extract the model type from an init value that may be a bare
- * state or a [state, command] tuple.
- */
-type ExtractModel<T> = T extends readonly [infer M, ...unknown[]] ? M : T
 
 /**
  * Create a plushie app definition.
@@ -75,21 +107,40 @@ type ExtractModel<T> = T extends readonly [infer M, ...unknown[]] ? M : T
  * When the model type can be inferred from `init`, no explicit
  * generic is needed:
  *
- *     const counter = app({
- *       init: { count: 0 },
- *       view: (state) => ...  // state is Readonly<{ count: number }>
- *     })
+ * ```ts
+ * const counter = app({
+ *   init: { count: 0 },
+ *   view: (state) => ...  // state is Readonly<{ count: number }>
+ * })
+ * ```
  *
  * For complex models, provide the type explicitly:
  *
- *     const todo = app<TodoModel>({
- *       init: { todos: [], input: '', nextId: 1 },
- *       view: (state) => ...
- *     })
+ * ```ts
+ * const todo = app<TodoModel>({
+ *   init: { todos: [], input: '', nextId: 1 },
+ *   view: (state) => ...
+ * })
+ * ```
  */
-export function app<M>(config: AppConfig<M>): AppDefinition<M>
-export function app(
-  config: AppConfig<unknown> & { init: unknown },
-): AppDefinition<unknown> {
-  return { config }
+export function app<M>(config: AppConfig<M>): AppDefinition<M> {
+  return {
+    config,
+    async run(opts: RunOptions = {}): Promise<AppHandle<M>> {
+      const binary = opts.binary ?? resolveBinary()
+      const transportOpts: import("./client/transport.js").SpawnTransportOptions = { binary }
+      if (opts.format !== undefined) transportOpts.format = opts.format
+      if (opts.args !== undefined) transportOpts.args = opts.args
+      if (opts.rustLog !== undefined) transportOpts.rustLog = opts.rustLog
+      const transport = new SpawnTransport(transportOpts)
+
+      const runtime = new Runtime(config, transport)
+      await runtime.start()
+
+      return {
+        stop: () => runtime.stop(),
+        model: () => runtime.model() as DeepReadonly<M>,
+      }
+    },
+  }
 }
