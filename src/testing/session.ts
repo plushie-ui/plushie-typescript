@@ -484,10 +484,7 @@ export class TestSession<M> {
   }
 
   private getMessageHandler(): ((msg: Record<string, unknown>) => void) | null {
-    // Access the transport's message handler indirectly
-    // The PooledTransport stores the handler on the pool
-    const session = (this.pool as unknown as { sessions: Map<string, { messageHandler: ((msg: Record<string, unknown>) => void) | null }> }).sessions?.get(this.sessionId)
-    return session?.messageHandler ?? null
+    return this.pool.getSessionHandler(this.sessionId)
   }
 
   private nextId(): string {

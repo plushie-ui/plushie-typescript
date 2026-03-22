@@ -15,6 +15,7 @@ import type {
   Event,
   WidgetEvent,
   KeyEvent,
+  ModifiersEvent,
   MouseEvent as PlushieMouseEvent,
   TouchEvent as PlushieTouchEvent,
   ImeEvent,
@@ -744,13 +745,10 @@ function decodeKeyEvent(
   }
 }
 
-function decodeModifiersEvent(raw: WireMessage): KeyEvent {
+function decodeModifiersEvent(raw: WireMessage): ModifiersEvent {
   return {
-    kind: "key",
-    type: "press", // modifiers_changed doesn't have a press/release distinction; use press as default
-    key: "",
+    kind: "modifiers",
     modifiers: parseModifiers(raw["modifiers"]),
-    location: "standard",
     tag: str(raw, "tag"),
     captured: bool(raw, "captured"),
   }

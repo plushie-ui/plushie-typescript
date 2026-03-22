@@ -169,6 +169,12 @@ export class SessionPool {
     if (session) session.messageHandler = handler
   }
 
+  /** Get the current message handler for a session (for test framework access). */
+  getSessionHandler(sessionId: string): ((msg: Record<string, unknown>) => void) | null {
+    const session = this.sessions.get(sessionId)
+    return session?.messageHandler ?? null
+  }
+
   /** Register a close handler for a session. */
   onSessionClose(sessionId: string, handler: (reason: string) => void): void {
     const session = this.sessions.get(sessionId)

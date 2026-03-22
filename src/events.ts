@@ -2,6 +2,7 @@ import type {
   Event,
   WidgetEvent,
   KeyEvent,
+  ModifiersEvent,
   MouseEvent,
   TouchEvent,
   ImeEvent,
@@ -98,6 +99,10 @@ export function isKey(
   type?: "press" | "release",
 ): event is KeyEvent {
   return event.kind === "key" && (type === undefined || event.type === type)
+}
+
+export function isModifiers(event: Event): event is ModifiersEvent {
+  return event.kind === "modifiers"
 }
 
 export function isMouse(event: Event): event is MouseEvent {

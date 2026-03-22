@@ -15,6 +15,8 @@
 
 import type {
   UINode, Command, Event, Handler, UpdateResult, Subscription, WidgetEvent,
+  MouseEvent as PlushieMouseEvent, TouchEvent as PlushieTouchEvent,
+  CanvasEvent, MouseAreaEvent, PaneEvent, SensorEvent, SystemEvent,
 } from "./types.js"
 import { COMMAND } from "./types.js"
 import type { AppConfig, AppSettings } from "./app.js"
@@ -50,6 +52,8 @@ interface RuntimeState<M> {
   pendingTimers: Map<string, ReturnType<typeof setTimeout>>
   pendingEffects: Map<string, ReturnType<typeof setTimeout>>
   consecutiveErrors: number
+  coalescePending: boolean
+  pendingCoalesce: Map<string, Event>
 }
 
 // =========================================================================
@@ -84,6 +88,8 @@ export class Runtime<M> {
       pendingTimers: new Map(),
       pendingEffects: new Map(),
       consecutiveErrors: 0,
+      coalescePending: false,
+      pendingCoalesce: new Map(),
     }
   }
 
@@ -258,6 +264,30 @@ export class Runtime<M> {
   private handleEvent(event: Event): void {
     if (this.stopped) return
 
+    const coalesceKey = this.isCoalescable(event)
+    if (coalesceKey !== null) {
+      this.state.pendingCoalesce.set(coalesceKey, event)
+      if (!this.state.coalescePending) {
+        this.state.coalescePending = true
+        queueMicrotask(() => this.flushCoalescables())
+      }
+      return
+    }
+
+    // Non-coalescable: flush pending first to preserve ordering
+    this.flushCoalescables()
+    this.dispatchEvent(event)
+  }
+
+  private flushCoalescables(): void {
+    this.state.coalescePending = false
+    for (const [, event] of this.state.pendingCoalesce) {
+      this.dispatchEvent(event)
+    }
+    this.state.pendingCoalesce.clear()
+  }
+
+  private dispatchEvent(event: Event): void {
     // Widget events: check handler map first
     if (event.kind === "widget") {
       const widgetEvent = event as WidgetEvent
@@ -272,6 +302,22 @@ export class Runtime<M> {
     if (this.config.update) {
       this.runUpdate(event)
     }
+  }
+
+  private isCoalescable(event: Event): string | null {
+    if (event.kind === "mouse" && (event as PlushieMouseEvent).type === "moved") return "mouse:moved"
+    if (event.kind === "sensor" && (event as SensorEvent).type === "resize") return `sensor:${(event as SensorEvent).id}`
+    if (event.kind === "widget" && (event as WidgetEvent).type === "slide") return `widget:slide:${(event as WidgetEvent).id}`
+    if (event.kind === "mouse_area" && (event as MouseAreaEvent).type === "move") return `mouse_area:move:${(event as MouseAreaEvent).id}`
+    if (event.kind === "canvas" && (event as CanvasEvent).type === "move") return `canvas:move:${(event as CanvasEvent).id}`
+    if (event.kind === "pane" && (event as PaneEvent).type === "resized") return `pane:resized:${(event as PaneEvent).id}`
+    if (event.kind === "system") {
+      const sysType = (event as SystemEvent).type
+      if (sysType === "animation_frame" || sysType === "theme_changed") return `system:${sysType}`
+    }
+    if (event.kind === "touch" && (event as PlushieTouchEvent).type === "moved") return `touch:moved:${String((event as PlushieTouchEvent).fingerId)}`
+    if (event.kind === "modifiers") return "modifiers_changed"
+    return null
   }
 
   private lookupHandler(widgetId: string, eventType: string): Handler<unknown> | null {
@@ -594,12 +640,21 @@ export class Runtime<M> {
       case "done": {
         const value = cmd.payload["value"]
         const mapper = cmd.payload["mapper"] as ((v: unknown) => unknown) | undefined
-        if (mapper && this.config.update) {
-          const mappedEvent = mapper(value)
-          // Dispatch directly through update, not through the handler pipeline.
-          // The Elixir version dispatches mapper results as raw events to
-          // update/2, bypassing widget handler lookup.
-          this.runUpdate(mappedEvent as Event)
+        if (mapper) {
+          try {
+            const mappedValue = mapper(value)
+            if (this.config.update) {
+              const result = this.config.update(this.state.model as never, mappedValue as Event)
+              const [newModel, newCommands] = this.unwrapResult(result as UpdateResult<M>)
+              this.state.model = newModel
+              this.state.consecutiveErrors = 0
+              this.freezeModelIfDev()
+              if (newCommands.length > 0) this.executeCommands(newCommands)
+              this.renderAndSync(false)
+            }
+          } catch (error) {
+            this.handleUpdateError(error)
+          }
         }
         break
       }

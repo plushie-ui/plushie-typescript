@@ -18,6 +18,7 @@ import { createRequire } from "node:module"
 import { existsSync, mkdirSync, createWriteStream, chmodSync, readFileSync } from "node:fs"
 import { resolve, join, dirname } from "node:path"
 import { get as httpsGet } from "node:https"
+import { spawnSync, spawn } from "node:child_process"
 import { platformBinaryName } from "../client/binary.js"
 import { DEFAULT_WASM_DIR, WASM_JS_FILE, WASM_BG_FILE } from "../wasm.js"
 
@@ -186,11 +187,35 @@ async function downloadWasm(force: boolean): Promise<void> {
   // Extract tar.gz
   console.log("  Extracting...")
   const { execSync } = await import("node:child_process")
-  execSync(`tar -xzf "${tarPath}" -C "${destDir}"`)
+  try {
+    execSync(`tar -xzf "${tarPath}" -C "${destDir}"`, { stdio: "pipe" })
+  } catch {
+    console.error(
+      `Failed to extract ${tarPath}.\n` +
+      `Make sure 'tar' is available on your system.\n` +
+      `Or extract manually: tar -xzf "${tarPath}" -C "${destDir}"`,
+    )
+    process.exitCode = 1
+    return
+  }
   console.log()
   console.log(`WASM renderer installed to ${destDir}`)
   console.log(`  ${WASM_JS_FILE}`)
   console.log(`  ${WASM_BG_FILE}`)
+}
+
+// =========================================================================
+// tsx resolution
+// =========================================================================
+
+function findTsx(): string | null {
+  // Check local node_modules first
+  const local = resolve("node_modules", ".bin", "tsx")
+  if (existsSync(local)) return local
+  // Check PATH
+  const result = spawnSync("which", ["tsx"], { stdio: "pipe" })
+  if (result.status === 0) return result.stdout.toString().trim()
+  return null
 }
 
 // =========================================================================

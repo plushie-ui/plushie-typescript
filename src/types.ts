@@ -62,6 +62,7 @@ export type UpdateResult<S> = S | readonly [S, Command | Command[]]
 export type EventKind =
   | "widget"
   | "key"
+  | "modifiers"
   | "mouse"
   | "touch"
   | "ime"
@@ -117,6 +118,13 @@ export interface KeyEvent extends EventBase {
   readonly key: string
   readonly modifiers: Readonly<Modifiers>
   readonly location: "left" | "right" | "standard"
+  readonly tag: string
+  readonly captured: boolean
+}
+
+export interface ModifiersEvent extends EventBase {
+  readonly kind: "modifiers"
+  readonly modifiers: Readonly<Modifiers>
   readonly tag: string
   readonly captured: boolean
 }
@@ -269,6 +277,7 @@ export interface StreamEvent extends EventBase {
 export type Event =
   | WidgetEvent
   | KeyEvent
+  | ModifiersEvent
   | MouseEvent
   | TouchEvent
   | ImeEvent
