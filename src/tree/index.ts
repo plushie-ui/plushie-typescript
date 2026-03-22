@@ -1,4 +1,4 @@
 export { createNode, autoId, resetAutoId } from "./node.js"
-// Tree diffing and normalization will be added here.
-// diff.ts -- tree diffing, patch generation
-// normalize.ts -- tree normalization (scoped IDs, value encoding)
+export { normalize, isAutoId, type WireNode } from "./normalize.js"
+export { diff, type PatchOp, type ReplaceNode, type UpdateProps, type InsertChild, type RemoveChild } from "./diff.js"
+export { findNode, findById, detectWindows } from "./search.js"
