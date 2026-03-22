@@ -63,6 +63,16 @@
         "types": "./dist/client/index.d.cts",
         "default": "./dist/client/index.cjs"
       }
+    },
+    "./canvas": {
+      "import": {
+        "types": "./dist/canvas/index.d.ts",
+        "default": "./dist/canvas/index.js"
+      },
+      "require": {
+        "types": "./dist/canvas/index.d.cts",
+        "default": "./dist/canvas/index.cjs"
+      }
     }
   },
   "files": [

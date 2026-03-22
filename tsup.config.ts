@@ -8,6 +8,7 @@ export default defineConfig({
     "jsx-dev-runtime": "src/jsx-dev-runtime.ts",
     "testing/index": "src/testing/index.ts",
     "client/index": "src/client/index.ts",
+    "canvas/index": "src/canvas/index.ts",
   },
   format: ["esm", "cjs"],
   dts: true,
