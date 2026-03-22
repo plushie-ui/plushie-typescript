@@ -1,0 +1,106 @@
+{
+  "name": "plushie",
+  "version": "0.1.0",
+  "description": "Native desktop GUI framework for TypeScript, powered by iced",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./ui": {
+      "import": {
+        "types": "./dist/ui/index.d.ts",
+        "default": "./dist/ui/index.js"
+      },
+      "require": {
+        "types": "./dist/ui/index.d.cts",
+        "default": "./dist/ui/index.cjs"
+      }
+    },
+    "./jsx-runtime": {
+      "import": {
+        "types": "./dist/jsx-runtime.d.ts",
+        "default": "./dist/jsx-runtime.js"
+      },
+      "require": {
+        "types": "./dist/jsx-runtime.d.cts",
+        "default": "./dist/jsx-runtime.cjs"
+      }
+    },
+    "./jsx-dev-runtime": {
+      "import": {
+        "types": "./dist/jsx-dev-runtime.d.ts",
+        "default": "./dist/jsx-dev-runtime.js"
+      },
+      "require": {
+        "types": "./dist/jsx-dev-runtime.d.cts",
+        "default": "./dist/jsx-dev-runtime.cjs"
+      }
+    },
+    "./testing": {
+      "import": {
+        "types": "./dist/testing/index.d.ts",
+        "default": "./dist/testing/index.js"
+      },
+      "require": {
+        "types": "./dist/testing/index.d.cts",
+        "default": "./dist/testing/index.cjs"
+      }
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/client/index.d.ts",
+        "default": "./dist/client/index.js"
+      },
+      "require": {
+        "types": "./dist/client/index.d.cts",
+        "default": "./dist/client/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preflight": "pnpm check && pnpm test && pnpm build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "gui",
+    "desktop",
+    "native",
+    "iced",
+    "elm-architecture",
+    "ui",
+    "plushie"
+  ],
+  "license": "MIT",
+  "author": "Daniel Hedlund",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/plushie-ui/plushie-typescript"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
