@@ -9,6 +9,7 @@ export default defineConfig({
     "testing/index": "src/testing/index.ts",
     "client/index": "src/client/index.ts",
     "canvas/index": "src/canvas/index.ts",
+    "cli/index": "src/cli/index.ts",
   },
   format: ["esm", "cjs"],
   dts: true,
