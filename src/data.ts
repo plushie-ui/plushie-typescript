@@ -1,5 +1,15 @@
+/**
+ * Data query pipeline: filter, search, sort, group, and paginate records.
+ *
+ * The {@link query} function applies a declarative pipeline to a list
+ * of records and returns a paginated result with optional grouping.
+ *
+ * @module
+ */
+
 // -- Types ----------------------------------------------------------------
 
+/** Options controlling the query pipeline stages. */
 export interface QueryOptions<T> {
   readonly filter?: (record: T) => boolean
   readonly search?: { fields: string[]; query: string }
@@ -9,8 +19,10 @@ export interface QueryOptions<T> {
   readonly pageSize?: number
 }
 
+/** Sort specification: field name and direction. */
 export type SortSpec = { direction: "asc" | "desc"; field: string }
 
+/** Result of a query pipeline execution. */
 export interface QueryResult<T> {
   readonly entries: T[]
   readonly total: number

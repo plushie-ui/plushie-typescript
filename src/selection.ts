@@ -1,7 +1,18 @@
+/**
+ * Selection state management for lists and grids.
+ *
+ * Supports single, multi, and range selection modes. All operations
+ * are pure -- they return new Selection values without mutation.
+ *
+ * @module
+ */
+
 // -- Types ----------------------------------------------------------------
 
+/** How selection behaves when an item is clicked. */
 export type SelectionMode = "single" | "multi" | "range"
 
+/** Immutable selection state. */
 export interface Selection {
   readonly mode: SelectionMode
   readonly selected: ReadonlySet<string>
@@ -9,6 +20,7 @@ export interface Selection {
   readonly order: readonly string[]
 }
 
+/** Options for the {@link select} operation. */
 export interface SelectOptions {
   readonly extend?: boolean
 }

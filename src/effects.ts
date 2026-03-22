@@ -1,3 +1,13 @@
+/**
+ * Platform effect commands: file dialogs, clipboard, notifications.
+ *
+ * Each function returns a {@link Command} that triggers a platform-native
+ * side effect when executed by the runtime. Results arrive as
+ * `EffectEvent` through the update cycle.
+ *
+ * @module
+ */
+
 import { COMMAND } from "./types.js"
 import type { Command } from "./types.js"
 
@@ -25,6 +35,7 @@ const NOTIFICATION_TIMEOUT = 5_000
 
 // -- Types ----------------------------------------------------------------
 
+/** Options for file open dialogs. */
 export interface FileDialogOptions {
   readonly title?: string
   readonly directory?: string
@@ -32,16 +43,19 @@ export interface FileDialogOptions {
   readonly timeout?: number
 }
 
+/** Options for file save dialogs. */
 export interface FileSaveOptions extends FileDialogOptions {
   readonly defaultName?: string
 }
 
+/** Options for directory picker dialogs. */
 export interface DirectoryOptions {
   readonly title?: string
   readonly directory?: string
   readonly timeout?: number
 }
 
+/** Options for OS notifications. */
 export interface NotificationOptions {
   readonly icon?: string
   readonly timeout?: number

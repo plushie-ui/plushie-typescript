@@ -9,9 +9,10 @@
  * ## Resolution order
  *
  * 1. `PLUSHIE_BINARY_PATH` env var (must exist, error if file missing)
- * 2. Downloaded binary at `node_modules/.plushie/bin/<name>`
- * 3. Common local paths: `./plushie`, `../plushie/target/release/plushie`
- * 4. Error with guidance to download
+ * 2. SEA-bundled binary (if running in Node.js Single Executable context)
+ * 3. Downloaded binary at `node_modules/.plushie/bin/<name>`
+ * 4. Common local paths: `./plushie`, `../plushie/target/release/plushie`
+ * 5. Error with guidance to download
  *
  * @module
  */
@@ -19,6 +20,7 @@
 import { existsSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { platform, arch } from "node:process"
+import { isSEA, extractBinaryFromSEA } from "../sea.js"
 
 /**
  * Map Node.js platform/arch to plushie binary naming convention.
@@ -73,14 +75,23 @@ export function resolveBinary(): string {
     return resolved
   }
 
-  // 2. Downloaded binary in node_modules
+  // 2. SEA-bundled binary (if running in a Node.js Single Executable)
+  if (isSEA()) {
+    try {
+      return extractBinaryFromSEA()
+    } catch {
+      // Asset not bundled; fall through to filesystem checks
+    }
+  }
+
+  // 3. Downloaded binary in node_modules
   const downloadDir = resolve("node_modules", ".plushie", "bin")
   const downloadPath = join(downloadDir, platformBinaryName())
   if (existsSync(downloadPath)) {
     return downloadPath
   }
 
-  // 3. Common local paths (for development against local builds)
+  // 4. Common local paths (for development against local builds)
   const localPaths = [
     resolve("plushie"),
     resolve("..", "plushie", "target", "release", "plushie"),
@@ -90,7 +101,7 @@ export function resolveBinary(): string {
     if (existsSync(p)) return p
   }
 
-  // 4. Not found
+  // 5. Not found
   throw new Error(
     `Could not find the plushie binary.\n\n` +
     `To fix this, either:\n` +

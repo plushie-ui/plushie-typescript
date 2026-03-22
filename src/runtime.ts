@@ -594,10 +594,12 @@ export class Runtime<M> {
       case "done": {
         const value = cmd.payload["value"]
         const mapper = cmd.payload["mapper"] as ((v: unknown) => unknown) | undefined
-        if (mapper) {
-          const event = mapper(value)
-          // Dispatch the mapped value as an event through the update cycle
-          this.handleEvent(event as Event)
+        if (mapper && this.config.update) {
+          const mappedEvent = mapper(value)
+          // Dispatch directly through update, not through the handler pipeline.
+          // The Elixir version dispatches mapper results as raw events to
+          // update/2, bypassing widget handler lookup.
+          this.runUpdate(mappedEvent as Event)
         }
         break
       }

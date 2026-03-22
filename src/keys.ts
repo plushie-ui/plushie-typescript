@@ -1,4 +1,11 @@
-// Keyboard key constants matching standard KeyboardEvent.key values.
+/**
+ * Keyboard key constants matching standard KeyboardEvent.key values.
+ *
+ * Use these instead of raw strings for key matching in event handlers
+ * to avoid typos and get autocomplete support.
+ *
+ * @module
+ */
 
 export const Enter = "Enter"
 export const Tab = "Tab"

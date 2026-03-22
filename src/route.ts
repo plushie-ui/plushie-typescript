@@ -1,10 +1,21 @@
+/**
+ * Client-side navigation routing with a stack-based history.
+ *
+ * Routes are immutable. Push and pop return new Route values.
+ * The stack always has at least one entry (the root).
+ *
+ * @module
+ */
+
 // -- Types ----------------------------------------------------------------
 
+/** A single entry in the navigation stack. */
 export interface RouteEntry {
   readonly path: string
   readonly params: Readonly<Record<string, unknown>>
 }
 
+/** Immutable navigation state with a stack of route entries. */
 export interface Route {
   readonly stack: readonly RouteEntry[]
 }

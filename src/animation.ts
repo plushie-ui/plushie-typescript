@@ -1,3 +1,14 @@
+/**
+ * Animation helpers: easing functions, interpolation, and animation lifecycle.
+ *
+ * Animations are pure data -- create one with {@link createAnimation},
+ * start it with {@link startAnimation}, and advance it each frame with
+ * {@link advanceAnimation}. The runtime never mutates an animation;
+ * each step returns a new value.
+ *
+ * @module
+ */
+
 // -- Easing functions -----------------------------------------------------
 
 /** Linear easing (identity). */
@@ -49,8 +60,10 @@ export function spring(t: number): number {
 
 // -- Types ----------------------------------------------------------------
 
+/** An easing function maps progress `t` (0..1) to an eased value. */
 export type EasingFn = (t: number) => number
 
+/** Immutable animation state. */
 export interface Animation {
   readonly from: number
   readonly to: number
@@ -60,6 +73,7 @@ export interface Animation {
   readonly value: number
 }
 
+/** Result of advancing an animation by one frame. */
 export interface AdvanceResult {
   readonly value: number
   readonly finished: boolean

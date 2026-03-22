@@ -1,5 +1,16 @@
+/**
+ * Undo/redo stack with coalescing support.
+ *
+ * Commands are reversible operations that can be applied, undone,
+ * and redone. Coalescing merges rapid sequential edits (e.g.,
+ * keystrokes) into a single undo entry.
+ *
+ * @module
+ */
+
 // -- Types ----------------------------------------------------------------
 
+/** A reversible command that can be applied and undone. */
 export interface UndoCommand<M> {
   readonly apply: (model: M) => M
   readonly undo: (model: M) => M
@@ -16,6 +27,7 @@ interface UndoEntry<M> {
   readonly timestamp: number
 }
 
+/** Immutable undo/redo stack holding the current model and history. */
 export interface UndoStack<M> {
   readonly current: M
   readonly undoStack: readonly UndoEntry<M>[]

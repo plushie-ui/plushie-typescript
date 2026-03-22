@@ -6,10 +6,10 @@
 
 import type { UINode } from "../../types.js"
 import type {
-  Length, Padding, Alignment, Color, Border, Shadow, StyleMap, A11y,
+  Length, Padding, Alignment, Color, Gradient, Border, Shadow, StyleMap, A11y,
 } from "../types.js"
 import {
-  encodeLength, encodePadding, encodeAlignment, encodeColor,
+  encodeLength, encodePadding, encodeAlignment, encodeColor, encodeBackground,
   encodeBorder, encodeShadow, encodeStyleMap, encodeA11y,
 } from "../types.js"
 import { containerNode, putIf, autoId } from "../build.js"
@@ -26,7 +26,7 @@ export interface ContainerProps {
   clip?: boolean
   alignX?: Alignment
   alignY?: Alignment
-  background?: Color
+  background?: Color | Gradient
   color?: Color
   border?: Border
   shadow?: Shadow
@@ -58,7 +58,7 @@ export function Container(props: ContainerProps): UINode {
   putIf(p, props.clip, "clip")
   putIf(p, props.alignX, "align_x", encodeAlignment)
   putIf(p, props.alignY, "align_y", encodeAlignment)
-  putIf(p, props.background, "background", encodeColor)
+  putIf(p, props.background, "background", encodeBackground)
   putIf(p, props.color, "color", encodeColor)
   putIf(p, props.border, "border", encodeBorder)
   putIf(p, props.shadow, "shadow", encodeShadow)

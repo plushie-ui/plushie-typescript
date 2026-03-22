@@ -6,13 +6,14 @@ export { registerHandler, drainHandlers, clearHandlers } from "./handlers.js"
 
 // Re-export prop types and encoders.
 export type {
-  Length, Padding, Color, Font, FontWeight, FontStyle, FontStretch,
+  Length, Padding, Color, Gradient, Font, FontWeight, FontStyle, FontStretch,
   Alignment, Border, CornerRadius, Shadow, StyleMap, StatusOverride,
   A11y, ContentFit, FilterMethod, Wrapping, Shaping, Direction,
   Anchor, LineHeight,
 } from "./types.js"
 export {
-  encodeLength, encodePadding, encodeColor, encodeFont, encodeAlignment,
+  encodeLength, encodePadding, encodeColor, encodeGradient, encodeBackground,
+  encodeFont, encodeAlignment,
   encodeBorder, encodeShadow, encodeStyleMap, encodeA11y, encodeLineHeight,
 } from "./types.js"
 

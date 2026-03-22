@@ -177,6 +177,31 @@ function hex2(n: number): string {
 }
 
 // =========================================================================
+// Gradient
+// =========================================================================
+
+/**
+ * Linear gradient specification.
+ *
+ * Defines a gradient with an angle (in degrees) and a list of color stops.
+ * Each stop has an offset (0.0-1.0) and a color.
+ */
+export interface Gradient {
+  type: 'linear'
+  angle: number
+  stops: Array<{ offset: number; color: Color }>
+}
+
+/** Encode a Gradient to its wire representation. */
+export function encodeGradient(value: Gradient): Record<string, unknown> {
+  return {
+    type: value.type,
+    angle: value.angle,
+    stops: value.stops.map(s => ({ offset: s.offset, color: encodeColor(s.color) })),
+  }
+}
+
+// =========================================================================
 // Font
 // =========================================================================
 
@@ -313,7 +338,7 @@ export function encodeShadow(value: Shadow): Record<string, unknown> {
 
 /** Status-specific style overrides (hover, press, disable, focus). */
 export interface StatusOverride {
-  background?: Color
+  background?: Color | Gradient
   textColor?: Color
   border?: Border
   shadow?: Shadow
@@ -329,7 +354,7 @@ export type StyleMap =
   | string
   | {
       base?: string
-      background?: Color
+      background?: Color | Gradient
       textColor?: Color
       border?: Border
       shadow?: Shadow
@@ -339,12 +364,20 @@ export type StyleMap =
       focused?: StatusOverride
     }
 
+/** Encode a Color or Gradient to its wire representation. */
+export function encodeBackground(value: Color | Gradient): unknown {
+  if (typeof value === "object" && "type" in value && value.type === "linear") {
+    return encodeGradient(value as Gradient)
+  }
+  return encodeColor(value as Color)
+}
+
 /** Encode a StyleMap to its wire representation. */
 export function encodeStyleMap(value: StyleMap): unknown {
   if (typeof value === "string") return value
   const result: Record<string, unknown> = {}
   if (value.base !== undefined) result["base"] = value.base
-  if (value.background !== undefined) result["background"] = encodeColor(value.background)
+  if (value.background !== undefined) result["background"] = encodeBackground(value.background)
   if (value.textColor !== undefined) result["text_color"] = encodeColor(value.textColor)
   if (value.border !== undefined) result["border"] = encodeBorder(value.border)
   if (value.shadow !== undefined) result["shadow"] = encodeShadow(value.shadow)
@@ -357,7 +390,7 @@ export function encodeStyleMap(value: StyleMap): unknown {
 
 function encodeStatusOverride(value: StatusOverride): Record<string, unknown> {
   const result: Record<string, unknown> = {}
-  if (value.background !== undefined) result["background"] = encodeColor(value.background)
+  if (value.background !== undefined) result["background"] = encodeBackground(value.background)
   if (value.textColor !== undefined) result["text_color"] = encodeColor(value.textColor)
   if (value.border !== undefined) result["border"] = encodeBorder(value.border)
   if (value.shadow !== undefined) result["shadow"] = encodeShadow(value.shadow)
