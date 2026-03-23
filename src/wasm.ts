@@ -15,7 +15,7 @@ import { join, resolve } from "node:path";
 export const DEFAULT_WASM_DIR = "node_modules/.plushie/wasm";
 
 /** WASM JS loader file name produced by wasm-pack. */
-export const WASM_JS_FILE = "plushie_wasm.js";
+export const WASM_JS_FILE = "plushie_renderer_wasm.js";
 
 /** WASM binary file name produced by wasm-pack. */
 export const WASM_BG_FILE = "plushie_wasm_bg.wasm";
