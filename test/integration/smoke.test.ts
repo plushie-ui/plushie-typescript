@@ -11,10 +11,11 @@ import { describe, test, expect } from "vitest"
 import { binaryAvailable, binaryPath } from "./setup.js"
 import { SpawnTransport } from "../../src/client/transport.js"
 import {
-  encodeSettings, encodeSnapshot, encodeInteract,
+  encodeSettings, encodeSnapshot, encodeInteract, encodePatch,
+  encodeSubscribe, encodeUnsubscribe, encodeTreeHash, encodeQuery,
   decodeMessage, PROTOCOL_VERSION,
 } from "../../src/client/protocol.js"
-import type { WireMessage, DecodedResponse } from "../../src/client/protocol.js"
+import type { WireMessage, WirePatchOp, DecodedResponse } from "../../src/client/protocol.js"
 
 function waitForMessage(
   transport: { onMessage(handler: (msg: Record<string, unknown>) => void): void },
@@ -241,6 +242,243 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
 
       if (qResp.type === "query_response") {
         expect(qResp.data).toBeNull()
+      }
+    } finally {
+      transport.close()
+    }
+  })
+
+  test("slider interact produces slide event", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "json",
+      args: ["--mock"],
+    })
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello")
+      transport.send(encodeSettings("", {}) as Record<string, unknown>)
+      await helloPromise
+
+      transport.send(encodeSnapshot("", {
+        id: "root",
+        type: "column",
+        props: {},
+        children: [
+          { id: "vol", type: "slider", props: { value: 50, min: 0, max: 100, step: 1 }, children: [] },
+        ],
+      }) as Record<string, unknown>)
+
+      const slidePromise = waitForMessage(transport, (d) => d.type === "interact_response")
+      transport.send(
+        encodeInteract("", "s1", "slide", { by: "id", value: "vol" }, { value: 75 }) as Record<string, unknown>,
+      )
+      const response = await slidePromise
+
+      expect(response.type).toBe("interact_response")
+      if (response.type === "interact_response") {
+        expect(response.id).toBe("s1")
+        const events = response.events as WireMessage[]
+        const slideEvent = events.find((e) => e["family"] === "slide")
+        expect(slideEvent).toBeDefined()
+        expect(slideEvent?.["id"]).toBe("vol")
+      }
+    } finally {
+      transport.close()
+    }
+  })
+
+  test("subscribe and unsubscribe for key press", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "json",
+      args: ["--mock"],
+    })
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello")
+      transport.send(encodeSettings("", {}) as Record<string, unknown>)
+      await helloPromise
+
+      // Subscribe to key press events -- no error expected
+      transport.send(
+        encodeSubscribe("", "on_key_press", "keys") as Record<string, unknown>,
+      )
+
+      // Unsubscribe -- no error expected
+      transport.send(
+        encodeUnsubscribe("", "on_key_press") as Record<string, unknown>,
+      )
+
+      // Send a snapshot and query to verify the session is still healthy
+      transport.send(encodeSnapshot("", {
+        id: "root",
+        type: "text",
+        props: { content: "alive" },
+        children: [],
+      }) as Record<string, unknown>)
+
+      const queryPromise = waitForMessage(transport, (d) => d.type === "query_response")
+      transport.send(
+        encodeQuery("", "q1", "find", { by: "id", value: "root" }) as Record<string, unknown>,
+      )
+      const qResp = await queryPromise
+
+      expect(qResp.type).toBe("query_response")
+      if (qResp.type === "query_response") {
+        expect(qResp.data).not.toBeNull()
+      }
+    } finally {
+      transport.close()
+    }
+  })
+
+  test("patch updates props incrementally", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "json",
+      args: ["--mock"],
+    })
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello")
+      transport.send(encodeSettings("", {}) as Record<string, unknown>)
+      await helloPromise
+
+      // Send initial snapshot
+      transport.send(encodeSnapshot("", {
+        id: "root",
+        type: "column",
+        props: {},
+        children: [
+          { id: "label", type: "text", props: { content: "before" }, children: [] },
+        ],
+      }) as Record<string, unknown>)
+
+      // Send a patch to update the text content
+      const patchOps: WirePatchOp[] = [
+        { op: "update_props", path: [0], props: { content: "after" } },
+      ]
+      transport.send(encodePatch("", patchOps) as Record<string, unknown>)
+
+      // Query to verify the prop changed
+      const queryPromise = waitForMessage(transport, (d) => d.type === "query_response")
+      transport.send(
+        encodeQuery("", "q1", "find", { by: "id", value: "label" }) as Record<string, unknown>,
+      )
+      const qResp = await queryPromise
+
+      expect(qResp.type).toBe("query_response")
+      if (qResp.type === "query_response") {
+        expect(qResp.data).not.toBeNull()
+        const node = qResp.data as Record<string, unknown>
+        const props = node["props"] as Record<string, unknown>
+        expect(props["content"]).toBe("after")
+      }
+    } finally {
+      transport.close()
+    }
+  })
+
+  test("tree_hash returns a hash for the current tree", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "json",
+      args: ["--mock"],
+    })
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello")
+      transport.send(encodeSettings("", {}) as Record<string, unknown>)
+      await helloPromise
+
+      // Send a snapshot
+      transport.send(encodeSnapshot("", {
+        id: "root",
+        type: "column",
+        props: {},
+        children: [
+          { id: "msg", type: "text", props: { content: "hash me" }, children: [] },
+        ],
+      }) as Record<string, unknown>)
+
+      // Request tree hash
+      const hashPromise = waitForMessage(transport, (d) => d.type === "tree_hash_response")
+      transport.send(
+        encodeTreeHash("", "h1", "test_hash") as Record<string, unknown>,
+      )
+      const hashResp = await hashPromise
+
+      expect(hashResp.type).toBe("tree_hash_response")
+      if (hashResp.type === "tree_hash_response") {
+        expect(hashResp.id).toBe("h1")
+        expect(hashResp.name).toBe("test_hash")
+        expect(hashResp.hash).toBeTypeOf("string")
+        expect(hashResp.hash.length).toBeGreaterThan(0)
+      }
+    } finally {
+      transport.close()
+    }
+  })
+
+  test("multiple sessions interact independently", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "json",
+      args: ["--mock", "--max-sessions", "4"],
+    })
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello")
+      transport.send(encodeSettings("", {}) as Record<string, unknown>)
+      await helloPromise
+
+      // Send different trees to two named sessions
+      transport.send(encodeSnapshot("s1", {
+        id: "root",
+        type: "text",
+        props: { content: "session one" },
+        children: [],
+      }) as Record<string, unknown>)
+
+      transport.send(encodeSnapshot("s2", {
+        id: "root",
+        type: "text",
+        props: { content: "session two" },
+        children: [],
+      }) as Record<string, unknown>)
+
+      // Query session 1
+      const q1Promise = waitForMessage(transport, (d) =>
+        d.type === "query_response" && "id" in d && d.id === "q1",
+      )
+      transport.send({
+        type: "query", session: "s1", id: "q1",
+        target: "find", selector: { by: "id", value: "root" },
+      })
+      const q1Resp = await q1Promise
+
+      // Query session 2
+      const q2Promise = waitForMessage(transport, (d) =>
+        d.type === "query_response" && "id" in d && d.id === "q2",
+      )
+      transport.send({
+        type: "query", session: "s2", id: "q2",
+        target: "find", selector: { by: "id", value: "root" },
+      })
+      const q2Resp = await q2Promise
+
+      // Verify each session has its own tree
+      if (q1Resp.type === "query_response") {
+        const node = q1Resp.data as Record<string, unknown>
+        const props = node["props"] as Record<string, unknown>
+        expect(props["content"]).toBe("session one")
+      }
+
+      if (q2Resp.type === "query_response") {
+        const node = q2Resp.data as Record<string, unknown>
+        const props = node["props"] as Record<string, unknown>
+        expect(props["content"]).toBe("session two")
       }
     } finally {
       transport.close()

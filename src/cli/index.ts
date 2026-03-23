@@ -8,6 +8,8 @@
  *   plushie download --wasm -- download the WASM renderer
  *   plushie dev <app>      -- run an app with file watching
  *   plushie run <app>      -- run an app
+ *   plushie stdio <app>    -- run in stdio transport mode (for plushie --exec)
+ *   plushie inspect <app>  -- print the initial view tree as JSON
  *   plushie --help         -- print usage
  *   plushie --version      -- print version
  *
@@ -15,7 +17,7 @@
  */
 
 import { createRequire } from "node:module"
-import { existsSync, mkdirSync, createWriteStream, chmodSync, readFileSync } from "node:fs"
+import { existsSync, mkdirSync, createWriteStream, chmodSync, readFileSync, writeFileSync, unlinkSync } from "node:fs"
 import { resolve, join, dirname } from "node:path"
 import { get as httpsGet } from "node:https"
 import { spawnSync, spawn } from "node:child_process"
@@ -42,12 +44,15 @@ Commands:
   download --wasm   Download the WASM renderer
   dev <app>         Run an app with file watching (hot reload)
   run <app>         Run an app
+  stdio <app>       Run an app in stdio transport mode (for plushie --exec)
+  inspect <app>     Print the initial view tree as formatted JSON
 
 Options:
   --help            Show this help message
   --version         Show version number
   --json            Use JSON wire format (default: msgpack)
-  --binary <path>   Override binary path`
+  --binary <path>   Override binary path
+  --no-watch        Disable file watching in dev mode`
 
 // =========================================================================
 // Download
@@ -236,12 +241,26 @@ async function main(argv: string[]): Promise<void> {
     return
   }
 
+  // Parse flags from the remaining args (after the command)
+  const rest = args.slice(1)
+  const flags = rest.filter(a => a.startsWith("--"))
+  const positional = rest.filter(a => !a.startsWith("--"))
+  const jsonFlag = flags.includes("--json")
+  const noWatch = flags.includes("--no-watch")
+  const binaryIdx = rest.indexOf("--binary")
+  const binaryOverride = binaryIdx !== -1 ? rest[binaryIdx + 1] : undefined
+
+  // Build extra env vars from flags
+  const extraEnv: Record<string, string> = {}
+  if (jsonFlag) extraEnv["PLUSHIE_FORMAT"] = "json"
+  if (binaryOverride !== undefined) extraEnv["PLUSHIE_BINARY_PATH"] = binaryOverride
+
   switch (command) {
     case "download":
-      await handleDownload(args.slice(1))
+      await handleDownload(rest)
       break
     case "dev": {
-      if (args[1] === undefined) {
+      if (positional[0] === undefined) {
         console.error("Error: missing <app> argument\n")
         console.log(USAGE)
         process.exitCode = 1
@@ -253,12 +272,16 @@ async function main(argv: string[]): Promise<void> {
         process.exitCode = 1
         return
       }
-      const devChild = spawn(devTsx, ["--watch", args[1]], { stdio: "inherit" })
+      const devArgs = noWatch ? [positional[0]] : ["--watch", positional[0]]
+      const devChild = spawn(devTsx, devArgs, {
+        stdio: "inherit",
+        env: { ...process.env, ...extraEnv },
+      })
       devChild.on("exit", (code) => { process.exitCode = code ?? 1 })
       break
     }
     case "run": {
-      if (args[1] === undefined) {
+      if (positional[0] === undefined) {
         console.error("Error: missing <app> argument\n")
         console.log(USAGE)
         process.exitCode = 1
@@ -270,8 +293,64 @@ async function main(argv: string[]): Promise<void> {
         process.exitCode = 1
         return
       }
-      const runChild = spawn(runTsx, [args[1]], { stdio: "inherit" })
+      const runChild = spawn(runTsx, [positional[0]], {
+        stdio: "inherit",
+        env: { ...process.env, ...extraEnv },
+      })
       runChild.on("exit", (code) => { process.exitCode = code ?? 1 })
+      break
+    }
+    case "stdio": {
+      if (positional[0] === undefined) {
+        console.error("Error: missing <app> argument\n")
+        console.log(USAGE)
+        process.exitCode = 1
+        return
+      }
+      const stdioTsx = findTsx()
+      if (!stdioTsx) {
+        console.error("tsx is required.\nInstall: pnpm add -D tsx")
+        process.exitCode = 1
+        return
+      }
+      const stdioChild = spawn(stdioTsx, [positional[0]], {
+        stdio: "inherit",
+        env: { ...process.env, ...extraEnv, PLUSHIE_TRANSPORT: "stdio" },
+      })
+      stdioChild.on("exit", (code) => { process.exitCode = code ?? 1 })
+      break
+    }
+    case "inspect": {
+      if (positional[0] === undefined) {
+        console.error("Error: missing <app> argument\n")
+        console.log(USAGE)
+        process.exitCode = 1
+        return
+      }
+      const inspectTsx = findTsx()
+      if (!inspectTsx) {
+        console.error("tsx is required.\nInstall: pnpm add -D tsx")
+        process.exitCode = 1
+        return
+      }
+      const appPath = resolve(positional[0])
+      const normalizePath = resolve(dirname(new URL(import.meta.url).pathname), "..", "tree", "normalize.ts")
+      const inspectScript = [
+        `import app from '${appPath}';`,
+        `import { normalize } from '${normalizePath}';`,
+        `const config = app.config;`,
+        `const init = Array.isArray(config.init) ? config.init[0] : config.init;`,
+        `const tree = config.view(init);`,
+        `const wire = normalize(tree);`,
+        `console.log(JSON.stringify(wire, null, 2));`,
+      ].join("\n")
+      const tmpScript = resolve(".plushie-inspect.mts")
+      writeFileSync(tmpScript, inspectScript, "utf-8")
+      const inspectChild = spawn(inspectTsx, [tmpScript], { stdio: "inherit" })
+      inspectChild.on("exit", (code) => {
+        try { unlinkSync(tmpScript) } catch { /* ignore */ }
+        process.exitCode = code ?? 1
+      })
       break
     }
     default:
