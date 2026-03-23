@@ -254,8 +254,10 @@ function handleBuild(flags: string[]): void {
   // Check for extension config (plushie.extensions.json)
   const extConfigPath = resolve("plushie.extensions.json")
   if (!isWasm && existsSync(extConfigPath)) {
-    handleExtensionBuild(sourcePath, extConfigPath, isRelease)
-    return
+    if (handleExtensionBuild(sourcePath, extConfigPath, isRelease)) {
+      return // Extension build handled it
+    }
+    // No native extensions found -- fall through to stock build
   }
 
   if (isWasm) {
@@ -340,11 +342,12 @@ function handleBuild(flags: string[]): void {
   }
 }
 
+/** Returns true if the extension build was initiated, false if no native extensions found. */
 function handleExtensionBuild(
   sourcePath: string,
   configPath: string,
   release: boolean,
-): void {
+): boolean {
   const {
     validateExtensions,
     generateCargoToml,
@@ -360,9 +363,7 @@ function handleExtensionBuild(
     const extensions = raw.extensions ?? []
     const nativeExts = extensions.filter((e) => e.rustCrate)
     if (nativeExts.length === 0) {
-      console.log("No native extensions found in plushie.extensions.json -- building stock binary.")
-      // Fall through to stock build by returning
-      return
+      return false // No native extensions -- caller should do stock build
     }
     const buildConfig: Record<string, unknown> = { extensions, sourcePath, release }
     if (raw.binaryName !== undefined) buildConfig["binaryName"] = raw.binaryName
@@ -371,7 +372,7 @@ function handleExtensionBuild(
   } catch (err) {
     console.error(`Failed to read ${configPath}: ${String(err)}`)
     process.exitCode = 1
-    return
+    return true // Error handled, don't fall through to stock build
   }
 
   const nativeExts = config.extensions.filter((e) => e.rustCrate)
@@ -418,6 +419,7 @@ function handleExtensionBuild(
     }
     process.exitCode = code ?? 1
   })
+  return true
 }
 
 // =========================================================================
