@@ -69,6 +69,11 @@ renderer        <--- SSH --->    host
 
 Your `init`/`update`/`view` code doesn't change at all.
 
+For a working example showing 6 transport modes (native, exec, WebSocket,
+SSH, and client-side WASM), see the
+[collab](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/collab)
+demo.
+
 ### Prerequisites
 
 - **Your laptop**: the `plushie` renderer installed and on your PATH.
@@ -425,6 +430,10 @@ const config = generateSEAConfig({
 The plushie binary is included as a SEA asset and extracted to a
 temp file at runtime. Binary resolution checks SEA assets
 automatically.
+
+For a complete working example with a packaging script, see the
+[data-explorer](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/data-explorer)
+demo.
 
 ## Wire format
 
