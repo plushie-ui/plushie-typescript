@@ -147,9 +147,9 @@ export { DevServer } from "./dev-server.js";
 export type { ExtensionPropType, ExtensionWidgetConfig } from "./extension.js";
 // Extension widget system.
 export { defineExtensionWidget, extensionCommands } from "./extension.js";
-// Extension build-time functions (Node.js only).
+// Extension build-time types (values are in extension-build.ts,
+// imported only by the CLI to avoid pulling node:path into browser builds).
 export type { ExtensionBuildConfig } from "./extension-build.js";
-export { generateCargoToml, generateMainRs, validateExtensions } from "./extension-build.js";
 export type { Instruction, RunResult, Script, ScriptHeader } from "./script.js";
 // Script parser/runner.
 export { parseScript, parseScriptFile, runScript } from "./script.js";

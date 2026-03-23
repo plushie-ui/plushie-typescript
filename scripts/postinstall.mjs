@@ -15,7 +15,7 @@
 
 import { existsSync, mkdirSync, chmodSync, createWriteStream, unlinkSync } from "node:fs"
 import { get as httpsGet } from "node:https"
-import { dirname, join, resolve } from "node:path"
+import { join, resolve } from "node:path"
 
 const BINARY_VERSION = "0.4.1"
 const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie/releases/download"
