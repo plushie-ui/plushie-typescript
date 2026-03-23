@@ -593,6 +593,10 @@ The renderer wraps all mutable extension calls in `catch_unwind`:
 4. Poisoned state clears on next Snapshot
 
 A bug in one extension cannot crash the renderer or affect others.
+See the
+[crash-test](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/crash-test)
+demo for a working example of both Rust panic isolation and TypeScript
+runtime error recovery.
 
 ## Canvas cache and GenerationCounter
 
