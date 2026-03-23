@@ -4,9 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [0.1.0] - 2026-03-23
+## [0.5.0] - 2026-03-23
 
-Initial release of the plushie TypeScript SDK.
+Initial release of the plushie TypeScript SDK. Targets
+plushie-renderer 0.5.0.
 
 ### Added
 
@@ -20,35 +21,26 @@ Initial release of the plushie TypeScript SDK.
   toggler, slider, vertical_slider, pick_list, combo_box), complex
   (table, pane_grid, tooltip, mouse_area, sensor, themer, window, canvas).
 - **Canvas shape system** with shape primitives (rect, circle, line, text,
-  path, image, svg, group), path commands, transforms, clips, stroke
-  builder, interactive shapes with drag support, and linear gradients.
+  path, image, svg), groups with transforms/clips/interactive fields,
+  stroke builder, and linear gradients. Groups support `focus_style`,
+  `show_focus_ring`, `focusable` for keyboard navigation. Canvas widget
+  supports `role` and `arrowMode` props.
 - **Full wire protocol** implementation for MessagePack (4-byte
-  length-prefixed) and JSON (newline-delimited) formats. All outgoing
-  message types (settings, snapshot, patch, subscribe, unsubscribe,
-  widget_op, window_op, effect, image_op, extension_command, query,
-  interact, tree_hash, screenshot, reset, advance_frame) and all
-  incoming message types (hello, event, effect_response,
-  query_response, interact_step, interact_response, tree_hash_response,
-  screenshot_response, reset_response, session_error, session_closed).
-- **Tree normalization** with scoped IDs (named containers prefix
-  children), auto-ID detection, a11y reference resolution, and
-  duplicate sibling ID warnings.
-- **Incremental tree diffing** with patch generation (replace_node,
-  update_props, insert_child, remove_child). O(n) reorder detection.
-- **Coalescable event buffering** for high-frequency events (mouse
-  moved, sensor resize) via queueMicrotask.
+  length-prefixed) and JSON (newline-delimited) formats.
+- **Tree normalization** with scoped IDs, auto-ID detection, a11y
+  reference resolution, and duplicate sibling ID warnings.
+- **Incremental tree diffing** with patch generation. O(n) reorder
+  detection.
+- **Coalescable event buffering** for high-frequency events via
+  queueMicrotask.
 - **Command system** -- async (with AbortSignal), stream
   (AsyncIterable), cancel, sendAfter, batch, exit, focus, scroll,
-  select, cursor, announce, window ops, image ops, pane ops, extension
-  commands, queries, effects.
+  select, cursor, announce, focusElement, window ops, image ops,
+  pane ops, extension commands, queries, effects.
 - **Subscription lifecycle** with key-based diffing, max_rate change
-  detection, and timer management via re-arming setTimeout.
+  detection, and timer management.
 - **Three-tier testing framework** (mock, headless, windowed) via real
-  plushie binary. Session pool for multiplexed test sessions. Helpers:
-  click, typeText, submit, toggle, select, slide, press, release,
-  typeKey, moveTo, scroll, paste, sort, find, findByText, findByRole,
-  findByLabel, findFocused, queryTree, model, tree, assertText,
-  assertExists, assertNotExists, awaitAsync, treeHash, screenshot.
+  plushie binary. Session pool for multiplexed test sessions.
 - **Platform effects** -- file dialogs, clipboard, notifications with
   per-kind timeouts.
 - **State helpers** -- animation (8 easing functions), selection
@@ -58,19 +50,17 @@ Initial release of the plushie TypeScript SDK.
 - **Node.js SEA** (Single Executable Application) bundling support.
 - **Unix socket and TCP transport** via SocketTransport for remote
   rendering.
-- **Dev server** with file watching and debounced reload. Model
-  preserved across reloads.
+- **Dev server** with file watching and debounced reload.
 - **Extension widget system** with container support, command
   generation, and Cargo workspace scaffolding for native Rust
-  extensions.
-- **.plushie script** parser and runner for automated testing and
-  replay.
-- **Binary download** from GitHub releases with SHA256 verification
-  and architecture validation.
-- **Renderer restart** with exponential backoff (100ms base, 5s max).
+  extensions. Build-time functions isolated for browser compatibility.
+- **.plushie script** parser and runner for automated testing.
+- **Binary download** from GitHub releases with SHA256 verification.
 - **CLI** -- download, build, dev, run, stdio, inspect, connect,
-  script, replay commands.
-- **Postinstall binary download** -- binary is downloaded automatically
-  on `npm install`. Set `PLUSHIE_SKIP_DOWNLOAD=1` to disable.
+  script, replay. Supports `--bin-file` and `--wasm-dir` flags.
+- **Postinstall binary download** -- automatic on `npm install`.
+- **TypeDoc API reference** generation with warnings-as-errors.
+- **Biome** linter and formatter.
+- **GitHub Actions CI** and tag-triggered release workflow.
 
-[0.1.0]: https://github.com/plushie-ui/plushie-typescript/releases/tag/v0.1.0
+[0.5.0]: https://github.com/plushie-ui/plushie-typescript/releases/tag/v0.5.0

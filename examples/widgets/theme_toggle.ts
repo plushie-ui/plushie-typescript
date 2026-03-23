@@ -7,7 +7,7 @@
 // Events: canvas_element_click with element_id "switch".
 // Drive progress from 0.0 (light) to 1.0 (dark) with a timer.
 
-import type { CanvasShape, PathCommand } from "../../src/canvas/index.js"
+import type { CanvasShape, PathCommand } from "../../src/canvas/index.js";
 import {
   circle,
   group,
@@ -18,33 +18,33 @@ import {
   rect,
   rotate,
   translate,
-} from "../../src/canvas/index.js"
-import type { UINode } from "../../src/index.js"
-import { Canvas } from "../../src/ui/widgets/canvas.js"
+} from "../../src/canvas/index.js";
+import type { UINode } from "../../src/index.js";
+import { Canvas } from "../../src/ui/widgets/canvas.js";
 
 // -- Constants ----------------------------------------------------------------
 
-const TRACK_W = 64
-const TRACK_H = 32
-const THUMB_R = 13
-const RING_PAD = 4
+const TRACK_W = 64;
+const TRACK_H = 32;
+const THUMB_R = 13;
+const RING_PAD = 4;
 
 // -- Helpers ------------------------------------------------------------------
 
 function smoothstep(t: number): number {
-  if (t <= 0.0) return 0.0
-  if (t >= 1.0) return 1.0
-  return t * t * (3 - 2 * t)
+  if (t <= 0.0) return 0.0;
+  if (t >= 1.0) return 1.0;
+  return t * t * (3 - 2 * t);
 }
 
 function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t
+  return a + (b - a) * t;
 }
 
 function hexByte(n: number): string {
   return Math.max(0, Math.min(255, Math.round(n)))
     .toString(16)
-    .padStart(2, "0")
+    .padStart(2, "0");
 }
 
 function lerpColor(
@@ -56,24 +56,24 @@ function lerpColor(
   b2: number,
   t: number,
 ): string {
-  const r = Math.round(lerp(r1, r2, t))
-  const g = Math.round(lerp(g1, g2, t))
-  const b = Math.round(lerp(b1, b2, t))
-  return `#${hexByte(r)}${hexByte(g)}${hexByte(b)}`
+  const r = Math.round(lerp(r1, r2, t));
+  const g = Math.round(lerp(g1, g2, t));
+  const b = Math.round(lerp(b1, b2, t));
+  return `#${hexByte(r)}${hexByte(g)}${hexByte(b)}`;
 }
 
 function smilePath(): PathCommand[] {
-  return [moveTo(-5, 1), lineTo(-3, 5), lineTo(3, 5), lineTo(5, 1)]
+  return [moveTo(-5, 1), lineTo(-3, 5), lineTo(3, 5), lineTo(5, 1)];
 }
 
 // -- Render -------------------------------------------------------------------
 
 export function themeToggle(id: string, progress: number): UINode {
-  const eased = smoothstep(progress)
-  const thumbX = lerp(TRACK_H / 2, TRACK_W - TRACK_H / 2, eased)
-  const trackColor = lerpColor(253, 230, 138, 91, 33, 182, eased)
-  const rotation = eased * Math.PI
-  const faceColor = progress < 0.5 ? "#665500" : "#4c1d95"
+  const eased = smoothstep(progress);
+  const thumbX = lerp(TRACK_H / 2, TRACK_W - TRACK_H / 2, eased);
+  const trackColor = lerpColor(253, 230, 138, 91, 33, 182, eased);
+  const rotation = eased * Math.PI;
+  const faceColor = progress < 0.5 ? "#665500" : "#4c1d95";
 
   const shapes: CanvasShape[] = [
     // Interactive switch group
@@ -111,7 +111,7 @@ export function themeToggle(id: string, progress: number): UINode {
         },
       },
     ),
-  ]
+  ];
 
   return Canvas({
     id,
@@ -119,5 +119,5 @@ export function themeToggle(id: string, progress: number): UINode {
     height: TRACK_H + RING_PAD * 2,
     alt: "Theme toggle",
     children: shapes as unknown as UINode[],
-  })
+  });
 }

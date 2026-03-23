@@ -152,11 +152,7 @@ async function downloadWithChecksum(url: string, destPath: string, label: string
   }
 }
 
-async function handleDownload(
-  flags: string[],
-  binFile?: string,
-  wasmDir?: string,
-): Promise<void> {
+async function handleDownload(flags: string[], binFile?: string, wasmDir?: string): Promise<void> {
   const isWasm = flags.includes("--wasm");
   const force = flags.includes("--force");
 
