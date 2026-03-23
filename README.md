@@ -12,8 +12,13 @@ with TypeScript -- no webview, no Electron.
 - Type-safe widgets and events
 - Three-tier testing (mock/headless/windowed)
 - Hot reload dev server with state preservation
-- Canvas shape system
+- Canvas shape system with interactive shapes
 - Platform effects (file dialogs, clipboard, notifications)
+- WASM renderer support for browser deployment
+- Node.js SEA support for standalone executables
+- Unix socket and TCP transport for remote rendering
+- .plushie script runner for automated testing
+- Build from Rust source with `plushie build`
 
 ## Quick start
 

@@ -137,3 +137,7 @@ export type { QueryOptions, QueryResult, SortSpec } from "./data.js"
 // Keyboard key constants.
 import * as Keys from "./keys.js"
 export { Keys }
+
+// Script parser/runner.
+export { parseScript, parseScriptFile, runScript } from "./script.js"
+export type { Script, ScriptHeader, Instruction } from "./script.js"

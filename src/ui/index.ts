@@ -45,7 +45,7 @@ export { TextInput, textInput } from "./widgets/text_input.js"
 export type { TextInputProps } from "./widgets/text_input.js"
 
 export { Checkbox, checkbox } from "./widgets/checkbox.js"
-export type { CheckboxProps } from "./widgets/checkbox.js"
+export type { CheckboxProps, CheckboxIcon } from "./widgets/checkbox.js"
 
 export { Slider, slider } from "./widgets/slider.js"
 export type { SliderProps } from "./widgets/slider.js"
