@@ -588,3 +588,272 @@ generations and clear the cache when stale.
 
 Common keys: `(config_key, node_id)` for per-node state,
 `(config_key, "_global")` for global state.
+
+## Complete worked example: Gauge widget
+
+A full native extension showing both TypeScript and Rust sides.
+
+### TypeScript side
+
+```typescript
+// src/gauge.ts
+import { defineExtensionWidget, extensionCommands } from 'plushie'
+import type { ExtensionWidgetConfig } from 'plushie'
+
+export const gaugeConfig: ExtensionWidgetConfig = {
+  type: 'gauge',
+  props: {
+    value: 'number',
+    min: 'number',
+    max: 'number',
+    color: 'color',
+    label: 'string',
+    width: 'length',
+    height: 'length',
+  },
+  events: ['value_changed'],
+  commands: ['set_value', 'animate_to'],
+  rustCrate: 'native/gauge',
+  rustConstructor: 'gauge::GaugeExtension::new()',
+}
+
+/** Gauge widget builder. */
+export const Gauge = defineExtensionWidget(gaugeConfig)
+
+/** Gauge command constructors. */
+export const GaugeCmds = extensionCommands(gaugeConfig)
+```
+
+```typescript
+// src/app.tsx -- using the gauge in an app
+import { app, Command, isWidget } from 'plushie'
+import { Window, Column, Row, Text, Button, Slider } from 'plushie/ui'
+import { Gauge, GaugeCmds } from './gauge.js'
+
+interface Model {
+  temperature: number
+  targetTemp: number
+}
+
+export default app<Model>({
+  init: { temperature: 20, targetTemp: 20 },
+
+  settings: {
+    extensionConfig: {
+      gauge: { arcWidth: 8, tickCount: 10 },
+    },
+  },
+
+  update(state, event) {
+    // Handle events from the gauge extension
+    if (isWidget(event) && event.type === 'value_changed'
+        && event.id === 'temp') {
+      const data = event.data as Record<string, unknown>
+      return { ...state, temperature: data['value'] as number }
+    }
+    return state
+  },
+
+  view: (state) => (
+    <Window id="main" title="Temperature">
+      <Column padding={24} spacing={16} alignX="center">
+        {Gauge('temp', {
+          value: state.temperature,
+          min: 0,
+          max: 100,
+          color: state.temperature > 80 ? '#e74c3c' : '#3498db',
+          label: `${Math.round(state.temperature)}°C`,
+          width: 200,
+          height: 200,
+          eventRate: 30,
+        })}
+
+        <Slider id="target" value={state.targetTemp} range={[0, 100]}
+          onSlide={(s, e) => [
+            { ...s, targetTemp: e.value as number },
+            GaugeCmds.animate_to('temp', { value: e.value }),
+          ]} />
+
+        <Row spacing={8}>
+          <Button id="reset" onClick={(s) => [
+            { ...s, targetTemp: 20 },
+            GaugeCmds.set_value('temp', { value: 20 }),
+          ]}>Reset</Button>
+        </Row>
+      </Column>
+    </Window>
+  ),
+})
+```
+
+### Rust side
+
+```rust
+// native/gauge/src/lib.rs
+use plushie_core::prelude::*;
+use serde_json::json;
+
+pub struct GaugeExtension;
+
+impl GaugeExtension {
+    pub fn new() -> Self { Self }
+}
+
+/// Per-node state stored in ExtensionCaches.
+struct GaugeState {
+    current_value: f32,
+    target_value: f32,
+    generation: GenerationCounter,
+}
+
+impl GaugeState {
+    fn new(value: f32) -> Self {
+        Self {
+            current_value: value,
+            target_value: value,
+            generation: GenerationCounter::new(),
+        }
+    }
+}
+
+impl WidgetExtension for GaugeExtension {
+    fn type_names(&self) -> &[&str] { &["gauge"] }
+    fn config_key(&self) -> &str { "gauge" }
+
+    fn init(&mut self, ctx: &InitCtx<'_>) {
+        // Read extension_config if needed
+        if let Some(config) = ctx.config {
+            // config contains { "arcWidth": 8, "tickCount": 10 }
+        }
+    }
+
+    fn prepare(
+        &mut self, node: &TreeNode,
+        caches: &mut ExtensionCaches, _theme: &Theme,
+    ) {
+        let value = prop_f32(node, "value").unwrap_or(0.0);
+        let state = caches.get_or_insert::<GaugeState>(
+            self.config_key(), &node.id,
+            || GaugeState::new(value),
+        );
+        // Sync from TypeScript props
+        state.current_value = value;
+    }
+
+    fn render<'a>(
+        &self, node: &'a TreeNode, env: &WidgetEnv<'a>,
+    ) -> Element<'a, Message> {
+        let value = prop_f32(node, "value").unwrap_or(0.0);
+        let min = prop_f32(node, "min").unwrap_or(0.0);
+        let max = prop_f32(node, "max").unwrap_or(100.0);
+        let color = prop_color(node, "color")
+            .unwrap_or(iced::Color::from_rgb(0.2, 0.5, 0.8));
+        let label = prop_str(node, "label").unwrap_or_default();
+        let w = prop_length(node, "width", Length::Fixed(200.0));
+        let h = prop_length(node, "height", Length::Fixed(200.0));
+
+        // Build the gauge using iced widgets
+        let pct = ((value - min) / (max - min)).clamp(0.0, 1.0);
+        let display = format!("{:.0}%", pct * 100.0);
+
+        container(
+            column![
+                text(&label).size(16),
+                text(&display).size(32).color(color),
+            ]
+            .align_x(iced::alignment::Horizontal::Center)
+        )
+        .width(w)
+        .height(h)
+        .center(iced::Length::Fill)
+        .into()
+    }
+
+    fn handle_command(
+        &mut self, node_id: &str, op: &str,
+        payload: &Value, caches: &mut ExtensionCaches,
+    ) -> Vec<OutgoingEvent> {
+        match op {
+            "set_value" => {
+                if let Some(state) = caches.get_mut::<GaugeState>(
+                    self.config_key(), node_id,
+                ) {
+                    if let Some(v) = payload.get("value").and_then(|v| v.as_f64()) {
+                        state.current_value = v as f32;
+                        state.generation.bump();
+
+                        // Notify TypeScript of the change
+                        return vec![OutgoingEvent::extension_event(
+                            "value_changed".to_string(),
+                            node_id.to_string(),
+                            Some(json!({"value": v})),
+                        )];
+                    }
+                }
+                vec![]
+            }
+            "animate_to" => {
+                if let Some(state) = caches.get_mut::<GaugeState>(
+                    self.config_key(), node_id,
+                ) {
+                    if let Some(v) = payload.get("value").and_then(|v| v.as_f64()) {
+                        state.target_value = v as f32;
+                        state.generation.bump();
+                    }
+                }
+                vec![]
+            }
+            _ => vec![],
+        }
+    }
+
+    fn cleanup(&mut self, node_id: &str, caches: &mut ExtensionCaches) {
+        caches.remove(self.config_key(), node_id);
+    }
+}
+```
+
+### Cargo.toml for the extension crate
+
+```toml
+# native/gauge/Cargo.toml
+[package]
+name = "gauge"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+plushie-core = { path = "../../../plushie/plushie-core" }
+iced = { workspace = true }
+serde_json = "1"
+```
+
+### Project structure
+
+```
+my-app/
+  src/
+    gauge.ts              # TypeScript extension definition
+    app.tsx               # App using the gauge
+  native/
+    gauge/
+      Cargo.toml          # Rust crate
+      src/
+        lib.rs            # WidgetExtension impl
+  plushie.extensions.json # Build config
+  package.json
+  tsconfig.json
+```
+
+### Build and run
+
+```sh
+# Set the plushie source path
+export PLUSHIE_SOURCE_PATH=~/plushie
+
+# Build the custom binary with the gauge extension
+npx plushie build
+
+# Run the app
+npx plushie run src/app.tsx
+```
