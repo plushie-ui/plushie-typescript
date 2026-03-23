@@ -3,6 +3,7 @@ export { autoId, createNode, resetAutoId } from "../tree/index.js";
 // Re-export build utilities.
 export { containerNode, extractHandlers, leafNode, putIf } from "./build.js";
 // Re-export handler utilities.
+export type { HandlerEntry } from "./handlers.js";
 export { clearHandlers, drainHandlers, registerHandler } from "./handlers.js";
 // Re-export prop types and encoders.
 export type {
@@ -117,7 +118,7 @@ export type { TextProps } from "./widgets/text.js";
 export { Text, text } from "./widgets/text.js";
 export type { TextEditorProps } from "./widgets/text_editor.js";
 export { TextEditor, textEditor } from "./widgets/text_editor.js";
-export type { TextInputProps } from "./widgets/text_input.js";
+export type { TextInputIcon, TextInputProps } from "./widgets/text_input.js";
 export { TextInput, textInput } from "./widgets/text_input.js";
 export type { ThemerProps } from "./widgets/themer.js";
 export { Themer, themer } from "./widgets/themer.js";

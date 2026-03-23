@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  PLUSHIE_SKIP_DOWNLOAD: "1"
+
 jobs:
   ci:
     name: CI (Node ${{ matrix.node }})
@@ -28,20 +31,25 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Download plushie binary
-        run: node dist/cli/index.js download || echo "Download failed -- integration tests will be skipped"
-
-      - name: Check formatting
+      - name: Check formatting and lint
         run: pnpm lint
 
       - name: Type check
         run: pnpm check
 
+      - name: Build
+        run: pnpm build
+
+      - name: Download plushie binary
+        run: node dist/cli/index.js download
+        continue-on-error: true
+
       - name: Test (mock backend)
         run: pnpm test
 
       - name: Test (headless backend)
-        run: PLUSHIE_TEST_BACKEND=headless pnpm test || echo "Headless tests skipped (binary may not be available)"
+        run: PLUSHIE_TEST_BACKEND=headless pnpm test
+        continue-on-error: true
 
-      - name: Build
-        run: pnpm build
+      - name: API docs
+        run: pnpm docs:check

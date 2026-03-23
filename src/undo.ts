@@ -19,7 +19,7 @@ export interface UndoCommand<M> {
   readonly coalesceWindowMs?: number;
 }
 
-interface UndoEntry<M> {
+export interface UndoEntry<M> {
   readonly applyFn: (model: M) => M;
   readonly undoFn: (model: M) => M;
   readonly label: string | undefined;

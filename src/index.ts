@@ -23,7 +23,7 @@
 
 // Core framework exports.
 
-export type { AppConfig, AppDefinition, AppSettings } from "./app.js";
+export type { AppConfig, AppDefinition, AppHandle, AppSettings, RunOptions } from "./app.js";
 export { app } from "./app.js";
 
 // Command constructors as a namespace-style object.
@@ -123,7 +123,7 @@ export { Selection };
 // Undo/redo stack.
 import * as UndoStack from "./undo.js";
 
-export type { UndoCommand, UndoStack as UndoStackType } from "./undo.js";
+export type { UndoCommand, UndoEntry, UndoStack as UndoStackType } from "./undo.js";
 export { UndoStack };
 
 // Client-side routing.
@@ -142,6 +142,7 @@ export { Data };
 import * as Keys from "./keys.js";
 
 // Dev server.
+export type { DevServerOptions } from "./dev-server.js";
 export { DevServer } from "./dev-server.js";
 export type {
   ExtensionBuildConfig,
@@ -156,7 +157,7 @@ export {
   generateMainRs,
   validateExtensions,
 } from "./extension.js";
-export type { Instruction, Script, ScriptHeader } from "./script.js";
+export type { Instruction, RunResult, Script, ScriptHeader } from "./script.js";
 // Script parser/runner.
 export { parseScript, parseScriptFile, runScript } from "./script.js";
 export type { SEAConfig } from "./sea.js";

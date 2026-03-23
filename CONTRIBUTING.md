@@ -28,19 +28,22 @@ This runs, in order:
 2. **Type check** (`pnpm check`) -- `tsc --noEmit` with strict settings
 3. **Test** (`pnpm test`) -- vitest, all unit and integration tests
 4. **Build** (`pnpm build`) -- tsup (ESM + CJS + declarations)
+5. **Docs** (`pnpm docs:check`) -- TypeDoc API reference (warnings as errors)
 
 Preflight mirrors CI. If it passes locally, CI will pass.
 
 ## Commands
 
 ```sh
-pnpm preflight          # all checks (lint + check + test + build)
+pnpm preflight          # all checks (lint + check + test + build + docs)
 pnpm lint               # biome check
 pnpm format             # biome format --write (auto-fix)
 pnpm check              # tsc --noEmit
 pnpm test               # vitest run
 pnpm test:watch         # vitest (watch mode)
 pnpm build              # tsup
+pnpm docs               # generate API reference (api-docs/)
+pnpm docs:check         # generate API reference (warnings as errors)
 ```
 
 ## Code style
@@ -209,8 +212,47 @@ when there is clear value.
 - Include tests for new functionality
 - Update docs if user-facing behavior changes
 
-CI runs on every PR: lint, type check, test (mock + headless), build,
-across Node.js 20 and 22.
+CI runs on every PR: lint, type check, build, binary download, test
+(mock + headless), API docs -- across Node.js 20 and 22.
+
+## Binary management
+
+The plushie binary is downloaded automatically on `npm install` via
+the postinstall script (`scripts/postinstall.mjs`). The script is
+non-fatal -- if the download fails, `npm install` still succeeds and
+the user can run `npx plushie download` manually.
+
+The postinstall is skipped when:
+- `PLUSHIE_SKIP_DOWNLOAD=1` is set
+- `PLUSHIE_BINARY_PATH` is set (user has their own binary)
+- Running in CI without `PLUSHIE_DOWNLOAD_IN_CI=1`
+
+Binary version is pinned in `src/client/binary.ts` (`BINARY_VERSION`).
+When updating, change both the constant and the version in
+`scripts/postinstall.mjs`.
+
+## Releasing
+
+Releases are triggered by pushing a version tag:
+
+```sh
+# Update version in package.json
+pnpm preflight
+git commit -am "release: v0.2.0"
+git tag v0.2.0
+git push origin main v0.2.0
+```
+
+The release workflow (`.github/workflows/release.yml`) verifies the
+tag matches `package.json` version, runs preflight, and publishes to
+npm with provenance attestation.
+
+## API documentation
+
+[TypeDoc](https://typedoc.org/) generates API reference from TSDoc
+comments. Run `pnpm docs` to generate locally (output in `api-docs/`,
+gitignored). All public exports should have TSDoc comments -- the
+`pnpm docs:check` step enforces this by treating warnings as errors.
 
 ## Architecture decisions
 

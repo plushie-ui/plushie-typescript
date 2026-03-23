@@ -1,0 +1,22 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.ts",
+    "src/ui/index.ts",
+    "src/canvas/index.ts",
+    "src/client/index.ts",
+    "src/testing/index.ts"
+  ],
+  "out": "api-docs",
+  "name": "plushie",
+  "includeVersion": true,
+  "categorizeByGroup": true,
+  "tsconfig": "./tsconfig.json",
+  "exclude": [
+    "**/node_modules/**",
+    "**/*.test.ts"
+  ],
+  "navigationLinks": {
+    "GitHub": "https://github.com/plushie-ui/plushie-typescript"
+  }
+}

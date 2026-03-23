@@ -30,6 +30,7 @@ import { SessionPool } from "../client/pool.js";
 import type { WireFormat } from "../client/transport.js";
 import { TestSession } from "./session.js";
 
+export type { WireNode } from "../tree/normalize.js";
 export type { Element, TestSession } from "./session.js";
 
 /** Options for creating test sessions. */
