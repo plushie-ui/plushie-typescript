@@ -18,7 +18,7 @@ export const DEFAULT_WASM_DIR = "node_modules/.plushie/wasm";
 export const WASM_JS_FILE = "plushie_renderer_wasm.js";
 
 /** WASM binary file name produced by wasm-pack. */
-export const WASM_BG_FILE = "plushie_wasm_bg.wasm";
+export const WASM_BG_FILE = "plushie_renderer_wasm_bg.wasm";
 
 /** Resolved WASM file paths. */
 export interface WasmPaths {

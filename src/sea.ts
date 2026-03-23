@@ -96,8 +96,8 @@ export function generateSEAConfig(opts: {
   }
 
   if (opts.wasmDir) {
-    assets["plushie-wasm-js"] = join(opts.wasmDir, "plushie_wasm.js");
-    assets["plushie-wasm-bg"] = join(opts.wasmDir, "plushie_wasm_bg.wasm");
+    assets["plushie-wasm-js"] = join(opts.wasmDir, "plushie_renderer_wasm.js");
+    assets["plushie-wasm-bg"] = join(opts.wasmDir, "plushie_renderer_wasm_bg.wasm");
   }
 
   const config: SEAConfig = {
