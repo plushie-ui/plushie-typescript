@@ -282,7 +282,7 @@ function handleBuild(flags: string[]): void {
       process.exitCode = 1;
       return;
     }
-    const wasmDir = resolve(sourcePath, "plushie-wasm");
+    const wasmDir = resolve(sourcePath, "plushie-renderer-wasm");
     const buildArgs = ["build", "--target", "web"];
     if (isRelease) {
       buildArgs.push("--release");
