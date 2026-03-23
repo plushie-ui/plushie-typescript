@@ -17,7 +17,7 @@
  * @module
  */
 
-import { existsSync, mkdirSync, createWriteStream, chmodSync } from "node:fs"
+import { existsSync, readFileSync, mkdirSync, createWriteStream, chmodSync } from "node:fs"
 import { join, resolve, dirname } from "node:path"
 import { platform, arch } from "node:process"
 import { get as httpsGet } from "node:https"
@@ -91,7 +91,27 @@ export function resolveBinary(): string {
     }
   }
 
-  // 3. Downloaded binary in node_modules
+  // 3. Custom extension build (from npx plushie build with extensions)
+  const buildDir = resolve("node_modules", ".plushie", "build", "target")
+  for (const profile of ["release", "debug"]) {
+    // Check for custom binary name from plushie.extensions.json
+    const extConfigPath = resolve("plushie.extensions.json")
+    if (existsSync(extConfigPath)) {
+      try {
+        const raw = JSON.parse(readFileSync(extConfigPath, "utf-8")) as { binaryName?: string }
+        const binName = raw.binaryName ?? "plushie-custom"
+        const customPath = join(buildDir, profile, binName)
+        if (existsSync(customPath)) {
+          validateArchitecture(customPath)
+          return customPath
+        }
+      } catch {
+        // Invalid config; fall through
+      }
+    }
+  }
+
+  // 4. Downloaded binary in node_modules
   const downloadDir = resolve("node_modules", ".plushie", "bin")
   const downloadPath = join(downloadDir, platformBinaryName())
   if (existsSync(downloadPath)) {

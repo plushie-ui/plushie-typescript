@@ -406,16 +406,7 @@ function handleExtensionBuild(
       const binName = config.binaryName ?? "plushie-custom"
       const binPath = resolve(buildDir, "target", profile, binName)
       console.log(`\nCustom binary built at: ${binPath}`)
-
-      // Install to the standard download location
-      const destDir = resolve("node_modules", ".plushie", "bin")
-      mkdirSync(destDir, { recursive: true })
-      const { platformBinaryName: platName } = require("../client/binary.js") as typeof import("../client/binary.js")
-      const destPath = join(destDir, platName())
-      const { copyFileSync, chmodSync: chmodFn } = require("node:fs") as typeof import("node:fs")
-      copyFileSync(binPath, destPath)
-      if (process.platform !== "win32") chmodFn(destPath, 0o755)
-      console.log(`Installed to ${destPath}`)
+      console.log(`Binary resolution will find it automatically via plushie.extensions.json.`)
     }
     process.exitCode = code ?? 1
   })
