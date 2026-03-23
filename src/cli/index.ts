@@ -13,8 +13,8 @@
  *   plushie stdio <app>     -- run in stdio transport mode (for plushie --exec)
  *   plushie inspect <app>   -- print the initial view tree as JSON
  *   plushie connect <addr>  -- connect to a plushie --listen instance
- *   plushie script          -- run .plushie test scripts (stub)
- *   plushie replay <file>   -- replay a .plushie script (stub)
+ *   plushie script          -- run .plushie test scripts
+ *   plushie replay <file>   -- replay a .plushie script with real windows
  *   plushie --help          -- print usage
  *   plushie --version       -- print version
  *
@@ -53,8 +53,8 @@ Commands:
   stdio <app>       Run an app in stdio transport mode (for plushie --exec)
   inspect <app>     Print the initial view tree as formatted JSON
   connect <addr>    Connect to a plushie --listen instance
-  script            Run .plushie test scripts (not yet implemented)
-  replay <file>     Replay a .plushie script (not yet implemented)
+  script [files]    Run .plushie test scripts
+  replay <file>     Replay a .plushie script with real windows
 
 Options:
   --help            Show this help message
@@ -302,46 +302,209 @@ function handleBuild(flags: string[]): void {
 // Connect
 // =========================================================================
 
-function handleConnect(positional: string[]): void {
+async function handleConnect(
+  positional: string[],
+  flags: string[],
+  binaryOverride: string | undefined,
+): Promise<void> {
   const addr = positional[0]
+  const appFile = positional[1]
   if (!addr) {
-    console.error("Usage: plushie connect <socket-path-or-host:port>")
+    console.error("Usage: plushie connect <address> [app]\n")
+    console.error("Address: Unix socket path or host:port")
+    console.log(USAGE)
     process.exitCode = 1
     return
   }
-  console.error("Connect mode is not yet fully implemented.")
-  console.error(`Would connect to: ${addr}`)
-  console.error("Use plushie --listen and then connect manually.")
-  process.exitCode = 1
+
+  const jsonFlag = flags.includes("--json")
+  const format = jsonFlag ? "json" as const : "msgpack" as const
+
+  if (appFile) {
+    // App file provided: spawn it with tsx and socket env vars
+    const tsx = findTsx()
+    if (!tsx) {
+      console.error("tsx required to run TypeScript apps.\nInstall: pnpm add -D tsx")
+      process.exitCode = 1
+      return
+    }
+    const child = spawn(tsx, [appFile], {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        PLUSHIE_TRANSPORT: "socket",
+        PLUSHIE_SOCKET_ADDRESS: addr,
+        ...(jsonFlag ? { PLUSHIE_FORMAT: "json" } : {}),
+        ...(binaryOverride ? { PLUSHIE_BINARY_PATH: binaryOverride } : {}),
+      },
+    })
+    child.on("exit", (code) => { process.exitCode = code ?? 1 })
+  } else {
+    // Interactive mode: connect, print hello, keep alive
+    const { SocketTransport } = await import("../client/socket_transport.js")
+    const { Session } = await import("../client/session.js")
+
+    console.log(`Connecting to ${addr} (${format})...`)
+    const transport = new SocketTransport({ address: addr, format })
+    const session = new Session(transport)
+
+    try {
+      const hello = await session.connect({ timeout: 10_000 })
+      console.log(`Connected to ${hello.name} v${hello.version} (${hello.mode}, ${hello.backend})`)
+      console.log("Session active. Press Ctrl+C to disconnect.")
+
+      process.on("SIGINT", () => {
+        session.close()
+        process.exit(0)
+      })
+    } catch (err) {
+      console.error(`Connection failed: ${String(err)}`)
+      process.exitCode = 1
+    }
+  }
 }
 
 // =========================================================================
 // Script / Replay
 // =========================================================================
 
-function handleScript(): void {
-  console.log("The .plushie script runner executes test scripts against the renderer.")
-  console.log("Script format: one command per line (JSON objects).")
-  console.log("")
-  console.log("Example .plushie script:")
-  console.log('  {"action": "snapshot", "tree": {...}}')
-  console.log('  {"action": "interact", "click": "button-1"}')
-  console.log('  {"action": "assert_tree_hash", "name": "after_click"}')
-  console.log("")
-  console.log("Not yet implemented. Use the testing framework instead:")
-  console.log("  import { testWith } from 'plushie/testing'")
-  process.exitCode = 1
+async function handleScript(
+  positional: string[],
+  flags: string[],
+  binaryOverride: string | undefined,
+): Promise<void> {
+  const { parseScriptFile, runScript } = await import("../script.js")
+  const { resolveBinary } = await import("../client/binary.js")
+  const { SpawnTransport } = await import("../client/transport.js")
+  const { Session } = await import("../client/session.js")
+  const { readdirSync } = await import("node:fs")
+
+  const jsonFlag = flags.includes("--json")
+  const format = jsonFlag ? "json" as const : "msgpack" as const
+
+  // Collect script files: either from positional args or find *.plushie in cwd
+  let scriptFiles = positional.filter((p) => p.endsWith(".plushie"))
+  if (scriptFiles.length === 0) {
+    try {
+      scriptFiles = readdirSync(".")
+        .filter((f) => f.endsWith(".plushie"))
+        .sort()
+    } catch {
+      // ignore read errors
+    }
+  }
+
+  if (scriptFiles.length === 0) {
+    console.error("No .plushie script files found.")
+    console.error("Usage: plushie script [file.plushie ...]")
+    process.exitCode = 1
+    return
+  }
+
+  const binary = binaryOverride ?? resolveBinary()
+  if (!binary) {
+    console.error("plushie binary not found. Run: plushie download")
+    process.exitCode = 1
+    return
+  }
+
+  let allPassed = true
+
+  for (const file of scriptFiles) {
+    console.log(`Running ${file}...`)
+    const script = parseScriptFile(file)
+
+    const backend = script.header.backend ?? "mock"
+    const transport = new SpawnTransport({
+      binary,
+      format,
+      args: [`--${backend}`],
+    })
+    const session = new Session(transport)
+
+    try {
+      await session.connect({ timeout: 10_000 })
+      const result = await runScript(script, session)
+
+      if (result.passed) {
+        console.log(`  PASS`)
+      } else {
+        console.log(`  FAIL`)
+        for (const failure of result.failures) {
+          console.log(`    - ${failure}`)
+        }
+        allPassed = false
+      }
+    } catch (err) {
+      console.log(`  ERROR: ${String(err)}`)
+      allPassed = false
+    } finally {
+      session.close()
+    }
+  }
+
+  if (!allPassed) {
+    process.exitCode = 1
+  }
 }
 
-function handleReplay(positional: string[]): void {
-  if (!positional[0]) {
+async function handleReplay(
+  positional: string[],
+  flags: string[],
+  binaryOverride: string | undefined,
+): Promise<void> {
+  const file = positional[0]
+  if (!file) {
     console.error("Usage: plushie replay <file.plushie>")
     process.exitCode = 1
     return
   }
-  console.error("Replay is not yet implemented.")
-  console.error("Use the testing framework for automated interaction testing.")
-  process.exitCode = 1
+
+  const { parseScriptFile, runScript } = await import("../script.js")
+  const { resolveBinary } = await import("../client/binary.js")
+  const { SpawnTransport } = await import("../client/transport.js")
+  const { Session } = await import("../client/session.js")
+
+  const jsonFlag = flags.includes("--json")
+  const format = jsonFlag ? "json" as const : "msgpack" as const
+
+  const binary = binaryOverride ?? resolveBinary()
+  if (!binary) {
+    console.error("plushie binary not found. Run: plushie download")
+    process.exitCode = 1
+    return
+  }
+
+  console.log(`Replaying ${file}...`)
+  const script = parseScriptFile(file)
+
+  // Replay always uses windowed mode for real rendering
+  const transport = new SpawnTransport({
+    binary,
+    format,
+    args: ["--windowed"],
+  })
+  const session = new Session(transport)
+
+  try {
+    await session.connect({ timeout: 10_000 })
+    const result = await runScript(script, session)
+
+    if (result.passed) {
+      console.log("Replay complete: PASS")
+    } else {
+      console.log("Replay complete: FAIL")
+      for (const failure of result.failures) {
+        console.log(`  - ${failure}`)
+      }
+      process.exitCode = 1
+    }
+  } catch (err) {
+    console.error(`Replay error: ${String(err)}`)
+    process.exitCode = 1
+  } finally {
+    session.close()
+  }
 }
 
 // =========================================================================
@@ -398,13 +561,13 @@ async function main(argv: string[]): Promise<void> {
       handleBuild(flags)
       break
     case "connect":
-      handleConnect(positional)
+      await handleConnect(positional, flags, binaryOverride)
       break
     case "script":
-      handleScript()
+      await handleScript(positional, flags, binaryOverride)
       break
     case "replay":
-      handleReplay(positional)
+      await handleReplay(positional, flags, binaryOverride)
       break
     case "dev": {
       if (positional[0] === undefined) {
