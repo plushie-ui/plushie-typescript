@@ -22,7 +22,7 @@ import type {
 import { COMMAND } from "./types.js"
 import type { AppConfig, AppSettings } from "./app.js"
 import type { Transport } from "./client/transport.js"
-import type { DecodedResponse, WireMessage } from "./client/protocol.js"
+import type { DecodedResponse, WireMessage, WirePatchOp } from "./client/protocol.js"
 import {
   encodeSettings, encodeSnapshot, encodePatch,
   encodeSubscribe, encodeUnsubscribe, encodeWidgetOp,
@@ -406,7 +406,7 @@ export class Runtime<M> {
       } else {
         const ops = diff(this.state.tree, tree)
         if (ops.length > 0) {
-          this.send(encodePatch(this.sessionId, ops as unknown as import("./client/protocol.js").WirePatchOp[]))
+          this.send(encodePatch(this.sessionId, ops as unknown as WirePatchOp[]))
         }
       }
 
@@ -486,10 +486,10 @@ export class Runtime<M> {
       this.handleEvent(event)
       // Re-arm for next tick (Elixir pattern: interval measured from end of processing)
       if (this.state.pendingTimers.has(key)) {
-        this.state.pendingTimers.set(key, setTimeout(tick, interval) as unknown as ReturnType<typeof setTimeout>)
+        this.state.pendingTimers.set(key, setTimeout(tick, interval) as ReturnType<typeof setTimeout>)
       }
     }
-    this.state.pendingTimers.set(key, setTimeout(tick, interval) as unknown as ReturnType<typeof setTimeout>)
+    this.state.pendingTimers.set(key, setTimeout(tick, interval) as ReturnType<typeof setTimeout>)
   }
 
   private startSubscription(key: string, sub: Subscription): void {
@@ -736,7 +736,7 @@ export class Runtime<M> {
     const nonce = ++this.nextNonce
     this.state.asyncTasks.set(tag, { controller, nonce })
 
-    fn(controller.signal)
+    void fn(controller.signal)
       .then((value) => {
         const current = this.state.asyncTasks.get(tag)
         if (!current || current.nonce !== nonce) return // stale
@@ -952,7 +952,7 @@ export class Runtime<M> {
 
           // Reset restart counter on success
           this.state.restartCount = 0
-          console.log("[plushie] Renderer restarted successfully")
+          console.info("[plushie] Renderer restarted successfully")
         } catch (err) {
           console.error("[plushie] Restart failed:", err)
           if (this.state.restartCount < this.maxRestarts) {
