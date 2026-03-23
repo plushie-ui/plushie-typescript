@@ -195,12 +195,14 @@ PLUSHIE_TEST_BACKEND=headless pnpm test
 - [Extensions](docs/extensions.md) -- custom widgets, Rust extensions
 - [Builder internals](docs/builder-internals.md) -- how the SDK works under the hood
 - [Examples](examples/README.md) -- all example apps
+- [Demos](https://github.com/plushie-ui/plushie-demos/tree/main/typescript) -- standalone projects with native Rust extensions
 
 ## Related projects
 
 - [plushie](https://github.com/plushie-ui/plushie) -- Rust renderer binary
 - [plushie-elixir](https://github.com/plushie-ui/plushie-elixir) -- Elixir SDK
 - [plushie-gleam](https://github.com/plushie-ui/plushie-gleam) -- Gleam SDK
+- [plushie-demos](https://github.com/plushie-ui/plushie-demos) -- demo apps (all languages)
 
 ## License
 
