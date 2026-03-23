@@ -11,9 +11,13 @@ import { leafNode, putIf, autoId } from "../build.js"
 
 /** Props for the Space widget. */
 export interface SpaceProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Width of the spacer. */
   width?: Length
+  /** Height of the spacer. */
   height?: Length
+  /** Accessibility properties. */
   a11y?: A11y
 }
 

@@ -29,22 +29,37 @@ const CHECKBOX_HANDLERS = { onToggle: "toggle" } as const
 
 /** Props for the Checkbox widget. */
 export interface CheckboxProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Text label displayed next to the checkbox. */
   label?: string
+  /** Whether the checkbox is currently checked. */
   value: boolean
+  /** Spacing between the checkbox and its label in pixels. */
   spacing?: number
+  /** Width of the checkbox widget (including label). */
   width?: Length
+  /** Size of the checkbox box in pixels. */
   size?: number
+  /** Font size for the label text in pixels. */
   textSize?: number
+  /** Font family and weight for the label. */
   font?: Font
+  /** Line height for the label text. */
   lineHeight?: LineHeight
+  /** Text shaping mode ("basic" or "advanced"). */
   shaping?: Shaping
+  /** Text wrapping mode for the label. */
   wrapping?: Wrapping
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
   /** Custom icon for the check mark. */
   icon?: CheckboxIcon
+  /** When true, the checkbox is non-interactive. */
   disabled?: boolean
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
   /** Toggle handler. Pure function: (state, event) => newState. */
   onToggle?: Handler<unknown>

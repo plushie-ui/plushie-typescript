@@ -18,19 +18,33 @@ const CANVAS_HANDLERS = {
 
 /** Props for the Canvas widget. */
 export interface CanvasProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Width of the canvas drawing surface. */
   width?: Length
+  /** Height of the canvas drawing surface. */
   height?: Length
+  /** Background color of the canvas. */
   background?: Color
+  /** When true, the canvas emits mouse/touch events (press, release, move, scroll). */
   interactive?: boolean
+  /** Accessible label for the canvas, announced by screen readers. */
   alt?: string
+  /** Extended accessible description of the canvas content. */
   description?: string
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Mouse press handler or boolean to enable press events. */
   onPress?: Handler<unknown> | boolean
+  /** Mouse release handler or boolean to enable release events. */
   onRelease?: Handler<unknown> | boolean
+  /** Mouse move handler or boolean to enable move events. */
   onMove?: Handler<unknown> | boolean
+  /** Scroll handler or boolean to enable scroll events. */
   onScroll?: Handler<unknown> | boolean
+  /** Canvas layer children (shapes, groups, transforms). */
   children?: UINode[]
 }
 

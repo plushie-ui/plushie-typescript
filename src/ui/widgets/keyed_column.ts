@@ -11,13 +11,21 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the KeyedColumn widget. */
 export interface KeyedColumnProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Vertical spacing between children in pixels. */
   spacing?: number
+  /** Inner padding. */
   padding?: Padding
+  /** Width of the column. */
   width?: Length
+  /** Height of the column. */
   height?: Length
+  /** Maximum width in pixels. */
   maxWidth?: number
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Keyed child widgets. Each child's ID is used for efficient diffing. */
   children?: UINode[]
 }
 

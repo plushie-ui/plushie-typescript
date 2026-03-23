@@ -11,12 +11,19 @@ import { leafNode, putIf, autoId } from "../build.js"
 
 /** Props for the Rule widget. */
 export interface RuleProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Direction of the rule line ("horizontal" or "vertical"). */
   direction?: Direction
+  /** Width of the rule in pixels. */
   width?: number
+  /** Height of the rule in pixels. */
   height?: number
+  /** Thickness of the divider line in pixels. */
   thickness?: number
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** Accessibility properties. */
   a11y?: A11y
 }
 

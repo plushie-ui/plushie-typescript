@@ -11,21 +11,37 @@ import { leafNode, putIf, autoId } from "../build.js"
 
 /** Props for the Image widget. */
 export interface ImageProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Image source: a file path string or an in-memory handle reference. */
   source: string | { handle: string }
+  /** Width of the image. */
   width?: Length
+  /** Height of the image. */
   height?: Length
+  /** How the image fits within its bounds ("contain", "cover", "fill", "none", "scale_down"). */
   contentFit?: ContentFit
+  /** Pixel sampling method ("nearest" or "linear"). */
   filterMethod?: FilterMethod
+  /** Rotation angle in radians. */
   rotation?: number
+  /** Opacity from 0.0 (transparent) to 1.0 (opaque). */
   opacity?: number
+  /** Border radius in pixels for rounded corners. */
   borderRadius?: number
+  /** When true, expands the image to fill available space. */
   expand?: boolean
+  /** Scale factor applied to the image. */
   scale?: number
+  /** Crop rectangle defining a sub-region of the source image. */
   crop?: { x: number; y: number; width: number; height: number }
+  /** Accessible label announced by screen readers. */
   alt?: string
+  /** Extended accessible description. */
   description?: string
+  /** When true, hides the image from assistive technology. Use for purely visual images. */
   decorative?: boolean
+  /** Accessibility properties. */
   a11y?: A11y
 }
 

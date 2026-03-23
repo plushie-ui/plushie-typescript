@@ -13,22 +13,39 @@ const SCROLLABLE_HANDLERS = { onScroll: "scroll" } as const
 
 /** Props for the Scrollable widget. */
 export interface ScrollableProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Width of the scrollable viewport. */
   width?: Length
+  /** Height of the scrollable viewport. */
   height?: Length
+  /** Scroll direction: "horizontal", "vertical", or "both". */
   direction?: Direction | "both"
+  /** Spacing between children in pixels. */
   spacing?: number
+  /** Width of the scrollbar track in pixels. */
   scrollbarWidth?: number
+  /** Margin between the scrollbar and the content edge in pixels. */
   scrollbarMargin?: number
+  /** Width of the scroller handle in pixels. */
   scrollerWidth?: number
+  /** Color of the scrollbar track. */
   scrollbarColor?: Color
+  /** Color of the scroller handle. */
   scrollerColor?: Color
+  /** Scroll anchor position ("start" or "end"). "end" keeps new content visible. */
   anchor?: Anchor
+  /** When true, automatically scrolls to the end when new content is added. */
   autoScroll?: boolean
+  /** Style preset name. */
   style?: string
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Scroll handler or boolean to enable scroll events. */
   onScroll?: Handler<unknown> | boolean
+  /** Child widgets rendered inside the scrollable viewport. */
   children?: UINode[]
 }
 

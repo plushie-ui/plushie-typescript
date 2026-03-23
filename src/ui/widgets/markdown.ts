@@ -11,17 +11,29 @@ import { leafNode, putIf, autoId } from "../build.js"
 
 /** Props for the Markdown widget. */
 export interface MarkdownProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Markdown source text to render. Max 1 MiB. */
   content: string
+  /** Base font size for body text in pixels. */
   textSize?: number
+  /** Font size for h1 headings in pixels. */
   h1Size?: number
+  /** Font size for h2 headings in pixels. */
   h2Size?: number
+  /** Font size for h3 headings in pixels. */
   h3Size?: number
+  /** Font size for code blocks and inline code in pixels. */
   codeSize?: number
+  /** Vertical spacing between block elements in pixels. */
   spacing?: number
+  /** Width of the markdown container. */
   width?: Length
+  /** Color of hyperlinks. */
   linkColor?: Color
+  /** Syntax highlighting theme name for fenced code blocks. */
   codeTheme?: string
+  /** Accessibility properties. */
   a11y?: A11y
 }
 

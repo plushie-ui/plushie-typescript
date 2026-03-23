@@ -15,16 +15,27 @@ import { leafNode, putIf, autoId } from "../build.js"
 
 /** Props for the RichText widget. */
 export interface RichTextProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Array of span objects, each with text content and individual styling. */
   spans?: Record<string, unknown>[]
+  /** Default font size in pixels. */
   size?: number
+  /** Default font family and weight. */
   font?: Font
+  /** Default text color. */
   color?: Color
+  /** Width of the rich text container. */
   width?: Length
+  /** Height of the rich text container. */
   height?: Length
+  /** Line height multiplier or fixed height. */
   lineHeight?: LineHeight
+  /** Text wrapping mode. */
   wrapping?: Wrapping
+  /** Text overflow mode ("none", "start", "middle", "end"). */
   ellipsis?: string
+  /** Accessibility properties. */
   a11y?: A11y
 }
 

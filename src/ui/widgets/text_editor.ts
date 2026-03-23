@@ -23,28 +23,51 @@ const TEXT_EDITOR_HANDLERS = {
 
 /** Props for the TextEditor widget. */
 export interface TextEditorProps {
+  /** Unique widget identifier. Required (stateful widget). */
   id: string
+  /** Initial text content of the editor. Max 10 MiB. */
   content?: string
+  /** Placeholder text shown when the editor is empty. */
   placeholder?: string
+  /** Width of the editor area. */
   width?: Length
+  /** Height of the editor area. */
   height?: Length
+  /** Minimum height in pixels. The editor won't shrink below this. */
   minHeight?: number
+  /** Maximum height in pixels. The editor won't grow beyond this. */
   maxHeight?: number
+  /** Font size in pixels. */
   size?: number
+  /** Font family and weight. */
   font?: Font
+  /** Line height multiplier or fixed height. */
   lineHeight?: LineHeight
+  /** Inner padding in pixels. */
   padding?: number
+  /** Text wrapping mode (e.g., "word", "glyph", "none"). */
   wrapping?: Wrapping
+  /** Custom key binding rules. Matched bindings emit key_binding events. */
   keyBindings?: Record<string, unknown>[]
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** Language identifier for syntax highlighting (e.g., "rust", "javascript"). */
   highlightSyntax?: string
+  /** Syntax highlighting color theme name. */
   highlightTheme?: string
+  /** Color of the placeholder text. */
   placeholderColor?: Color
+  /** Color of the text selection highlight. */
   selectionColor?: Color
+  /** Hint to the input method editor about the expected content type. */
   imePurpose?: "normal" | "secure" | "terminal"
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Input change handler, called when editor content changes. */
   onInput?: Handler<unknown>
+  /** Key binding handler, called when a custom key binding rule matches. */
   onKeyBinding?: Handler<unknown>
 }
 

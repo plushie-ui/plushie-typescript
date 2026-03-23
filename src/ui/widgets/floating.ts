@@ -11,13 +11,21 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Floating widget. */
 export interface FloatingProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Horizontal translation offset in pixels. */
   translateX?: number
+  /** Vertical translation offset in pixels. */
   translateY?: number
+  /** Scale factor applied to child content. */
   scale?: number
+  /** Width of the floating container. */
   width?: Length
+  /** Height of the floating container. */
   height?: Length
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Child widgets that receive the transform. */
   children?: UINode[]
 }
 

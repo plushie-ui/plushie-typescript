@@ -1,3 +1,33 @@
+/**
+ * Commands -- pure data descriptions of side effects.
+ *
+ * Commands are returned from `update()` alongside the new model to request
+ * side effects without performing them directly. The runtime interprets
+ * each command and dispatches the corresponding wire messages or async
+ * operations.
+ *
+ * Commands are immutable frozen objects identified by a branded symbol.
+ * Use the constructor functions in this module to create them -- never
+ * construct the raw objects by hand.
+ *
+ * @example
+ * ```ts
+ * import * as Cmd from "plushie/command"
+ *
+ * function update(model: Model, event: Event): [Model, Command] {
+ *   if (isClick(event, "save")) {
+ *     return [model, Cmd.async(saveToServer, "save-result")]
+ *   }
+ *   if (isClick(event, "quit")) {
+ *     return [model, Cmd.exit()]
+ *   }
+ *   return [model, Cmd.none()]
+ * }
+ * ```
+ *
+ * @module
+ */
+
 import { COMMAND } from "./types.js"
 import type { Command } from "./types.js"
 

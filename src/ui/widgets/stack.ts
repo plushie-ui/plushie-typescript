@@ -11,11 +11,17 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Stack widget. */
 export interface StackProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Width of the stack. */
   width?: Length
+  /** Height of the stack. */
   height?: Length
+  /** When true, clips child content that overflows the stack bounds. */
   clip?: boolean
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Child widgets layered on top of each other (last child renders on top). */
   children?: UINode[]
 }
 

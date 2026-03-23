@@ -24,27 +24,49 @@ const COMBO_BOX_HANDLERS = {
 
 /** Props for the ComboBox widget. */
 export interface ComboBoxProps {
+  /** Unique widget identifier. Required (stateful widget). */
   id: string
+  /** List of selectable option strings displayed in the dropdown. */
   options: string[]
+  /** Currently selected option, or null if none is selected. */
   selected?: string | null
+  /** Placeholder text shown when the input is empty. */
   placeholder?: string
+  /** Width of the combo box. */
   width?: Length
+  /** Inner padding. */
   padding?: Padding
+  /** Font size in pixels. */
   size?: number
+  /** Font family and weight. */
   font?: Font
+  /** Line height multiplier or fixed height. */
   lineHeight?: LineHeight
+  /** Maximum height of the dropdown menu in pixels before scrolling. */
   menuHeight?: number
+  /** Text shaping mode ("basic" or "advanced"). */
   shaping?: Shaping
+  /** Icon displayed inside the input field. */
   icon?: Record<string, unknown>
+  /** Text overflow mode for the selected value ("none", "start", "middle", "end"). */
   ellipsis?: string
+  /** StyleMap overrides applied to the dropdown menu. */
   menuStyle?: Record<string, unknown>
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Selection handler, called when the user picks an option from the dropdown. */
   onSelect?: Handler<unknown>
+  /** Input handler, called when the user types in the text field. */
   onInput?: Handler<unknown>
+  /** Handler or boolean to enable events when a dropdown option is hovered. */
   onOptionHovered?: Handler<unknown> | boolean
+  /** Handler or boolean to enable events when the dropdown opens. */
   onOpen?: Handler<unknown> | boolean
+  /** Handler or boolean to enable events when the dropdown closes. */
   onClose?: Handler<unknown> | boolean
 }
 

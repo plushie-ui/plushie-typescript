@@ -11,12 +11,19 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Pin widget. */
 export interface PinProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Absolute X position in pixels within the parent Stack. */
   x?: number
+  /** Absolute Y position in pixels within the parent Stack. */
   y?: number
+  /** Width of the pinned element. */
   width?: Length
+  /** Height of the pinned element. */
   height?: Length
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Child widgets positioned at the pin coordinates. */
   children?: UINode[]
 }
 

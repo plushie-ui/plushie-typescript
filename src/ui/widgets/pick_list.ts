@@ -22,25 +22,45 @@ const PICK_LIST_HANDLERS = {
 
 /** Props for the PickList widget. */
 export interface PickListProps {
+  /** Unique widget identifier. */
   id?: string
+  /** List of selectable option strings. */
   options: string[]
+  /** Currently selected option, or null if none is selected. */
   selected?: string | null
+  /** Text shown when no option is selected. */
   placeholder?: string
+  /** Width of the pick list. */
   width?: Length
+  /** Inner padding. */
   padding?: Padding
+  /** Font size for the displayed text in pixels. */
   textSize?: number
+  /** Font family and weight. */
   font?: Font
+  /** Line height multiplier or fixed height. */
   lineHeight?: LineHeight
+  /** Maximum height of the dropdown menu in pixels before scrolling. */
   menuHeight?: number
+  /** Text shaping mode ("basic" or "advanced"). */
   shaping?: Shaping
+  /** Custom dropdown handle icon configuration. */
   handle?: Record<string, unknown>
+  /** Text overflow mode for the selected value ("none", "start", "middle", "end"). */
   ellipsis?: string
+  /** StyleMap overrides applied to the dropdown menu. */
   menuStyle?: Record<string, unknown>
+  /** Style preset name or StyleMap overrides for the pick list itself. */
   style?: StyleMap
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Selection handler, called when the user picks an option. */
   onSelect?: Handler<unknown>
+  /** Handler or boolean to enable events when the dropdown opens. */
   onOpen?: Handler<unknown> | boolean
+  /** Handler or boolean to enable events when the dropdown closes. */
   onClose?: Handler<unknown> | boolean
 }
 

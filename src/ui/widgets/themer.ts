@@ -11,9 +11,13 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Themer widget. */
 export interface ThemerProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Theme applied to all child widgets, overriding the window theme. */
   theme?: Theme
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Child widgets that inherit the specified theme. */
   children?: UINode[]
 }
 

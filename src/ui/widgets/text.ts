@@ -17,20 +17,35 @@ import { leafNode, putIf, autoId } from "../build.js"
 
 /** Props for the Text widget. */
 export interface TextProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Font size in pixels. */
   size?: number
+  /** Text color. */
   color?: Color
+  /** Font family and weight. */
   font?: Font
+  /** Width of the text container. */
   width?: Length
+  /** Height of the text container. */
   height?: Length
+  /** Line height multiplier or fixed height. */
   lineHeight?: LineHeight
+  /** Horizontal text alignment. */
   alignX?: Alignment
+  /** Vertical text alignment. */
   alignY?: Alignment
+  /** Text wrapping mode (e.g., "word", "glyph", "none"). */
   wrapping?: Wrapping
+  /** Text overflow mode ("none", "start", "middle", "end"). */
   ellipsis?: string
+  /** Text shaping mode ("basic" or "advanced"). */
   shaping?: Shaping
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
   /** Content text. In JSX, this comes from children. */
   children?: string

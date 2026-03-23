@@ -11,17 +11,29 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Row widget. */
 export interface RowProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Horizontal spacing between children in pixels. */
   spacing?: number
+  /** Inner padding. */
   padding?: Padding
+  /** Width of the row. */
   width?: Length
+  /** Height of the row. */
   height?: Length
+  /** Maximum width in pixels. */
   maxWidth?: number
+  /** Vertical alignment of children within the row. */
   alignY?: Alignment
+  /** When true, clips child content that overflows the row bounds. */
   clip?: boolean
+  /** When true, wraps children to the next row when they exceed the width. */
   wrap?: boolean
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Child widgets arranged horizontally. */
   children?: UINode[]
 }
 

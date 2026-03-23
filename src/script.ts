@@ -56,6 +56,12 @@ export interface RunResult {
 
 /**
  * Parse a .plushie script from a string.
+ *
+ * Splits the content into a header section (key: value pairs above the
+ * `-----` separator) and a body section (instructions below it).
+ *
+ * @param content - Raw .plushie script text.
+ * @returns Parsed script with header metadata and instruction list.
  */
 export function parseScript(content: string): Script {
   const lines = content.split("\n")
@@ -191,7 +197,12 @@ function parseArgs(str: string): string[] {
 }
 
 /**
- * Parse a .plushie script from a file.
+ * Parse a .plushie script from a file path.
+ *
+ * Reads the file synchronously and delegates to {@link parseScript}.
+ *
+ * @param filePath - Absolute or relative path to the .plushie script file.
+ * @returns Parsed script with header metadata and instruction list.
  */
 export function parseScriptFile(filePath: string): Script {
   const content = readFileSync(filePath, "utf-8")
@@ -201,8 +212,12 @@ export function parseScriptFile(filePath: string): Script {
 /**
  * Run a parsed script against a connected Session.
  *
- * Sends interact/query/tree_hash messages for each instruction
- * and collects failures.
+ * Executes each instruction sequentially, sending interact/query/tree_hash
+ * messages to the renderer and collecting any failures.
+ *
+ * @param script - Parsed script returned by {@link parseScript} or {@link parseScriptFile}.
+ * @param session - Active renderer session to execute instructions against.
+ * @returns Result indicating whether all instructions passed and listing any failures.
  */
 export async function runScript(
   script: Script,

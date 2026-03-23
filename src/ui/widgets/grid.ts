@@ -11,16 +11,27 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Grid widget. */
 export interface GridProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Number of columns (alternative to columnCount). */
   columns?: number
+  /** Number of columns in the grid. */
   columnCount?: number
+  /** Spacing between cells in pixels. */
   spacing?: number
+  /** Width of the grid. */
   width?: Length
+  /** Height of the grid. */
   height?: Length
+  /** Fixed width for each column in pixels. */
   columnWidth?: number
+  /** Fixed height for each row in pixels. */
   rowHeight?: number
+  /** When true, columns auto-wrap based on max cell width. */
   fluid?: boolean
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Child widgets placed into grid cells in order. */
   children?: UINode[]
 }
 

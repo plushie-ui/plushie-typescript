@@ -17,23 +17,41 @@ const RADIO_HANDLERS = { onSelect: "select" } as const
 
 /** Props for the Radio widget. */
 export interface RadioProps {
+  /** Unique widget identifier. */
   id?: string
+  /** The value this radio button represents when selected. */
   value: string
+  /** The currently selected value in the radio group. Renders as checked when equal to `value`. */
   selected?: string | null
+  /** Text label displayed next to the radio button. Defaults to `value`. */
   label?: string
+  /** Radio group name. Radios with the same group are mutually exclusive. */
   group?: string
+  /** Spacing between the radio circle and its label in pixels. */
   spacing?: number
+  /** Width of the radio widget (including label). */
   width?: Length
+  /** Size of the radio circle in pixels. */
   size?: number
+  /** Font size for the label text in pixels. */
   textSize?: number
+  /** Font family and weight for the label. */
   font?: Font
+  /** Line height for the label text. */
   lineHeight?: LineHeight
+  /** Text shaping mode ("basic" or "advanced"). */
   shaping?: Shaping
+  /** Text wrapping mode for the label. */
   wrapping?: Wrapping
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Selection handler, called when this radio button is clicked. */
   onSelect?: Handler<unknown>
+  /** Label text. In JSX, this comes from children. */
   children?: string
 }
 

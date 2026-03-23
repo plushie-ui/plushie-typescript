@@ -36,25 +36,45 @@ export interface TextInputIcon {
 
 /** Props for the TextInput widget. */
 export interface TextInputProps {
+  /** Unique widget identifier. Required (stateful widget). */
   id: string
+  /** Current text content of the input. */
   value: string
+  /** Placeholder text shown when the input is empty. */
   placeholder?: string
+  /** Inner padding around the text content. */
   padding?: Padding
+  /** Width of the input field. */
   width?: Length
+  /** Font size in pixels. */
   size?: number
+  /** Font family and weight. */
   font?: Font
+  /** Line height multiplier or fixed height. */
   lineHeight?: LineHeight
+  /** Horizontal text alignment within the input. */
   alignX?: Alignment
+  /** Icon displayed inside the input field. */
   icon?: TextInputIcon
+  /** Submit handler or boolean to enable submit events on Enter. */
   onSubmit?: Handler<unknown> | boolean
+  /** Paste handler or boolean to enable paste events. */
   onPaste?: Handler<unknown> | boolean
+  /** When true, masks input like a password field. */
   secure?: boolean
+  /** Hint to the input method editor about the expected content type. */
   imePurpose?: "normal" | "secure" | "terminal"
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** Color of the placeholder text. */
   placeholderColor?: Color
+  /** Color of the text selection highlight. */
   selectionColor?: Color
+  /** When true, the input is non-interactive. */
   disabled?: boolean
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
   /** Input change handler. Pure function: (state, event) => newState. */
   onInput?: Handler<unknown>

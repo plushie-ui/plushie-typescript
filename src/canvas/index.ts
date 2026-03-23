@@ -1,4 +1,17 @@
-// Canvas shape builders and related utilities.
+/**
+ * Canvas drawing primitives and utilities.
+ *
+ * Provides shape builders (rect, circle, line, path, text, image, svg,
+ * group), path commands (moveTo, lineTo, bezierTo, arc, etc.), transform
+ * and clip operations, stroke configuration, interactive shape descriptors,
+ * and linear gradients.
+ *
+ * Canvas shapes are used as children of the Canvas widget. Each shape
+ * builder returns a typed node that the runtime encodes for the wire
+ * protocol.
+ *
+ * @module
+ */
 
 export {
   rect,

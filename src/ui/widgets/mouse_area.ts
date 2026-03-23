@@ -25,21 +25,37 @@ const MOUSE_AREA_HANDLERS = {
 
 /** Props for the MouseArea widget. */
 export interface MouseAreaProps {
+  /** Unique widget identifier. */
   id?: string
+  /** CSS cursor name shown when hovering over the area (e.g., "pointer", "grab", "crosshair"). */
   cursor?: string
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Left mouse button press handler or boolean to enable the event. */
   onPress?: Handler<unknown> | boolean
+  /** Left mouse button release handler or boolean to enable the event. */
   onRelease?: Handler<unknown> | boolean
+  /** Right mouse button press handler or boolean to enable the event. */
   onRightPress?: Handler<unknown> | boolean
+  /** Right mouse button release handler or boolean to enable the event. */
   onRightRelease?: Handler<unknown> | boolean
+  /** Middle mouse button press handler or boolean to enable the event. */
   onMiddlePress?: Handler<unknown> | boolean
+  /** Middle mouse button release handler or boolean to enable the event. */
   onMiddleRelease?: Handler<unknown> | boolean
+  /** Double-click handler or boolean to enable the event. */
   onDoubleClick?: Handler<unknown> | boolean
+  /** Cursor enter handler or boolean to enable the event. */
   onEnter?: Handler<unknown> | boolean
+  /** Cursor exit handler or boolean to enable the event. */
   onExit?: Handler<unknown> | boolean
+  /** Cursor move handler or boolean to enable the event. Emits {x, y} data. */
   onMove?: Handler<unknown> | boolean
+  /** Scroll handler or boolean to enable the event. Emits {delta_x, delta_y} data. */
   onScroll?: Handler<unknown> | boolean
+  /** Child widgets that the mouse area wraps. */
   children?: UINode[]
 }
 

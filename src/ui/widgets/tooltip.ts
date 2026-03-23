@@ -11,15 +11,25 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Tooltip widget. */
 export interface TooltipProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Tooltip text content shown on hover. */
   tip: string
+  /** Where the tooltip appears relative to the child widget. */
   position?: "top" | "bottom" | "left" | "right" | "follow_cursor"
+  /** Gap between the child widget and the tooltip in pixels. */
   gap?: number
+  /** Inner padding of the tooltip bubble in pixels. */
   padding?: number
+  /** When true, repositions the tooltip to stay within the viewport. */
   snapWithinViewport?: boolean
+  /** Delay in milliseconds before the tooltip appears on hover. */
   delay?: number
+  /** Style preset name or StyleMap overrides for the tooltip bubble. */
   style?: StyleMap
+  /** Accessibility properties. */
   a11y?: A11y
+  /** The child widget that triggers the tooltip on hover. */
   children?: UINode[]
 }
 

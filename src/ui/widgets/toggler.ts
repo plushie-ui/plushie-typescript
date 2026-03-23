@@ -18,23 +18,41 @@ const TOGGLER_HANDLERS = { onToggle: "toggle" } as const
 
 /** Props for the Toggler widget. */
 export interface TogglerProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Whether the toggler is currently on. */
   value: boolean
+  /** Text label displayed next to the toggle switch. */
   label?: string
+  /** Spacing between the toggle switch and its label in pixels. */
   spacing?: number
+  /** Width of the toggler widget (including label). */
   width?: Length
+  /** Size of the toggle switch in pixels. */
   size?: number
+  /** Font size for the label text in pixels. */
   textSize?: number
+  /** Font family and weight for the label. */
   font?: Font
+  /** Line height for the label text. */
   lineHeight?: LineHeight
+  /** Text shaping mode ("basic" or "advanced"). */
   shaping?: Shaping
+  /** Text wrapping mode for the label. */
   wrapping?: Wrapping
+  /** Horizontal alignment of the label text. */
   textAlignment?: Alignment
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** When true, the toggler is non-interactive. */
   disabled?: boolean
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Toggle handler, called when the switch is flipped. */
   onToggle?: Handler<unknown>
+  /** Label text. In JSX, this comes from children. */
   children?: string
 }
 

@@ -11,14 +11,23 @@ import { leafNode, putIf, autoId } from "../build.js"
 
 /** Props for the ProgressBar widget. */
 export interface ProgressBarProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Current progress value. */
   value: number
+  /** Min and max values as [min, max]. */
   range: [number, number]
+  /** Width of the progress bar. */
   width?: Length
+  /** Height of the progress bar. */
   height?: Length
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** When true, renders the bar vertically instead of horizontally. */
   vertical?: boolean
+  /** Accessible label announced by screen readers (e.g., "Upload progress"). */
   label?: string
+  /** Accessibility properties. */
   a11y?: A11y
 }
 

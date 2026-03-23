@@ -17,20 +17,35 @@ const PANE_GRID_HANDLERS = {
 
 /** Props for the PaneGrid widget. */
 export interface PaneGridProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Spacing between panes in pixels. */
   spacing?: number
+  /** Width of the pane grid. */
   width?: Length
+  /** Height of the pane grid. */
   height?: Length
+  /** Minimum size of each pane in pixels. Prevents panes from being resized too small. */
   minSize?: number
+  /** Extra drag distance beyond the divider line that still counts as a resize gesture, in pixels. */
   leeway?: number
+  /** Color of the divider lines between panes. */
   dividerColor?: Color
+  /** Thickness of the divider lines between panes in pixels. */
   dividerWidth?: number
+  /** Default axis for new pane splits ("horizontal" or "vertical"). */
   splitAxis?: "horizontal" | "vertical"
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Handler called when a pane is clicked. */
   onPaneClick?: Handler<unknown>
+  /** Handler called when the divider between panes is dragged. */
   onPaneResize?: Handler<unknown>
+  /** Handler called when a pane is dragged for reordering. */
   onPaneDrag?: Handler<unknown>
+  /** Pane children. Each child is a pane in the grid. */
   children?: UINode[]
 }
 

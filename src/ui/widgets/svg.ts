@@ -11,17 +11,29 @@ import { leafNode, putIf, autoId } from "../build.js"
 
 /** Props for the Svg widget. */
 export interface SvgProps {
+  /** Unique widget identifier. */
   id?: string
+  /** File path to the SVG image. */
   source: string
+  /** Width of the SVG. */
   width?: Length
+  /** Height of the SVG. */
   height?: Length
+  /** How the SVG fits within its bounds ("contain", "cover", "fill", "none", "scale_down"). */
   contentFit?: ContentFit
+  /** Rotation angle in radians. */
   rotation?: number
+  /** Opacity from 0.0 (transparent) to 1.0 (opaque). */
   opacity?: number
+  /** Tint color applied to the SVG. */
   color?: Color
+  /** Accessible label announced by screen readers. */
   alt?: string
+  /** Extended accessible description. */
   description?: string
+  /** When true, hides the SVG from assistive technology. Use for purely visual images. */
   decorative?: boolean
+  /** Accessibility properties. */
   a11y?: A11y
 }
 

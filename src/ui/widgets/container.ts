@@ -16,23 +16,41 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Container widget. */
 export interface ContainerProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Inner padding. */
   padding?: Padding
+  /** Width of the container. */
   width?: Length
+  /** Height of the container. */
   height?: Length
+  /** Maximum width in pixels. */
   maxWidth?: number
+  /** Maximum height in pixels. */
   maxHeight?: number
+  /** When true, centers the child widget both horizontally and vertically. */
   center?: boolean
+  /** When true, clips child content that overflows the container bounds. */
   clip?: boolean
+  /** Horizontal alignment of children. */
   alignX?: Alignment
+  /** Vertical alignment of children. */
   alignY?: Alignment
+  /** Background color or gradient. */
   background?: Color | Gradient
+  /** Text color applied to child text widgets. */
   color?: Color
+  /** Border style (width, color, radius). */
   border?: Border
+  /** Drop shadow configuration. */
   shadow?: Shadow
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Child widgets rendered inside the container. */
   children?: UINode[]
 }
 

@@ -14,14 +14,23 @@ const BUTTON_HANDLERS = { onClick: "click" } as const
 
 /** Props for the Button widget. */
 export interface ButtonProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Width of the button. */
   width?: Length
+  /** Height of the button. */
   height?: Length
+  /** Inner padding around the label. */
   padding?: Padding
+  /** When true, clips child content that overflows the button bounds. */
   clip?: boolean
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** When true, the button is non-interactive. */
   disabled?: boolean
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
   /** Click handler. Pure function: (state, event) => newState. */
   onClick?: Handler<unknown>

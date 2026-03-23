@@ -1,3 +1,36 @@
+/**
+ * Event type guards for pattern matching in `update()`.
+ *
+ * Every event flowing through the Elm update loop is a tagged union
+ * (discriminated by the `kind` field). This module provides narrowing
+ * guards so you can match events concisely without manual type
+ * assertions.
+ *
+ * Widget-level guards (`isClick`, `isInput`, etc.) optionally accept
+ * a widget ID to narrow further. Broader guards (`isKey`, `isMouse`,
+ * etc.) match an entire event category.
+ *
+ * @example
+ * ```ts
+ * import { isClick, isInput, isKey, target } from "plushie/events"
+ *
+ * function update(model: Model, event: Event): Model {
+ *   if (isClick(event, "increment")) {
+ *     return { ...model, count: model.count + 1 }
+ *   }
+ *   if (isInput(event, "name")) {
+ *     return { ...model, name: event.value as string }
+ *   }
+ *   if (isKey(event, "press") && event.key === "Escape") {
+ *     return { ...model, menuOpen: false }
+ *   }
+ *   return model
+ * }
+ * ```
+ *
+ * @module
+ */
+
 import type {
   Event,
   WidgetEvent,
@@ -22,6 +55,7 @@ import type {
 
 // Widget event guards, optionally narrowing by widget ID.
 
+/** Narrows to a click event, optionally matching a specific widget ID. */
 export function isClick(
   event: Event,
   id?: string,
@@ -33,6 +67,7 @@ export function isClick(
   )
 }
 
+/** Narrows to a text input change event, optionally matching a specific widget ID. */
 export function isInput(
   event: Event,
   id?: string,
@@ -44,6 +79,7 @@ export function isInput(
   )
 }
 
+/** Narrows to a submit event (Enter pressed in a text input), optionally matching a widget ID. */
 export function isSubmit(
   event: Event,
   id?: string,
@@ -55,6 +91,7 @@ export function isSubmit(
   )
 }
 
+/** Narrows to a toggle event (checkbox/toggler), optionally matching a widget ID. */
 export function isToggle(
   event: Event,
   id?: string,
@@ -66,6 +103,7 @@ export function isToggle(
   )
 }
 
+/** Narrows to a select event (pick list, radio, combo box), optionally matching a widget ID. */
 export function isSelect(
   event: Event,
   id?: string,
@@ -77,6 +115,7 @@ export function isSelect(
   )
 }
 
+/** Narrows to a slide event (slider value changed), optionally matching a widget ID. */
 export function isSlide(
   event: Event,
   id?: string,
@@ -90,10 +129,12 @@ export function isSlide(
 
 // Broader event kind guards.
 
+/** Narrows to any widget event (click, input, submit, toggle, etc.). */
 export function isWidget(event: Event): event is WidgetEvent {
   return event.kind === "widget"
 }
 
+/** Narrows to a keyboard event, optionally filtering by "press" or "release". */
 export function isKey(
   event: Event,
   type?: "press" | "release",
@@ -101,42 +142,52 @@ export function isKey(
   return event.kind === "key" && (type === undefined || event.type === type)
 }
 
+/** Narrows to a modifier key state change event. */
 export function isModifiers(event: Event): event is ModifiersEvent {
   return event.kind === "modifiers"
 }
 
+/** Narrows to a mouse event (move, button, scroll). */
 export function isMouse(event: Event): event is MouseEvent {
   return event.kind === "mouse"
 }
 
+/** Narrows to a touch event (press, move, lift, lost). */
 export function isTouch(event: Event): event is TouchEvent {
   return event.kind === "touch"
 }
 
+/** Narrows to an input method editor (IME) event. */
 export function isIme(event: Event): event is ImeEvent {
   return event.kind === "ime"
 }
 
+/** Narrows to a window lifecycle event (opened, closed, resized, etc.). */
 export function isWindow(event: Event): event is WindowEvent {
   return event.kind === "window"
 }
 
+/** Narrows to a canvas interaction event (press, release, move, scroll). */
 export function isCanvas(event: Event): event is CanvasEvent {
   return event.kind === "canvas"
 }
 
+/** Narrows to a mouse area event (right click, double click, enter, exit, etc.). */
 export function isMouseArea(event: Event): event is MouseAreaEvent {
   return event.kind === "mouse_area"
 }
 
+/** Narrows to a pane grid event (resized, dragged, clicked, focus cycle). */
 export function isPane(event: Event): event is PaneEvent {
   return event.kind === "pane"
 }
 
+/** Narrows to a sensor resize event. */
 export function isSensor(event: Event): event is SensorEvent {
   return event.kind === "sensor"
 }
 
+/** Narrows to an effect response event, optionally matching a request ID. */
 export function isEffect(
   event: Event,
   requestId?: string,
@@ -147,24 +198,28 @@ export function isEffect(
   )
 }
 
+/** Narrows to a system event (animation frame, theme change, etc.), optionally matching a type. */
 export function isSystem(event: Event, type?: string): event is SystemEvent {
   return (
     event.kind === "system" && (type === undefined || event.type === type)
   )
 }
 
+/** Narrows to a timer event, optionally matching a subscription tag. */
 export function isTimer(event: Event, tag?: string): event is TimerEvent {
   return (
     event.kind === "timer" && (tag === undefined || event.tag === tag)
   )
 }
 
+/** Narrows to an async task completion event, optionally matching a task tag. */
 export function isAsync(event: Event, tag?: string): event is AsyncEvent {
   return (
     event.kind === "async" && (tag === undefined || event.tag === tag)
   )
 }
 
+/** Narrows to a stream chunk event, optionally matching a stream tag. */
 export function isStream(event: Event, tag?: string): event is StreamEvent {
   return (
     event.kind === "stream" && (tag === undefined || event.tag === tag)

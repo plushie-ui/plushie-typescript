@@ -1,3 +1,31 @@
+/**
+ * Subscriptions -- declarative event source registrations.
+ *
+ * Subscriptions tell the runtime which global events the app wants to
+ * receive (keyboard, mouse, window lifecycle, animation frames, etc.).
+ * The `subscribe()` callback returns a list of active subscriptions
+ * each cycle. The runtime diffs this list, starting new subscriptions
+ * and stopping removed ones automatically.
+ *
+ * Each subscription has a `tag` that is included in the resulting events
+ * so the app can route them in `update()`.
+ *
+ * @example
+ * ```ts
+ * import * as Sub from "plushie/subscription"
+ *
+ * function subscribe(model: Model): Subscription[] {
+ *   const subs = [Sub.onWindowClose("win-close")]
+ *   if (model.animating) {
+ *     subs.push(Sub.onAnimationFrame("anim"))
+ *   }
+ *   return subs
+ * }
+ * ```
+ *
+ * @module
+ */
+
 import type { Subscription } from "./types.js"
 
 function sub(

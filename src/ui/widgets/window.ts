@@ -17,29 +17,53 @@ import { containerNode, putIf } from "../build.js"
 
 /** Props for the Window widget. */
 export interface WindowProps {
+  /** Unique window identifier. Defaults to "main". */
   id?: string
+  /** Window title bar text. */
   title?: string
+  /** Window dimensions as [width, height] in logical pixels. */
   size?: [number, number]
+  /** Window width in logical pixels. Alternative to `size`. */
   width?: number
+  /** Window height in logical pixels. Alternative to `size`. */
   height?: number
+  /** Window position as [x, y] in logical pixels from the top-left corner. */
   position?: [number, number]
+  /** Minimum window dimensions as [width, height]. */
   minSize?: [number, number]
+  /** Maximum window dimensions as [width, height]. */
   maxSize?: [number, number]
+  /** Whether the window starts maximized. */
   maximized?: boolean
+  /** Whether the window starts in fullscreen mode. */
   fullscreen?: boolean
+  /** Whether the window is visible. Set to false to create a hidden window. */
   visible?: boolean
+  /** Whether the user can resize the window by dragging its edges. */
   resizable?: boolean
+  /** Whether the window has a close button. */
   closeable?: boolean
+  /** Whether the window has a minimize button. */
   minimizable?: boolean
+  /** Whether the window has OS decorations (title bar, borders). */
   decorations?: boolean
+  /** Whether the window background is transparent. */
   transparent?: boolean
+  /** Whether to apply a blur effect to the window background. */
   blur?: boolean
+  /** Window stacking level relative to other windows. */
   level?: "normal" | "always_on_top" | "always_on_bottom"
+  /** When true, the app exits when this window's close button is pressed. */
   exitOnCloseRequest?: boolean
+  /** DPI scale factor override for this window. */
   scaleFactor?: number
+  /** Uniform padding inside the window in pixels. */
   padding?: number
+  /** Theme applied to this window and its children. */
   theme?: Theme
+  /** Accessibility properties for the window. */
   a11y?: A11y
+  /** Child widgets rendered inside the window. */
   children?: UINode[]
 }
 

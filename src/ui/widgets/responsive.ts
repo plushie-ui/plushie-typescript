@@ -11,10 +11,15 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Responsive widget. */
 export interface ResponsiveProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Width of the responsive container. */
   width?: Length
+  /** Height of the responsive container. */
   height?: Length
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Child widgets that adapt to available space. */
   children?: UINode[]
 }
 

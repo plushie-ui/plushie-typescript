@@ -11,14 +11,23 @@ import { leafNode, putIf, autoId } from "../build.js"
 
 /** Props for the QrCode widget. */
 export interface QrCodeProps {
+  /** Unique widget identifier. */
   id?: string
+  /** The data string encoded in the QR code. */
   data: string
+  /** Size of each QR code cell in pixels. */
   cellSize?: number
+  /** Error correction level. Higher levels allow more damage tolerance but reduce data capacity. */
   errorCorrection?: "low" | "medium" | "quartile" | "high"
+  /** Color of the QR code cells (foreground). */
   cellColor?: Color
+  /** Background color behind the QR code cells. */
   backgroundColor?: Color
+  /** Accessible label for the QR code. */
   alt?: string
+  /** Extended accessible description. */
   description?: string
+  /** Accessibility properties. */
   a11y?: A11y
 }
 

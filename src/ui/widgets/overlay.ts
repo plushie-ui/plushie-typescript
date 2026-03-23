@@ -12,15 +12,25 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Overlay widget. */
 export interface OverlayProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Where the overlay appears relative to the anchor child. */
   position?: "below" | "above" | "left" | "right"
+  /** Gap between the anchor and the overlay in pixels. */
   gap?: number
+  /** Horizontal offset from the computed overlay position in pixels. */
   offsetX?: number
+  /** Vertical offset from the computed overlay position in pixels. */
   offsetY?: number
+  /** When true, the overlay flips to the opposite side if it would overflow the viewport. */
   flip?: boolean
+  /** Alignment of the overlay along the cross-axis relative to the anchor. */
   align?: Alignment
+  /** Width of the overlay container. */
   width?: Length
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Exactly 2 children: the anchor element and the overlay content. */
   children?: UINode[]
 }
 

@@ -16,21 +16,37 @@ const VSLIDER_HANDLERS = {
 
 /** Props for the VerticalSlider widget. */
 export interface VerticalSliderProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Current slider value. */
   value: number
+  /** Min and max values as [min, max]. */
   range: [number, number]
+  /** Increment step when dragging. */
   step?: number
+  /** Larger step when holding Shift while dragging. */
   shiftStep?: number
+  /** Value to reset to on double-click. */
   default?: number
+  /** Width of the slider. */
   width?: Length
+  /** Height of the slider track. */
   height?: Length
+  /** Color of the track rail. */
   railColor?: Color
+  /** Thickness of the track rail in pixels. */
   railWidth?: number
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
+  /** Accessible label announced by screen readers (e.g., "Volume"). */
   label?: string
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Called continuously while sliding. */
   onSlide?: Handler<unknown>
+  /** Called when the slider is released. */
   onSlideRelease?: Handler<unknown>
 }
 

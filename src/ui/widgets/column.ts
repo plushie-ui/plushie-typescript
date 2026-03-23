@@ -11,17 +11,29 @@ import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Column widget. */
 export interface ColumnProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Vertical spacing between children in pixels. */
   spacing?: number
+  /** Inner padding. */
   padding?: Padding
+  /** Width of the column. */
   width?: Length
+  /** Height of the column. */
   height?: Length
+  /** Maximum width in pixels. */
   maxWidth?: number
+  /** Horizontal alignment of children within the column. */
   alignX?: Alignment
+  /** When true, clips child content that overflows the column bounds. */
   clip?: boolean
+  /** When true, wraps children to the next column when they exceed the height. */
   wrap?: boolean
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
+  /** Child widgets arranged vertically. */
   children?: UINode[]
 }
 

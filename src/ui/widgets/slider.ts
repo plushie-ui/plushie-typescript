@@ -16,22 +16,37 @@ const SLIDER_HANDLERS = {
 
 /** Props for the Slider widget. */
 export interface SliderProps {
+  /** Unique widget identifier. */
   id?: string
+  /** Current slider value. */
   value: number
+  /** Min and max values as [min, max]. */
   range: [number, number]
+  /** Increment step when dragging. */
   step?: number
+  /** Larger step when holding Shift while dragging. */
   shiftStep?: number
+  /** Value to reset to on double-click. */
   default?: number
+  /** Width of the slider track. */
   width?: Length
+  /** Height of the slider in pixels. */
   height?: number
+  /** Whether the handle is circular (vs square). */
   circularHandle?: boolean
+  /** Custom handle radius in pixels. */
   handleRadius?: number
+  /** Color of the track rail. */
   railColor?: Color
+  /** Thickness of the track rail in pixels. */
   railWidth?: number
+  /** Style preset name or StyleMap overrides. */
   style?: StyleMap
-  /** Accessible label (e.g., "Volume"). */
+  /** Accessible label announced by screen readers (e.g., "Volume"). */
   label?: string
+  /** Accessibility properties. */
   a11y?: A11y
+  /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number
   /** Called continuously while sliding. */
   onSlide?: Handler<unknown>
