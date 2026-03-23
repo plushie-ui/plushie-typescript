@@ -29,6 +29,16 @@ describe("Command", () => {
     expect(cmd.payload["fn"]).toBe(fn);
   });
 
+  test("focusElement() creates a widget_op focus_element command", () => {
+    const cmd = Command.focusElement("my-canvas", "element-42");
+    expect(cmd.type).toBe("widget_op");
+    expect(cmd.payload).toEqual({
+      op: "focus_element",
+      target: "my-canvas",
+      element_id: "element-42",
+    });
+  });
+
   test("commands are frozen", () => {
     const cmd = Command.focus("x");
     expect(Object.isFrozen(cmd)).toBe(true);
