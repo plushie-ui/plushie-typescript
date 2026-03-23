@@ -2,19 +2,42 @@
  * Extension widget support.
  *
  * Provides `defineExtensionWidget` for creating widget builder
- * functions for extension types. This is the TypeScript equivalent
- * of `use Plushie.Extension` from the Elixir SDK -- not a macro
- * system, but a function that generates typed widget builders.
+ * functions for extension types, and `extensionCommands` for
+ * generating Command constructors from extension config.
+ *
+ * This is the TypeScript equivalent of `use Plushie.Extension`
+ * from the Elixir SDK -- not a macro system, but a function that
+ * generates typed widget builders and command constructors.
  *
  * @module
  */
 
-import type { UINode, Handler } from "./types.js"
+import type { UINode, Command, Handler } from "./types.js"
+import { COMMAND } from "./types.js"
 import { registerHandler } from "./ui/handlers.js"
 import { autoId } from "./tree/node.js"
 
-/** Supported property types for extension widget props. */
-export type ExtensionPropType = "string" | "number" | "boolean" | "any"
+/**
+ * Supported property types for extension widget props.
+ *
+ * Mirrors the Elixir SDK's extension prop types:
+ * - Primitives: "string", "number", "boolean"
+ * - Plushie types: "color", "length", "padding", "alignment", "font", "style"
+ * - Generic: "any"
+ * - Compound: { list: <element-type> }
+ */
+export type ExtensionPropType =
+  | "string"
+  | "number"
+  | "boolean"
+  | "color"
+  | "length"
+  | "padding"
+  | "alignment"
+  | "font"
+  | "style"
+  | "any"
+  | { list: string }
 
 /** Configuration for defining an extension widget. */
 export interface ExtensionWidgetConfig {
@@ -24,6 +47,10 @@ export interface ExtensionWidgetConfig {
   readonly props?: Readonly<Record<string, ExtensionPropType>>
   /** Event names this widget can emit (e.g., ["change", "hover"]). */
   readonly events?: readonly string[]
+  /** If true, the widget accepts children (container widget). */
+  readonly container?: boolean
+  /** Command names this extension supports (native_widget only). */
+  readonly commands?: readonly string[]
 }
 
 /**
@@ -44,23 +71,36 @@ function handlerPropName(eventType: string): string {
  * type and registers event handlers using the same mechanism as
  * built-in widgets.
  *
+ * For leaf widgets (container is false or omitted):
  * ```ts
  * const sparkline = defineExtensionWidget({
  *   type: "sparkline",
- *   props: { values: "any", color: "string", height: "number" },
+ *   props: { values: "any", color: "color", height: "number" },
  *   events: ["hover"],
  * })
  *
  * // Use in view:
  * sparkline("chart", { values: [1, 2, 3], onHover: handleHover })
  * ```
+ *
+ * For container widgets:
+ * ```ts
+ * const panel = defineExtensionWidget({
+ *   type: "panel",
+ *   props: { title: "string" },
+ *   container: true,
+ * })
+ *
+ * // Use in view (children as third argument):
+ * panel("main", { title: "Content" }, [text("greeting", "Hello")])
+ * ```
  */
 export function defineExtensionWidget(
   config: ExtensionWidgetConfig,
-): (id: string, opts?: Record<string, unknown>) => UINode {
+): (id: string, opts?: Record<string, unknown>, children?: UINode[]) => UINode {
   const widgetType = config.type
-  const declaredProps = config.props ?? {}
   const declaredEvents = config.events ?? []
+  const isContainer = config.container ?? false
 
   // Build handler prop name -> wire event type mapping
   const handlerMap = new Map<string, string>()
@@ -68,7 +108,7 @@ export function defineExtensionWidget(
     handlerMap.set(handlerPropName(eventType), eventType)
   }
 
-  return (id: string, opts?: Record<string, unknown>): UINode => {
+  return (id: string, opts?: Record<string, unknown>, children?: UINode[]): UINode => {
     const resolvedId = id === "" ? autoId(widgetType) : id
     const props: Record<string, unknown> = {}
     const allOpts = opts ?? {}
@@ -89,11 +129,48 @@ export function defineExtensionWidget(
       props[key] = value
     }
 
+    const resolvedChildren = isContainer ? (children ?? []) : []
+
     return Object.freeze({
       id: resolvedId,
       type: widgetType,
       props: Object.freeze(props),
-      children: Object.freeze([]) as readonly UINode[],
+      children: Object.freeze(resolvedChildren) as readonly UINode[],
     })
   }
+}
+
+/**
+ * Generate Command constructor functions for an extension's declared commands.
+ *
+ * Each command becomes a function that takes a node ID and optional payload,
+ * returning a Command that the runtime sends as an extension_command message.
+ *
+ * ```ts
+ * const gauge = defineExtensionWidget({
+ *   type: "gauge",
+ *   props: { value: "number" },
+ *   commands: ["set_value", "reset"],
+ * })
+ *
+ * const cmds = extensionCommands(gauge)
+ * // cmds.set_value("my-gauge", { value: 42 })
+ * // cmds.reset("my-gauge")
+ * ```
+ */
+export function extensionCommands(
+  config: ExtensionWidgetConfig,
+): Record<string, (nodeId: string, payload?: Record<string, unknown>) => Command> {
+  const cmds: Record<string, (nodeId: string, payload?: Record<string, unknown>) => Command> = {}
+
+  for (const cmdName of config.commands ?? []) {
+    cmds[cmdName] = (nodeId: string, payload: Record<string, unknown> = {}): Command =>
+      Object.freeze({
+        [COMMAND]: true as const,
+        type: "extension_command",
+        payload: Object.freeze({ node_id: nodeId, op: cmdName, payload }),
+      })
+  }
+
+  return cmds
 }

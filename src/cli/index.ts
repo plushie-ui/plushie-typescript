@@ -4,14 +4,19 @@
  * CLI entry point for the plushie SDK.
  *
  * Commands:
- *   plushie download       -- download the precompiled binary
+ *   plushie download        -- download the precompiled binary
  *   plushie download --wasm -- download the WASM renderer
- *   plushie dev <app>      -- run an app with file watching
- *   plushie run <app>      -- run an app
- *   plushie stdio <app>    -- run in stdio transport mode (for plushie --exec)
- *   plushie inspect <app>  -- print the initial view tree as JSON
- *   plushie --help         -- print usage
- *   plushie --version      -- print version
+ *   plushie build           -- build plushie from Rust source
+ *   plushie build --wasm    -- build WASM renderer via wasm-pack
+ *   plushie dev <app>       -- run an app with file watching
+ *   plushie run <app>       -- run an app
+ *   plushie stdio <app>     -- run in stdio transport mode (for plushie --exec)
+ *   plushie inspect <app>   -- print the initial view tree as JSON
+ *   plushie connect <addr>  -- connect to a plushie --listen instance
+ *   plushie script          -- run .plushie test scripts (stub)
+ *   plushie replay <file>   -- replay a .plushie script (stub)
+ *   plushie --help          -- print usage
+ *   plushie --version       -- print version
  *
  * @module
  */
@@ -40,17 +45,24 @@ Usage: plushie <command> [options]
 Commands:
   download          Download the precompiled plushie binary
   download --wasm   Download the WASM renderer
+  build             Build plushie from Rust source (requires PLUSHIE_SOURCE_PATH)
+  build --wasm      Build WASM renderer via wasm-pack
+  build --release   Build with optimizations
   dev <app>         Run an app with file watching (hot reload)
   run <app>         Run an app
   stdio <app>       Run an app in stdio transport mode (for plushie --exec)
   inspect <app>     Print the initial view tree as formatted JSON
+  connect <addr>    Connect to a plushie --listen instance
+  script            Run .plushie test scripts (not yet implemented)
+  replay <file>     Replay a .plushie script (not yet implemented)
 
 Options:
   --help            Show this help message
   --version         Show version number
   --json            Use JSON wire format (default: msgpack)
   --binary <path>   Override binary path
-  --no-watch        Disable file watching in dev mode`
+  --no-watch        Disable file watching in dev mode
+  --release         Build with optimizations (build command)`
 
 // =========================================================================
 // Download
@@ -225,6 +237,114 @@ async function downloadWasm(force: boolean): Promise<void> {
 }
 
 // =========================================================================
+// Build
+// =========================================================================
+
+function handleBuild(flags: string[]): void {
+  const sourcePath = process.env["PLUSHIE_SOURCE_PATH"]
+  if (!sourcePath) {
+    console.error("PLUSHIE_SOURCE_PATH must be set to the plushie Rust source directory.")
+    process.exitCode = 1
+    return
+  }
+
+  const isWasm = flags.includes("--wasm")
+  const isRelease = flags.includes("--release")
+
+  if (isWasm) {
+    const wpCheck = spawnSync("which", ["wasm-pack"], { stdio: "pipe" })
+    if (wpCheck.status !== 0) {
+      console.error(
+        "wasm-pack is required for WASM builds.\n" +
+        "Install: https://rustwasm.github.io/wasm-pack/installer/",
+      )
+      process.exitCode = 1
+      return
+    }
+    const wasmDir = resolve(sourcePath, "plushie-wasm")
+    const buildArgs = ["build", "--target", "web"]
+    if (isRelease) {
+      buildArgs.push("--release")
+    } else {
+      buildArgs.push("--dev")
+    }
+    console.log(`Building WASM renderer in ${wasmDir}...`)
+    const child = spawn("wasm-pack", buildArgs, { cwd: wasmDir, stdio: "inherit" })
+    child.on("exit", (code) => {
+      if (code === 0) {
+        console.log("\nWASM build complete.")
+      }
+      process.exitCode = code ?? 1
+    })
+  } else {
+    const cargoCheck = spawnSync("which", ["cargo"], { stdio: "pipe" })
+    if (cargoCheck.status !== 0) {
+      console.error("cargo (Rust) is required for source builds.\nInstall: https://rustup.rs")
+      process.exitCode = 1
+      return
+    }
+    const buildArgs = ["build", "-p", "plushie"]
+    if (isRelease) buildArgs.push("--release")
+    console.log(`Building plushie binary in ${sourcePath}...`)
+    const child = spawn("cargo", buildArgs, { cwd: sourcePath, stdio: "inherit" })
+    child.on("exit", (code) => {
+      if (code === 0) {
+        const profile = isRelease ? "release" : "debug"
+        const binPath = resolve(sourcePath, "target", profile, "plushie")
+        console.log(`\nBinary built at: ${binPath}`)
+      }
+      process.exitCode = code ?? 1
+    })
+  }
+}
+
+// =========================================================================
+// Connect
+// =========================================================================
+
+function handleConnect(positional: string[]): void {
+  const addr = positional[0]
+  if (!addr) {
+    console.error("Usage: plushie connect <socket-path-or-host:port>")
+    process.exitCode = 1
+    return
+  }
+  console.error("Connect mode is not yet fully implemented.")
+  console.error(`Would connect to: ${addr}`)
+  console.error("Use plushie --listen and then connect manually.")
+  process.exitCode = 1
+}
+
+// =========================================================================
+// Script / Replay
+// =========================================================================
+
+function handleScript(): void {
+  console.log("The .plushie script runner executes test scripts against the renderer.")
+  console.log("Script format: one command per line (JSON objects).")
+  console.log("")
+  console.log("Example .plushie script:")
+  console.log('  {"action": "snapshot", "tree": {...}}')
+  console.log('  {"action": "interact", "click": "button-1"}')
+  console.log('  {"action": "assert_tree_hash", "name": "after_click"}')
+  console.log("")
+  console.log("Not yet implemented. Use the testing framework instead:")
+  console.log("  import { testWith } from 'plushie/testing'")
+  process.exitCode = 1
+}
+
+function handleReplay(positional: string[]): void {
+  if (!positional[0]) {
+    console.error("Usage: plushie replay <file.plushie>")
+    process.exitCode = 1
+    return
+  }
+  console.error("Replay is not yet implemented.")
+  console.error("Use the testing framework for automated interaction testing.")
+  process.exitCode = 1
+}
+
+// =========================================================================
 // tsx resolution
 // =========================================================================
 
@@ -273,6 +393,18 @@ async function main(argv: string[]): Promise<void> {
   switch (command) {
     case "download":
       await handleDownload(rest)
+      break
+    case "build":
+      handleBuild(flags)
+      break
+    case "connect":
+      handleConnect(positional)
+      break
+    case "script":
+      handleScript()
+      break
+    case "replay":
+      handleReplay(positional)
       break
     case "dev": {
       if (positional[0] === undefined) {
