@@ -13,7 +13,7 @@
  * run `npx plushie download` manually.
  */
 
-import { existsSync, mkdirSync, chmodSync, createWriteStream, unlinkSync } from "node:fs"
+import { existsSync, mkdirSync, chmodSync, createWriteStream, readFileSync, unlinkSync } from "node:fs"
 import { get as httpsGet } from "node:https"
 import { join, resolve } from "node:path"
 
@@ -51,10 +51,20 @@ function platformArch() {
   }
 }
 
+// Read project config for bin_file override
+let configBinFile
+try {
+  const configPath = resolve("plushie.extensions.json")
+  if (existsSync(configPath)) {
+    const raw = JSON.parse(readFileSync(configPath, "utf-8"))
+    configBinFile = raw.bin_file
+  }
+} catch { /* ignore */ }
+
 const ext = platformOs() === "windows" ? ".exe" : ""
 const binaryName = `plushie-renderer-${platformOs()}-${platformArch()}${ext}`
-const destDir = resolve("node_modules", ".plushie", "bin")
-const destPath = join(destDir, binaryName)
+const destDir = configBinFile ? resolve(configBinFile, "..") : resolve("node_modules", ".plushie", "bin")
+const destPath = configBinFile ? resolve(configBinFile) : join(destDir, binaryName)
 
 // Already downloaded
 if (existsSync(destPath)) {

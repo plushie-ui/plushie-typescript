@@ -47,13 +47,39 @@ function readVersion(): string {
   return pkg.version;
 }
 
+// -- Project config -----------------------------------------------------------
+
+/** Project-level plushie config from plushie.extensions.json. */
+interface ProjectConfig {
+  artifacts?: string[];
+  bin_file?: string;
+  wasm_dir?: string;
+  source_path?: string;
+  extensions?: unknown[];
+  binaryName?: string;
+}
+
+/**
+ * Read project config from plushie.extensions.json.
+ * Returns empty config if the file doesn't exist.
+ */
+function readProjectConfig(): ProjectConfig {
+  const configPath = resolve("plushie.extensions.json");
+  if (!existsSync(configPath)) return {};
+  try {
+    return JSON.parse(readFileSync(configPath, "utf-8")) as ProjectConfig;
+  } catch {
+    return {};
+  }
+}
+
 const USAGE = `\
 Usage: plushie <command> [options]
 
 Commands:
   download          Download the precompiled plushie binary
   download --wasm   Download the WASM renderer
-  build             Build plushie from Rust source (requires PLUSHIE_SOURCE_PATH)
+  build             Build plushie from Rust source
   build --wasm      Build WASM renderer via wasm-pack
   build --release   Build with optimizations
   dev <app>         Run an app with file watching (hot reload)
@@ -71,8 +97,16 @@ Options:
   --binary <path>   Override binary path
   --bin-file <path> Override binary destination (download/build)
   --wasm-dir <dir>  Override WASM output directory (download --wasm / build --wasm)
+  --bin             Download/build the native binary
+  --wasm            Download/build the WASM renderer
   --no-watch        Disable file watching in dev mode
-  --release         Build with optimizations (build command)`;
+  --release         Build with optimizations (build command)
+
+Config (plushie.extensions.json):
+  artifacts         ["bin"], ["wasm"], or ["bin", "wasm"] (default: ["bin"])
+  bin_file          Binary destination path
+  wasm_dir          WASM output directory
+  source_path       Rust source directory (for build)`;
 
 // =========================================================================
 // Download
@@ -152,14 +186,31 @@ async function downloadWithChecksum(url: string, destPath: string, label: string
   }
 }
 
-async function handleDownload(flags: string[], binFile?: string, wasmDir?: string): Promise<void> {
-  const isWasm = flags.includes("--wasm");
+async function handleDownload(
+  flags: string[],
+  binFile?: string,
+  wasmDir?: string,
+  config?: ProjectConfig,
+): Promise<void> {
   const force = flags.includes("--force");
+  const explicitBin = flags.includes("--bin");
+  const explicitWasm = flags.includes("--wasm");
 
-  if (isWasm) {
-    await downloadWasm(force, wasmDir);
-  } else {
-    await handleDownloadBinary(force, binFile);
+  // Resolve what to download: CLI flags > config artifacts > default ["bin"]
+  const artifacts =
+    explicitBin || explicitWasm
+      ? [...(explicitBin ? ["bin"] : []), ...(explicitWasm ? ["wasm"] : [])]
+      : (config?.artifacts ?? ["bin"]);
+
+  // Resolve paths: CLI flag > config > default
+  const resolvedBinFile = binFile ?? config?.bin_file;
+  const resolvedWasmDir = wasmDir ?? config?.wasm_dir;
+
+  if (artifacts.includes("bin")) {
+    await handleDownloadBinary(force, resolvedBinFile);
+  }
+  if (artifacts.includes("wasm")) {
+    await downloadWasm(force, resolvedWasmDir);
   }
 }
 
@@ -254,27 +305,44 @@ async function downloadWasm(force: boolean, wasmDir?: string): Promise<void> {
 // Build
 // =========================================================================
 
-function handleBuild(flags: string[], wasmDestDir?: string): void {
-  const sourcePath = process.env["PLUSHIE_SOURCE_PATH"];
+function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConfig): void {
+  // Resolve source path: env var > config > error
+  const sourcePath = process.env["PLUSHIE_SOURCE_PATH"] ?? config?.source_path;
   if (!sourcePath) {
-    console.error("PLUSHIE_SOURCE_PATH must be set to the plushie Rust source directory.");
+    console.error(
+      "Rust source path not set.\n" +
+        "Either set PLUSHIE_SOURCE_PATH or add source_path to plushie.extensions.json.",
+    );
     process.exitCode = 1;
     return;
   }
 
-  const isWasm = flags.includes("--wasm");
+  const explicitBin = flags.includes("--bin");
+  const explicitWasm = flags.includes("--wasm");
   const isRelease = flags.includes("--release");
+
+  // Resolve what to build: CLI flags > config artifacts > default ["bin"]
+  const artifacts =
+    explicitBin || explicitWasm
+      ? [...(explicitBin ? ["bin"] : []), ...(explicitWasm ? ["wasm"] : [])]
+      : (config?.artifacts ?? ["bin"]);
+
+  const wantBin = artifacts.includes("bin");
+  const wantWasm = artifacts.includes("wasm");
+
+  // Resolve WASM dest: CLI flag > config > default
+  const resolvedWasmDir = wasmDestDir ?? config?.wasm_dir;
 
   // Check for extension config (plushie.extensions.json)
   const extConfigPath = resolve("plushie.extensions.json");
-  if (!isWasm && existsSync(extConfigPath)) {
+  if (wantBin && existsSync(extConfigPath)) {
     if (handleExtensionBuild(sourcePath, extConfigPath, isRelease)) {
       return; // Extension build handled it
     }
     // No native extensions found -- fall through to stock build
   }
 
-  if (isWasm) {
+  if (wantWasm) {
     const wpCheck = spawnSync("which", ["wasm-pack"], { stdio: "pipe" });
     if (wpCheck.status !== 0) {
       console.error(
@@ -297,7 +365,7 @@ function handleBuild(flags: string[], wasmDestDir?: string): void {
       if (code === 0) {
         // Install WASM output to the project's wasm directory
         const pkgDir = resolve(wasmDir, "pkg");
-        const destDir = wasmDestDir ? resolve(wasmDestDir) : resolve(DEFAULT_WASM_DIR);
+        const destDir = resolvedWasmDir ? resolve(resolvedWasmDir) : resolve(DEFAULT_WASM_DIR);
         mkdirSync(destDir, { recursive: true });
         for (const name of [WASM_JS_FILE, WASM_BG_FILE]) {
           const src = join(pkgDir, name);
@@ -312,7 +380,9 @@ function handleBuild(flags: string[], wasmDestDir?: string): void {
       }
       process.exitCode = code ?? 1;
     });
-  } else {
+  }
+
+  if (wantBin) {
     // Check Rust toolchain version
     const minRust = [1, 92, 0] as const;
     const rustcResult = spawnSync("rustc", ["--version"], { stdio: "pipe" });
@@ -691,6 +761,9 @@ async function main(argv: string[]): Promise<void> {
   const binFileOverride = valueFlags.get("--bin-file");
   const wasmDirOverride = valueFlags.get("--wasm-dir");
 
+  // Read project config (plushie.extensions.json)
+  const projectConfig = readProjectConfig();
+
   // Build extra env vars from flags
   const extraEnv: Record<string, string> = {};
   if (jsonFlag) extraEnv["PLUSHIE_FORMAT"] = "json";
@@ -698,10 +771,10 @@ async function main(argv: string[]): Promise<void> {
 
   switch (command) {
     case "download":
-      await handleDownload(flags, binFileOverride, wasmDirOverride);
+      await handleDownload(flags, binFileOverride, wasmDirOverride, projectConfig);
       break;
     case "build":
-      handleBuild(flags, wasmDirOverride);
+      handleBuild(flags, wasmDirOverride, projectConfig);
       break;
     case "connect":
       await handleConnect(positional, flags, binaryOverride);

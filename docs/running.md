@@ -25,12 +25,21 @@ The renderer binary is resolved automatically. For most projects,
 If you have native Rust extensions, build a custom renderer. You can
 also set `PLUSHIE_BINARY_PATH` explicitly.
 
-Override the default download/build destination with `--bin-file`:
+For projects that need both the binary and WASM renderer, declare it
+in `plushie.extensions.json`:
 
-```sh
-npx plushie download --bin-file ./bin/plushie
-npx plushie download --wasm --wasm-dir ./static
+```json
+{
+  "artifacts": ["bin", "wasm"],
+  "wasm_dir": "static"
+}
 ```
+
+Then `npx plushie download` fetches both to the right locations.
+
+CLI flags (`--bin-file`, `--wasm-dir`, `--bin`, `--wasm`) override
+the config for one-off use. The resolution order is:
+CLI flag > config file > hardcoded default.
 
 ### Dev mode
 
