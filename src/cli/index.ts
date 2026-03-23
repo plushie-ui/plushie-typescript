@@ -251,6 +251,13 @@ function handleBuild(flags: string[]): void {
   const isWasm = flags.includes("--wasm")
   const isRelease = flags.includes("--release")
 
+  // Check for extension config (plushie.extensions.json)
+  const extConfigPath = resolve("plushie.extensions.json")
+  if (!isWasm && existsSync(extConfigPath)) {
+    handleExtensionBuild(sourcePath, extConfigPath, isRelease)
+    return
+  }
+
   if (isWasm) {
     const wpCheck = spawnSync("which", ["wasm-pack"], { stdio: "pipe" })
     if (wpCheck.status !== 0) {
@@ -331,6 +338,86 @@ function handleBuild(flags: string[]): void {
       process.exitCode = code ?? 1
     })
   }
+}
+
+function handleExtensionBuild(
+  sourcePath: string,
+  configPath: string,
+  release: boolean,
+): void {
+  const {
+    validateExtensions,
+    generateCargoToml,
+    generateMainRs,
+  } = require("../extension.js") as typeof import("../extension.js")
+
+  let config: import("../extension.js").ExtensionBuildConfig
+  try {
+    const raw = JSON.parse(readFileSync(configPath, "utf-8")) as {
+      extensions?: Array<import("../extension.js").ExtensionWidgetConfig>
+      binaryName?: string
+    }
+    const extensions = raw.extensions ?? []
+    const nativeExts = extensions.filter((e) => e.rustCrate)
+    if (nativeExts.length === 0) {
+      console.log("No native extensions found in plushie.extensions.json -- building stock binary.")
+      // Fall through to stock build by returning
+      return
+    }
+    const buildConfig: Record<string, unknown> = { extensions, sourcePath, release }
+    if (raw.binaryName !== undefined) buildConfig["binaryName"] = raw.binaryName
+    config = buildConfig as unknown as import("../extension.js").ExtensionBuildConfig
+    validateExtensions(extensions)
+  } catch (err) {
+    console.error(`Failed to read ${configPath}: ${String(err)}`)
+    process.exitCode = 1
+    return
+  }
+
+  const nativeExts = config.extensions.filter((e) => e.rustCrate)
+  console.log(`Building custom binary with ${String(nativeExts.length)} extension(s):`)
+  for (const ext of nativeExts) {
+    console.log(`  ${ext.type} (${ext.rustCrate})`)
+  }
+
+  // Generate workspace
+  const buildDir = resolve("node_modules", ".plushie", "build")
+  mkdirSync(buildDir, { recursive: true })
+  mkdirSync(join(buildDir, "src"), { recursive: true })
+
+  const cargoToml = generateCargoToml(config)
+  writeFileSync(join(buildDir, "Cargo.toml"), cargoToml, "utf-8")
+
+  const mainRs = generateMainRs(config.extensions)
+  writeFileSync(join(buildDir, "src", "main.rs"), mainRs, "utf-8")
+
+  console.log(`Generated workspace at ${buildDir}`)
+
+  // Build
+  const buildArgs = ["build"]
+  if (release) buildArgs.push("--release")
+  console.log(`\nBuilding${release ? " (release)" : ""}...`)
+
+  const child = spawn("cargo", buildArgs, { cwd: buildDir, stdio: "inherit" })
+  child.on("exit", (code) => {
+    if (code === 0) {
+      const profile = release ? "release" : "debug"
+      const binName = config.binaryName ?? "plushie-custom"
+      const binPath = resolve(buildDir, "target", profile, binName)
+      console.log(`\nCustom binary built at: ${binPath}`)
+
+      // Install to the standard download location
+      const destDir = resolve("node_modules", ".plushie", "bin")
+      mkdirSync(destDir, { recursive: true })
+      const { platformBinaryName: platName } = require("../client/binary.js") as typeof import("../client/binary.js")
+      const destPath = join(destDir, platName())
+      const { copyFileSync, chmodSync: chmodFn } = require("node:fs") as typeof import("node:fs")
+      copyFileSync(binPath, destPath)
+      if (process.platform !== "win32") chmodFn(destPath, 0o755)
+      console.log(`Installed to ${destPath}`)
+    }
+    process.exitCode = code ?? 1
+  })
 }
 
 // =========================================================================

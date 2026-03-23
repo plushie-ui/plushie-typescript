@@ -143,8 +143,11 @@ export { parseScript, parseScriptFile, runScript } from "./script.js"
 export type { Script, ScriptHeader, Instruction } from "./script.js"
 
 // Extension widget system.
-export { defineExtensionWidget, extensionCommands } from "./extension.js"
-export type { ExtensionWidgetConfig, ExtensionPropType } from "./extension.js"
+export {
+  defineExtensionWidget, extensionCommands,
+  validateExtensions, generateCargoToml, generateMainRs,
+} from "./extension.js"
+export type { ExtensionWidgetConfig, ExtensionPropType, ExtensionBuildConfig } from "./extension.js"
 
 // Dev server.
 export { DevServer } from "./dev-server.js"
