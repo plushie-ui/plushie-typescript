@@ -272,17 +272,52 @@ function handleBuild(flags: string[]): void {
     const child = spawn("wasm-pack", buildArgs, { cwd: wasmDir, stdio: "inherit" })
     child.on("exit", (code) => {
       if (code === 0) {
-        console.log("\nWASM build complete.")
+        // Install WASM output to the project's wasm directory
+        const pkgDir = resolve(wasmDir, "pkg")
+        const destDir = resolve(DEFAULT_WASM_DIR)
+        mkdirSync(destDir, { recursive: true })
+        for (const name of [WASM_JS_FILE, WASM_BG_FILE]) {
+          const src = join(pkgDir, name)
+          if (existsSync(src)) {
+            const { copyFileSync } = require("node:fs") as typeof import("node:fs")
+            copyFileSync(src, join(destDir, name))
+          } else {
+            console.error(`  Warning: expected ${src} not found in wasm-pack output`)
+          }
+        }
+        console.log(`\nWASM files installed to ${destDir}`)
       }
       process.exitCode = code ?? 1
     })
   } else {
-    const cargoCheck = spawnSync("which", ["cargo"], { stdio: "pipe" })
-    if (cargoCheck.status !== 0) {
-      console.error("cargo (Rust) is required for source builds.\nInstall: https://rustup.rs")
+    // Check Rust toolchain version
+    const minRust = [1, 92, 0] as const
+    const rustcResult = spawnSync("rustc", ["--version"], { stdio: "pipe" })
+    if (rustcResult.status !== 0) {
+      console.error("cargo/rustc (Rust) is required for source builds.\nInstall: https://rustup.rs")
       process.exitCode = 1
       return
     }
+    const rustcOutput = rustcResult.stdout.toString()
+    const versionMatch = rustcOutput.match(/rustc (\d+)\.(\d+)\.(\d+)/)
+    if (versionMatch) {
+      const [, major, minor, patch] = versionMatch
+      const version = [Number(major), Number(minor), Number(patch)] as const
+      if (
+        version[0] < minRust[0] ||
+        (version[0] === minRust[0] && version[1] < minRust[1]) ||
+        (version[0] === minRust[0] && version[1] === minRust[1] && version[2] < minRust[2])
+      ) {
+        console.error(
+          `Rust ${String(version[0])}.${String(version[1])}.${String(version[2])} found, but ` +
+          `${String(minRust[0])}.${String(minRust[1])}.${String(minRust[2])}+ is required.\n` +
+          `Update with: rustup update`,
+        )
+        process.exitCode = 1
+        return
+      }
+    }
+
     const buildArgs = ["build", "-p", "plushie"]
     if (isRelease) buildArgs.push("--release")
     console.log(`Building plushie binary in ${sourcePath}...`)
