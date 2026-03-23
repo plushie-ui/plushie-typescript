@@ -33,6 +33,7 @@ export interface InteractiveOpts {
   readonly pressed_style?: Readonly<Record<string, unknown>>;
   readonly focus_style?: Readonly<Record<string, unknown>>;
   readonly show_focus_ring?: boolean;
+  readonly focus_ring_radius?: number;
   readonly tooltip?: string;
   readonly a11y?: Readonly<Record<string, unknown>>;
   readonly hit_rect?: HitRect;
@@ -50,6 +51,7 @@ const INTERACTIVE_KEYS: readonly (keyof InteractiveOpts)[] = [
   "pressed_style",
   "focus_style",
   "show_focus_ring",
+  "focus_ring_radius",
   "tooltip",
   "a11y",
   "hit_rect",

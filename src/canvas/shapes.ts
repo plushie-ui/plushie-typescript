@@ -110,6 +110,7 @@ export interface GroupShape {
   readonly pressed_style?: Readonly<Record<string, unknown>>;
   readonly focus_style?: Readonly<Record<string, unknown>>;
   readonly show_focus_ring?: boolean;
+  readonly focus_ring_radius?: number;
   readonly a11y?: Readonly<Record<string, unknown>>;
   readonly focusable?: boolean;
 }
@@ -185,6 +186,7 @@ export interface GroupOpts {
   readonly pressed_style?: Readonly<Record<string, unknown>>;
   readonly focus_style?: Readonly<Record<string, unknown>>;
   readonly show_focus_ring?: boolean;
+  readonly focus_ring_radius?: number;
   readonly a11y?: Readonly<Record<string, unknown>>;
   readonly focusable?: boolean;
 }
@@ -312,6 +314,7 @@ export function group(
   if (opts?.pressed_style !== undefined) shape["pressed_style"] = opts.pressed_style;
   if (opts?.focus_style !== undefined) shape["focus_style"] = opts.focus_style;
   if (opts?.show_focus_ring !== undefined) shape["show_focus_ring"] = opts.show_focus_ring;
+  if (opts?.focus_ring_radius !== undefined) shape["focus_ring_radius"] = opts.focus_ring_radius;
   if (opts?.a11y !== undefined) shape["a11y"] = opts.a11y;
   if (opts?.focusable !== undefined) shape["focusable"] = opts.focusable;
 
