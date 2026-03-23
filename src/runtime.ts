@@ -225,6 +225,7 @@ export class Runtime<M> {
     if (s.theme !== undefined) result["theme"] = s.theme
     if (s.fonts !== undefined) result["fonts"] = s.fonts
     if (s.defaultEventRate !== undefined) result["default_event_rate"] = s.defaultEventRate
+    if (s.extensionConfig !== undefined) result["extension_config"] = s.extensionConfig
     return result
   }
 

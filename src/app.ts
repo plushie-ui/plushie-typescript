@@ -34,6 +34,12 @@ export interface AppSettings {
   readonly theme?: string | Record<string, unknown>
   readonly fonts?: readonly string[]
   readonly defaultEventRate?: number
+  /**
+   * Configuration passed to widget extensions at runtime.
+   * Keyed by extension config key (matches the Rust extension's `config_key()`).
+   * Sent in the Settings message so extensions can initialize their state.
+   */
+  readonly extensionConfig?: Readonly<Record<string, unknown>>
 }
 
 /**
