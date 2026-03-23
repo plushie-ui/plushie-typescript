@@ -4,7 +4,7 @@
 // smiley; dark mode shows the face rotated upside down. The face rotates
 // during the transition.
 //
-// Events: canvas_shape_click with shape_id "switch".
+// Events: canvas_element_click with element_id "switch".
 // Drive progress from 0.0 (light) to 1.0 (dark) with a timer.
 
 import type { CanvasShape, PathCommand } from "../../src/canvas/index.js";

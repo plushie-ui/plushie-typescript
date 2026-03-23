@@ -259,25 +259,25 @@ export default app<Model>({
   update(state, event: Event) {
     // Star rating interactions
     if (isWidget(event) && event.id === "stars") {
-      if (event.type === "canvas_shape_click" && event.data?.["shape_id"]) {
-        const match = String(event.data["shape_id"]).match(/^star-(\d+)$/);
+      if (event.type === "canvas_element_click" && event.data?.["element_id"]) {
+        const match = String(event.data["element_id"]).match(/^star-(\d+)$/);
         if (match) return { ...state, rating: Number(match[1]) + 1 };
       }
-      if (event.type === "canvas_shape_enter" && event.data?.["shape_id"]) {
-        const match = String(event.data["shape_id"]).match(/^star-(\d+)$/);
+      if (event.type === "canvas_element_enter" && event.data?.["element_id"]) {
+        const match = String(event.data["element_id"]).match(/^star-(\d+)$/);
         if (match) return { ...state, hoverStar: Number(match[1]) + 1 };
       }
-      if (event.type === "canvas_shape_leave") {
+      if (event.type === "canvas_element_leave") {
         return { ...state, hoverStar: null };
       }
-      if (event.type === "canvas_shape_focused" && event.data?.["shape_id"]) {
-        const match = String(event.data["shape_id"]).match(/^star-(\d+)$/);
+      if (event.type === "canvas_element_focused" && event.data?.["element_id"]) {
+        const match = String(event.data["element_id"]).match(/^star-(\d+)$/);
         if (match) return { ...state, focusedStar: Number(match[1]) };
       }
     }
 
     // Theme toggle
-    if (isWidget(event) && event.id === "theme-toggle" && event.type === "canvas_shape_click") {
+    if (isWidget(event) && event.id === "theme-toggle" && event.type === "canvas_element_click") {
       const target = state.toggleTarget === 0.0 ? 1.0 : 0.0;
       return { ...state, toggleTarget: target };
     }

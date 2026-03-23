@@ -5,9 +5,9 @@
 // Pass readonly: true for a display-only version.
 //
 // Events:
-// - canvas_shape_click with shape_id "star-0" through "star-4"
-// - canvas_shape_enter/canvas_shape_leave for hover
-// - canvas_shape_focused with shape_id for keyboard focus
+// - canvas_element_click with element_id "star-0" through "star-4"
+// - canvas_element_enter/canvas_element_leave for hover
+// - canvas_element_focused with element_id for keyboard focus
 
 import type { CanvasShape, PathCommand } from "../../src/canvas/index.js";
 import {
