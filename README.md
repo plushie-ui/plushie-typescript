@@ -6,19 +6,39 @@ with TypeScript -- no webview, no Electron.
 
 ## Features
 
-- Native rendering via iced (not a webview)
-- Elm-inspired architecture with inline handlers
-- JSX support (react-jsx transform)
-- Type-safe widgets and events
-- Three-tier testing (mock/headless/windowed)
-- Hot reload dev server with state preservation
-- Canvas shape system with interactive shapes
-- Platform effects (file dialogs, clipboard, notifications)
-- WASM renderer support for browser deployment
-- Node.js SEA support for standalone executables
-- Unix socket and TCP transport for remote rendering
-- .plushie script runner for automated testing
-- Build from Rust source with `plushie build`
+- **38 built-in widget types** -- buttons, text inputs, sliders,
+  tables, markdown, canvas, and more.
+  [Layout guide](docs/layout.md)
+- **22 built-in themes** -- light, dark, dracula, nord, solarized,
+  gruvbox, catppuccin, tokyo night, kanagawa, and more. Custom
+  palettes and per-widget style overrides.
+  [Theming guide](docs/theming.md)
+- **JSX and function API** -- PascalCase JSX components or camelCase
+  function calls. Both produce the same tree.
+- **Type-safe widgets and events** -- every prop is typed, every
+  event kind has a type guard.
+  [Events guide](docs/events.md)
+- **Three-tier testing** -- mock (sub-ms), headless (real rendering),
+  windowed (real windows). All through the real binary.
+  [Testing guide](docs/testing.md)
+- **Multi-window** -- declare window nodes in your widget tree;
+  the framework manages open/close/update automatically.
+  [App config guide](docs/app-behaviour.md)
+- **Platform effects** -- native file dialogs, clipboard, OS
+  notifications.
+  [Effects guide](docs/effects.md)
+- **Accessibility** -- screen reader support via accesskit.
+  [Accessibility guide](docs/accessibility.md)
+- **Canvas** -- shape primitives, interactive shapes, path commands,
+  transforms, gradients.
+- **Hot reload** -- edit code, see changes instantly. Model preserved.
+- **Extensions** -- compose existing widgets or build native Rust
+  extensions with the `WidgetExtension` trait.
+  [Extensions guide](docs/extensions.md)
+- **WASM** -- run in the browser with WasmTransport.
+- **SEA** -- bundle as a standalone executable.
+- **Remote rendering** -- Unix socket, TCP, SSH via SocketTransport.
+  [Running guide](docs/running.md)
 
 ## Quick start
 
@@ -156,6 +176,25 @@ Three backends, selectable via environment variable:
 ```sh
 PLUSHIE_TEST_BACKEND=headless pnpm test
 ```
+
+## Documentation
+
+- [Getting started](docs/getting-started.md) -- setup and first app
+- [Tutorial](docs/tutorial.md) -- build a todo app step by step
+- [App configuration](docs/app-behaviour.md) -- init, update, view, subscriptions, multi-window
+- [Events](docs/events.md) -- every event type with examples
+- [Commands](docs/commands.md) -- async, focus, scroll, window ops, effects, subscriptions
+- [Layout](docs/layout.md) -- sizing, padding, spacing, alignment
+- [Scoped IDs](docs/scoped-ids.md) -- hierarchical widget identity
+- [Effects](docs/effects.md) -- file dialogs, clipboard, notifications
+- [Theming](docs/theming.md) -- built-in themes, custom palettes, StyleMap
+- [Testing](docs/testing.md) -- unit tests, integration tests, three backends
+- [Running](docs/running.md) -- local, remote, WASM, SEA, binary management
+- [Composition patterns](docs/composition-patterns.md) -- tab bars, modals, cards
+- [Accessibility](docs/accessibility.md) -- a11y props, roles, screen readers
+- [Extensions](docs/extensions.md) -- custom widgets, Rust extensions
+- [Builder internals](docs/builder-internals.md) -- how the SDK works under the hood
+- [Examples](examples/README.md) -- all example apps
 
 ## Related projects
 
