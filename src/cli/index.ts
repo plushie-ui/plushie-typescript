@@ -437,7 +437,11 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
 }
 
 /** Returns true if the extension build was initiated, false if no native extensions found. */
-function handleExtensionBuild(sourcePath: string | undefined, configPath: string, release: boolean): boolean {
+function handleExtensionBuild(
+  sourcePath: string | undefined,
+  configPath: string,
+  release: boolean,
+): boolean {
   const { validateExtensions, generateCargoToml, generateMainRs } =
     require("../extension-build.js") as typeof import("../extension-build.js");
 
