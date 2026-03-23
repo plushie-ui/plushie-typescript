@@ -52,6 +52,7 @@ it into a local `id` and a `scope` array:
 The `scope` array is in **reverse order** -- nearest parent first.
 This optimises the common case of checking the immediate parent:
 
+<!-- test: scoped_ids_match_local_id, scoped_ids_match_immediate_parent, scoped_ids_dynamic_list_bind_parent -- keep this code block in sync with the test -->
 ```typescript
 // Match on local ID only (ignores scope)
 if (isClick(event, 'save')) { ... }
@@ -70,6 +71,7 @@ if (isToggle(event, 'done') && event.scope[0]) {
 
 Use `target()` to get the full forward-order path:
 
+<!-- test: scoped_ids_target_reconstruction -- keep this code block in sync with the test -->
 ```typescript
 import { target } from 'plushie'
 
@@ -112,6 +114,7 @@ This produces IDs like `"todoList/item_1/done"` and
 `"todoList/item_2/delete"`. In the handler, read the item ID from
 the scope:
 
+<!-- test: scoped_ids_dynamic_list_delete -- keep this code block in sync with the test -->
 ```typescript
 const toggleItem = (s: Model, e: WidgetEvent): Model => {
   const itemId = e.scope[0]  // "item_1", "item_2", etc.
@@ -131,6 +134,7 @@ const deleteItem = (s: Model, e: WidgetEvent): Model => ({
 
 ## Scope matching patterns
 
+<!-- test: scoped_ids_depth_agnostic, scoped_ids_exact_depth, scoped_ids_exact_depth_mismatch, scoped_ids_no_scope, scoped_ids_no_scope_mismatch -- keep this code block in sync with the test -->
 ```typescript
 // Depth-agnostic: works whether nested or at root
 if (event.id === 'query' && event.scope[0] === 'search') { ... }

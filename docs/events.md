@@ -4,6 +4,7 @@ Events are delivered to your inline handlers or `update()` function.
 Each event has a `kind` discriminant field for type narrowing via
 type guards.
 
+<!-- test: events_widget_click_guard, events_widget_input_guard, events_widget_submit_guard, events_widget_toggle_guard, events_widget_select_guard, events_widget_slide_guard -- keep this code block in sync with the test -->
 ```typescript
 import {
   isClick, isInput, isSubmit, isToggle, isSelect, isSlide,
@@ -528,6 +529,7 @@ Character keys are single-character strings:
 
 ### Keyboard event examples
 
+<!-- test: events_key_press_cmd_s_guard, events_key_press_escape_guard -- keep this code block in sync with the test -->
 ```typescript
 function update(state: Model, event: Event): UpdateResult<Model> {
   if (isKey(event, 'press')) {
@@ -786,6 +788,7 @@ if (isSystem(event, 'all_windows_closed')) {
 
 Delivered by `Subscription.every()` timer subscriptions.
 
+<!-- test: events_timer_tick_guard -- keep this code block in sync with the test -->
 ```typescript
 // event shape:
 // { kind: "timer", tag: "tick", timestamp: 1685000000123 }
@@ -810,6 +813,7 @@ update(state, event) {
 
 Delivered when a `Command.async()` completes.
 
+<!-- test: events_async_result_ok_guard, events_async_result_error_guard -- keep this code block in sync with the test -->
 ```typescript
 // event shapes:
 // { kind: "async", tag: "dataLoaded", result: { ok: true, value: responseData } }
@@ -846,6 +850,7 @@ function update(state: Model, event: Event): UpdateResult<Model> {
 Delivered by `Command.stream()`. Each yielded value produces a
 `StreamEvent`. The final return value produces an `AsyncEvent`.
 
+<!-- test: events_stream_value_guard -- keep this code block in sync with the test -->
 ```typescript
 // stream event shape:
 // { kind: "stream", tag: "fileImport", value: { progress: 42 } }
@@ -869,6 +874,7 @@ if (isAsync(event, 'fileImport') && event.result.ok) {
 Delivered when a renderer effect (file dialog, clipboard, notification)
 completes.
 
+<!-- test: events_effect_ok_guard, events_effect_cancelled_guard -- keep this code block in sync with the test -->
 ```typescript
 // event shapes:
 // { kind: "effect", requestId: "ef_1234", status: "ok", result: "/path/to/file", error: null }
@@ -905,6 +911,7 @@ and destructuring cover the same ground.
 
 ### Matching by widget ID prefix
 
+<!-- test: events_pattern_prefix_match -- keep this code block in sync with the test -->
 ```typescript
 if (isClick(event)) {
   // Match clicks with a prefix
@@ -927,6 +934,7 @@ Widget events include a `scope` array listing ancestor container IDs,
 nearest first. Match on scope to distinguish events from different
 contexts:
 
+<!-- test: events_scope_sidebar_match, events_scope_main_match -- keep this code block in sync with the test -->
 ```typescript
 if (isClick(event, 'save')) {
   // Button inside the "sidebar" container
@@ -944,6 +952,7 @@ if (isClick(event, 'save')) {
 
 Use `target()` to reconstruct the full scoped ID path from an event:
 
+<!-- test: events_target_reconstruction, events_target_no_scope -- keep this code block in sync with the test -->
 ```typescript
 import { target } from 'plushie'
 
@@ -955,6 +964,7 @@ const fullPath = target(event as WidgetEvent)
 
 Always include a catch-all return in your `update()`:
 
+<!-- test: events_catch_all -- keep this code block in sync with the test -->
 ```typescript
 function update(state: Model, event: Event): Model {
   // ... event handling ...

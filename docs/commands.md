@@ -45,6 +45,7 @@ update(state, event) {
 Run a function asynchronously. The result is delivered as an
 `AsyncEvent` with `{ ok: true, value }` or `{ ok: false, error }`.
 
+<!-- test: commands_async_construct -- keep this code block in sync with the test -->
 ```typescript
 Command.async(async (signal: AbortSignal) => {
   const res = await fetch(url, { signal })
@@ -80,6 +81,7 @@ function update(state: Model, event: Event): UpdateResult<Model> {
 produces a `StreamEvent`; the final return value produces an
 `AsyncEvent`.
 
+<!-- test: commands_stream_construct -- keep this code block in sync with the test -->
 ```typescript
 Command.stream(async function*(signal) {
   const reader = file.stream().getReader()
@@ -133,6 +135,7 @@ its tag. The runtime aborts the associated `AbortController` and
 increments a nonce so stale results are discarded. If the task has
 already completed, this is a no-op.
 
+<!-- test: commands_cancel_construct -- keep this code block in sync with the test -->
 ```typescript
 Command.cancel('fileImport')
 ```
@@ -172,6 +175,7 @@ Command.exit()
 
 ##### Focus
 
+<!-- test: commands_focus_construct, commands_focus_next_construct, commands_focus_previous_construct -- keep this code block in sync with the test -->
 ```typescript
 Command.focus('todoInput')         // Focus a widget by scoped ID path
 Command.focusNext()                // Focus next focusable widget
@@ -206,6 +210,7 @@ if (isClick(event, 'selectWord')) {
 
 ##### Scroll operations
 
+<!-- test: commands_snap_to_end_construct, commands_snap_to_construct, commands_scroll_by_construct -- keep this code block in sync with the test -->
 ```typescript
 Command.scrollTo('list', 0, 100)   // Scroll to absolute position
 Command.snapTo('list', 0.0, 0.5)   // Snap to relative position (0.0-1.0)
@@ -445,6 +450,7 @@ if ((event as any).type === 'clearMessage') {
 
 Combine multiple commands:
 
+<!-- test: commands_batch_construct -- keep this code block in sync with the test -->
 ```typescript
 Command.batch([
   Command.focus('nameInput'),
@@ -462,6 +468,7 @@ Push data directly to a native Rust extension widget without
 triggering the view/diff/patch cycle. Used for high-frequency data
 like terminal output or streaming log lines.
 
+<!-- test: commands_extension_command_construct, commands_extension_commands_construct -- keep this code block in sync with the test -->
 ```typescript
 // Single command
 Command.extensionCommand('term-1', 'write', { data: output })
@@ -616,6 +623,7 @@ calls keeps the existing subscription alive; removing it stops it.
 
 #### Time
 
+<!-- test: subscriptions_every_construct -- keep this code block in sync with the test -->
 ```typescript
 Subscription.every(1000, 'tick')
 // Delivers: { kind: "timer", tag: "tick", timestamp: number }
@@ -623,6 +631,7 @@ Subscription.every(1000, 'tick')
 
 #### Keyboard
 
+<!-- test: subscriptions_on_key_press_construct -- keep this code block in sync with the test -->
 ```typescript
 Subscription.onKeyPress('keys')
 // Delivers: KeyEvent { kind: "key", type: "press", key, modifiers, ... }
@@ -740,6 +749,7 @@ Supported on: `Slider`, `VerticalSlider`, `Canvas`, `MouseArea`,
 
 Renderer subscriptions accept a `maxRate` option:
 
+<!-- test: subscriptions_set_max_rate, subscriptions_on_animation_frame_with_rate -- keep this code block in sync with the test -->
 ```typescript
 // Rate-limit mouse moves to 30 events per second:
 Subscription.onMouseMove('mouse', { maxRate: 30 })
@@ -824,6 +834,7 @@ settings relevant to commands and rendering:
 - `defaultEventRate` -- integer. Maximum events per second for
   coalescable event types. Omit for unlimited.
 
+<!-- test: commands_settings_vsync_and_scale -- keep this code block in sync with the test -->
 ```typescript
 app({
   settings: {

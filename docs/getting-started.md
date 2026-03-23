@@ -64,6 +64,7 @@ these.
 
 Create `counter.tsx`:
 
+<!-- test: getting_started_counter_init, getting_started_counter_increment, getting_started_counter_decrement, getting_started_counter_view, getting_started_counter_view_after_increments -- keep this code block in sync with the test -->
 ```tsx
 import { app } from 'plushie'
 import { Window, Column, Row, Text, Button } from 'plushie/ui'

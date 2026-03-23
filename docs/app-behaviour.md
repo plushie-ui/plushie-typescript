@@ -24,6 +24,7 @@ export default app<Model>({
 The initial model, optionally with commands. The model type is inferred
 from `init` if you don't provide an explicit generic.
 
+<!-- test: app_behaviour_init_bare_model, app_behaviour_init_with_command -- keep this code block in sync with the test -->
 ```typescript
 // Bare model:
 init: { todos: [], input: '', filter: 'all' }
@@ -44,6 +45,7 @@ Receives the current model (as `DeepReadonly<Model>`), returns a UI
 tree. Called after every state change. Must be a pure function of
 the model.
 
+<!-- test: app_behaviour_view_basic_structure -- keep this code block in sync with the test -->
 ```tsx
 view: (state) => (
   <Window id="main" title="Todos">
@@ -129,6 +131,7 @@ Returns a list of active subscriptions based on the current model.
 Called after every state change. The runtime diffs the list and
 starts/stops subscriptions automatically.
 
+<!-- test: app_behaviour_subscribe_without_auto_refresh, app_behaviour_subscribe_with_auto_refresh -- keep this code block in sync with the test -->
 ```typescript
 subscriptions: (state) => [
   Subscription.onKeyPress('keys'),
@@ -143,6 +146,7 @@ Default: no subscriptions.
 
 Application-level settings sent to the renderer on startup.
 
+<!-- test: app_behaviour_settings -- keep this code block in sync with the test -->
 ```typescript
 settings: {
   defaultFont: { family: 'monospace' },
@@ -169,6 +173,7 @@ settings: {
 Called when windows are opened, providing base settings that
 per-window props override.
 
+<!-- test: app_behaviour_window_config_returns_map -- keep this code block in sync with the test -->
 ```typescript
 windowConfig: (state) => ({
   title: 'My App',
@@ -274,6 +279,7 @@ which OS window corresponds to which tree node.
 
 Subscribe to window events and handle them in `update()`:
 
+<!-- test: app_behaviour_window_events_close_requested, app_behaviour_window_events_resized -- keep this code block in sync with the test -->
 ```typescript
 subscriptions: (state) => [
   Subscription.onWindowClose('windowClose'),

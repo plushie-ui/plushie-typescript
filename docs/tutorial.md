@@ -9,6 +9,7 @@ dynamic lists, scoped IDs, commands, and conditional rendering.
 Start with a model that tracks a list of todos and the current input
 text.
 
+<!-- test: tutorial_step1_init, tutorial_step1_view -- keep this code block in sync with the test -->
 ```tsx
 import { app } from 'plushie'
 import { Window, Column, Text } from 'plushie/ui'
@@ -49,6 +50,7 @@ placeholder message. Not much yet, but the structure is in place:
 Add a text input that updates the model on every keystroke, and a
 submit handler that creates a todo when the user presses Enter.
 
+<!-- test: tutorial_step2_input_updates_model, tutorial_step2_submit_creates_todo, tutorial_step2_empty_submit_does_nothing -- keep this code block in sync with the test -->
 ```tsx
 import { TextInput } from 'plushie/ui'
 
@@ -89,6 +91,7 @@ We wrap each item in a `Container` using the todo's ID. This creates
 a **scope** -- children get unique IDs automatically without manual
 prefixing.
 
+<!-- test: tutorial_step3_view_renders_todo_list, tutorial_step3_todo_row_structure -- keep this code block in sync with the test -->
 ```tsx
 import { Container, Row, Checkbox, Button } from 'plushie/ui'
 
@@ -117,6 +120,7 @@ When the checkbox or delete button is clicked, the event carries the
 local `id` and a `scope` array with the todo's container ID as the
 immediate parent. Read the scope to find which item was acted on:
 
+<!-- test: tutorial_step4_toggle, tutorial_step4_delete -- keep this code block in sync with the test -->
 ```typescript
 const toggleTodo = (s: Model, e: WidgetEvent): Model => ({
   ...s,
@@ -140,6 +144,7 @@ into a sidebar or tab, the pattern still works.
 After submitting a todo, the text input loses focus. Let's refocus
 it automatically using `Command.focus()`:
 
+<!-- test: tutorial_step5_submit_returns_focus_command -- keep this code block in sync with the test -->
 ```typescript
 import { Command } from 'plushie'
 
@@ -162,6 +167,7 @@ always use the full scoped path.
 Add filter buttons that toggle between all, active, and completed
 todos:
 
+<!-- test: tutorial_step6_filter_toggle -- keep this code block in sync with the test -->
 ```tsx
 <Row spacing={8}>
   <Button id="filterAll"
@@ -175,6 +181,7 @@ todos:
 
 And the filter helper:
 
+<!-- test: tutorial_step6_filtered_helper -- keep this code block in sync with the test -->
 ```typescript
 function filtered(s: Model): Todo[] {
   switch (s.filter) {

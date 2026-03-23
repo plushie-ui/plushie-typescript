@@ -10,6 +10,7 @@ Every effect function returns a `Command`. Return it from a handler
 or `update()` as part of a `[model, command]` tuple. The result
 arrives as an `EffectEvent` in `update()`.
 
+<!-- test: effects_file_open_returns_effect_command, effects_ok_result_match, effects_cancelled_result_match, effects_error_result_match -- keep this code block in sync with the test -->
 ```typescript
 import { Command, isEffect } from 'plushie'
 import { Effects } from 'plushie'
@@ -94,6 +95,7 @@ respond within the timeout, an error event is dispatched:
 
 Override per-request:
 
+<!-- test: effects_file_open_default_timeout, effects_clipboard_read_default_timeout, effects_notification_default_timeout, effects_file_open_custom_timeout -- keep this code block in sync with the test -->
 ```typescript
 Effects.fileOpen({ title: 'Pick a file', timeout: 300000 })
 ```

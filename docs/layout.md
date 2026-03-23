@@ -14,6 +14,7 @@ Length controls how a widget claims space along an axis.
 | `'shrink'` | Use minimum/intrinsic size |
 | `200` | Exact pixel size |
 
+<!-- test: layout_length_fill, layout_length_fixed, layout_length_fill_portion, layout_length_shrink -- keep this code block in sync with the test -->
 ```tsx
 // Fill available width
 <Column width="fill">...</Column>
@@ -48,6 +49,7 @@ Padding is the space between a widget's boundary and its content.
 | `[5, 10, 5, 10]` | Per-side: top, right, bottom, left |
 | `{ top: 5, right: 10, bottom: 5, left: 10 }` | Named per-side |
 
+<!-- test: layout_padding_uniform, layout_padding_xy, layout_padding_per_side -- keep this code block in sync with the test -->
 ```tsx
 <Container id="box" padding={16}>...</Container>
 <Container id="box" padding={[8, 16]}>...</Container>
@@ -63,6 +65,7 @@ Padding is accepted by `Container`, `Column`, `Row`, `Scrollable`,
 
 Spacing is the gap between children in a layout container.
 
+<!-- test: layout_spacing -- keep this code block in sync with the test -->
 ```tsx
 <Column spacing={8}>
   <Text>First</Text>
@@ -94,6 +97,7 @@ along the cross axis.
 | `'center'` | Centered |
 | `'end'` or `'bottom'` | Bottom-aligned |
 
+<!-- test: layout_align_x_column, layout_align_center_container -- keep this code block in sync with the test -->
 ```tsx
 // Center children horizontally in a column
 <Column alignX="center">
@@ -116,6 +120,7 @@ The `center` prop on `Container` sets both `alignX: 'center'` and
 
 Arranges children vertically (top to bottom).
 
+<!-- test: layout_column_with_props -- keep this code block in sync with the test -->
 ```tsx
 <Column id="main" spacing={16} padding={20} width="fill" alignX="center">
   <Text id="title" size={24}>Title</Text>
@@ -130,6 +135,7 @@ Props: `spacing`, `padding`, `width`, `height`, `maxWidth`, `alignX`,
 
 Arranges children horizontally (left to right).
 
+<!-- test: layout_row_with_align_y -- keep this code block in sync with the test -->
 ```tsx
 <Row spacing={8} alignY="center">
   <Button id="back">&lt;</Button>
@@ -145,6 +151,7 @@ Props: `spacing`, `padding`, `width`, `height`, `maxWidth`, `alignY`,
 
 Wraps a single child with padding, alignment, and styling.
 
+<!-- test: layout_container_with_style -- keep this code block in sync with the test -->
 ```tsx
 <Container id="card" padding={16} style="rounded_box" width="fill">
   <Column>
@@ -162,6 +169,7 @@ Props: `padding`, `width`, `height`, `maxWidth`, `maxHeight`,
 
 Wraps content in a scrollable region.
 
+<!-- test: layout_scrollable -- keep this code block in sync with the test -->
 ```tsx
 <Scrollable id="list" height={400} width="fill">
   <Column spacing={4}>
@@ -178,6 +186,7 @@ Props: `width`, `height`, `direction` (`'vertical'`, `'horizontal'`),
 Overlays children on top of each other (z-stacking). Later children
 are on top.
 
+<!-- test: layout_stack -- keep this code block in sync with the test -->
 ```tsx
 <Stack>
   <Image id="bg" source="background.png" width="fill" height="fill" />
@@ -191,6 +200,7 @@ are on top.
 
 Empty spacer. Takes up space without rendering anything.
 
+<!-- test: layout_space -- keep this code block in sync with the test -->
 ```tsx
 <Row>
   <Text>Left</Text>
@@ -215,6 +225,7 @@ Arranges children in a grid layout.
 
 ### Centered page
 
+<!-- test: layout_centered_page -- keep this code block in sync with the test -->
 ```tsx
 <Container id="page" width="fill" height="fill" center>
   <Column spacing={16} alignX="center">
