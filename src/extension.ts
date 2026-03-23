@@ -185,4 +185,3 @@ export function extensionCommands(
 
   return cmds;
 }
-

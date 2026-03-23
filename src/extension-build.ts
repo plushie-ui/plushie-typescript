@@ -92,7 +92,10 @@ export function generateCargoToml(config: ExtensionBuildConfig): string {
   const buildDir = nodePath.resolve("node_modules", ".plushie", "build");
 
   // Plushie core/bin dependencies -- use local source if available
-  const plushieCoreRel = nodePath.relative(buildDir, nodePath.join(config.sourcePath, "plushie-core"));
+  const plushieCoreRel = nodePath.relative(
+    buildDir,
+    nodePath.join(config.sourcePath, "plushie-core"),
+  );
   const plushieBinRel = nodePath.relative(buildDir, nodePath.join(config.sourcePath, "plushie"));
   const plushieCoreDep = `plushie-core = { path = "${plushieCoreRel}" }`;
   const plushieBinDep = `plushie = { path = "${plushieBinRel}" }`;
