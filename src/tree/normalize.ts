@@ -14,24 +14,24 @@
  * @module
  */
 
-import type { UINode } from "../types.js"
+import type { UINode } from "../types.js";
 
 /**
  * A wire-compatible tree node. All keys are strings, all values
  * are JSON/MessagePack-safe.
  */
 export interface WireNode {
-  readonly id: string
-  readonly type: string
-  readonly props: Readonly<Record<string, unknown>>
-  readonly children: readonly WireNode[]
+  readonly id: string;
+  readonly type: string;
+  readonly props: Readonly<Record<string, unknown>>;
+  readonly children: readonly WireNode[];
 }
 
 /**
  * Check whether an ID is auto-generated (unstable, doesn't create scope).
  */
 export function isAutoId(id: string): boolean {
-  return id.startsWith("auto:")
+  return id.startsWith("auto:");
 }
 
 /**
@@ -55,19 +55,17 @@ export function isAutoId(id: string): boolean {
  * normalize(null)
  * ```
  */
-export function normalize(
-  tree: UINode | readonly UINode[] | null,
-): WireNode {
+export function normalize(tree: UINode | readonly UINode[] | null): WireNode {
   if (tree === null) {
-    return { id: "auto:root", type: "container", props: {}, children: [] }
+    return { id: "auto:root", type: "container", props: {}, children: [] };
   }
 
   if (Array.isArray(tree)) {
     if (tree.length === 0) {
-      return { id: "auto:root", type: "container", props: {}, children: [] }
+      return { id: "auto:root", type: "container", props: {}, children: [] };
     }
     if (tree.length === 1) {
-      return normalizeNode(tree[0]!, "")
+      return normalizeNode(tree[0]!, "");
     }
     // Wrap multiple nodes in a synthetic root. Synthetic root doesn't
     // create scope (it uses an auto-ID).
@@ -76,10 +74,10 @@ export function normalize(
       type: "container",
       props: {},
       children: tree.map((child) => normalizeNode(child, "")),
-    }
+    };
   }
 
-  return normalizeNode(tree as UINode, "")
+  return normalizeNode(tree as UINode, "");
 }
 
 /**
@@ -90,62 +88,56 @@ export function normalize(
  * @returns Normalized WireNode.
  */
 function normalizeNode(node: UINode, scope: string): WireNode {
-  const id = node.id
-  const type = node.type
+  const id = node.id;
+  const type = node.type;
 
   // Validate: user IDs must not contain "/"
   if (!isAutoId(id) && id.includes("/")) {
     throw new Error(
       `Widget ID "${id}" contains "/" which is reserved for scoped IDs. ` +
-      `Use a different character or let the framework handle scoping.`,
-    )
+        `Use a different character or let the framework handle scoping.`,
+    );
   }
 
   // Apply scope prefix to this node's ID
-  const scopedId =
-    scope !== "" && !isAutoId(id)
-      ? `${scope}/${id}`
-      : id
+  const scopedId = scope !== "" && !isAutoId(id) ? `${scope}/${id}` : id;
 
   // Determine the scope for children:
   // Named (non-auto) non-window nodes propagate their scoped ID as the child scope.
   // Auto-ID nodes and window nodes don't create scope boundaries.
-  const childScope =
-    isAutoId(id) || type === "window"
-      ? scope
-      : scopedId
+  const childScope = isAutoId(id) || type === "window" ? scope : scopedId;
 
   // Normalize children recursively
-  const children = node.children.map((child) => normalizeNode(child, childScope))
+  const children = node.children.map((child) => normalizeNode(child, childScope));
 
   // Check for duplicate sibling IDs (warning, not error)
   if (children.length > 1) {
-    const ids = new Set<string>()
+    const ids = new Set<string>();
     for (const child of children) {
       if (ids.has(child.id)) {
         console.warn(
           `Duplicate sibling ID "${child.id}" under parent "${scopedId}". ` +
-          `This will cause undefined behavior in widget caching and event routing.`,
-        )
+            `This will cause undefined behavior in widget caching and event routing.`,
+        );
       }
-      ids.add(child.id)
+      ids.add(child.id);
     }
   }
 
   // Resolve a11y ID references relative to the current scope
-  let props = node.props
+  let props = node.props;
   if (props["a11y"] && scope !== "") {
-    const a11y = { ...(props["a11y"] as Record<string, unknown>) }
-    let changed = false
+    const a11y = { ...(props["a11y"] as Record<string, unknown>) };
+    let changed = false;
     for (const refField of ["labelled_by", "described_by", "error_message"]) {
-      const val = a11y[refField]
+      const val = a11y[refField];
       if (typeof val === "string" && !val.includes("/")) {
-        a11y[refField] = `${scope}/${val}`
-        changed = true
+        a11y[refField] = `${scope}/${val}`;
+        changed = true;
       }
     }
     if (changed) {
-      props = { ...props, a11y }
+      props = { ...props, a11y };
     }
   }
 
@@ -154,5 +146,5 @@ function normalizeNode(node: UINode, scope: string): WireNode {
     type,
     props,
     children,
-  }
+  };
 }

@@ -5,17 +5,17 @@
 // - Model updates from events
 // - Basic column/row layout
 
-import { app } from '../src/index.js'
-import { window, column, row, text, button } from '../src/ui/index.js'
+import { app } from "../src/index.js";
+import { button, column, row, text, window } from "../src/ui/index.js";
 
 // -- Types --------------------------------------------------------------------
 
-type Model = { count: number }
+type Model = { count: number };
 
 // -- Handlers -----------------------------------------------------------------
 
-const increment = (s: Model): Model => ({ ...s, count: s.count + 1 })
-const decrement = (s: Model): Model => ({ ...s, count: s.count - 1 })
+const increment = (s: Model): Model => ({ ...s, count: s.count + 1 });
+const decrement = (s: Model): Model => ({ ...s, count: s.count - 1 });
 
 // -- App ----------------------------------------------------------------------
 
@@ -37,4 +37,4 @@ export default app<Model>({
         ]),
       ]),
     ]),
-})
+});

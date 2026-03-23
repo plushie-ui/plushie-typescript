@@ -13,53 +13,66 @@
  * @module
  */
 
-import type {
-  UINode, Command, Event, Handler, UpdateResult, Subscription, WidgetEvent,
-  MouseEvent as PlushieMouseEvent, TouchEvent as PlushieTouchEvent,
-  CanvasEvent, MouseAreaEvent, PaneEvent, SensorEvent, SystemEvent,
-  EffectEvent,
-} from "./types.js"
-import { COMMAND } from "./types.js"
-import type { AppConfig, AppSettings } from "./app.js"
-import type { Transport } from "./client/transport.js"
-import type { DecodedResponse, WireMessage, WirePatchOp } from "./client/protocol.js"
+import type { AppConfig } from "./app.js";
+import type { DecodedResponse, WireMessage, WirePatchOp } from "./client/protocol.js";
 import {
-  encodeSettings, encodeSnapshot, encodePatch,
-  encodeSubscribe, encodeUnsubscribe, encodeWidgetOp,
-  encodeWindowOp, encodeEffect, encodeImageOp,
-  encodeExtensionCommand, encodeExtensionCommands,
-  encodeAdvanceFrame, decodeMessage, decodeEvent,
+  decodeMessage,
+  encodeAdvanceFrame,
+  encodeEffect,
+  encodeExtensionCommand,
+  encodeExtensionCommands,
+  encodeImageOp,
+  encodePatch,
+  encodeSettings,
+  encodeSnapshot,
+  encodeSubscribe,
+  encodeUnsubscribe,
+  encodeWidgetOp,
+  encodeWindowOp,
   PROTOCOL_VERSION,
-} from "./client/protocol.js"
-import { normalize, type WireNode } from "./tree/normalize.js"
-import { diff, type PatchOp } from "./tree/diff.js"
-import { detectWindows } from "./tree/search.js"
-import { drainHandlers, clearHandlers } from "./ui/handlers.js"
-import type { HandlerEntry } from "./ui/handlers.js"
-import * as SubscriptionMod from "./subscription.js"
+} from "./client/protocol.js";
+import type { Transport } from "./client/transport.js";
+import * as SubscriptionMod from "./subscription.js";
+import { diff } from "./tree/diff.js";
+import { normalize, type WireNode } from "./tree/normalize.js";
+import { detectWindows } from "./tree/search.js";
+import type {
+  Command,
+  EffectEvent,
+  Event,
+  Handler,
+  MouseEvent as PlushieMouseEvent,
+  SensorEvent,
+  Subscription,
+  UpdateResult,
+  WidgetEvent,
+} from "./types.js";
+import { COMMAND } from "./types.js";
+import type { HandlerEntry } from "./ui/handlers.js";
+import { clearHandlers, drainHandlers } from "./ui/handlers.js";
 
 // =========================================================================
 // Types
 // =========================================================================
 
 /** A factory function that creates new Transport instances. */
-export type TransportFactory = () => Transport
+export type TransportFactory = () => Transport;
 
 /** Internal state for the runtime. */
 interface RuntimeState<M> {
-  model: M
-  tree: WireNode | null
-  handlerMap: Map<string, Map<string, Handler<unknown>>>
-  subscriptionMap: Map<string, Subscription>
-  windowIds: Set<string>
-  windowProps: Map<string, Record<string, unknown>>
-  asyncTasks: Map<string, { controller: AbortController; nonce: number }>
-  pendingTimers: Map<string, ReturnType<typeof setTimeout>>
-  pendingEffects: Map<string, ReturnType<typeof setTimeout>>
-  consecutiveErrors: number
-  restartCount: number
-  coalescePending: boolean
-  pendingCoalesce: Map<string, Event>
+  model: M;
+  tree: WireNode | null;
+  handlerMap: Map<string, Map<string, Handler<unknown>>>;
+  subscriptionMap: Map<string, Subscription>;
+  windowIds: Set<string>;
+  windowProps: Map<string, Record<string, unknown>>;
+  asyncTasks: Map<string, { controller: AbortController; nonce: number }>;
+  pendingTimers: Map<string, ReturnType<typeof setTimeout>>;
+  pendingEffects: Map<string, ReturnType<typeof setTimeout>>;
+  consecutiveErrors: number;
+  restartCount: number;
+  coalescePending: boolean;
+  pendingCoalesce: Map<string, Event>;
 }
 
 // =========================================================================
@@ -73,27 +86,31 @@ interface RuntimeState<M> {
  * lifecycle, window sync, command execution, and error resilience.
  */
 export class Runtime<M> {
-  private state: RuntimeState<M>
-  private readonly config: AppConfig<M>
-  private transport: Transport
-  private readonly transportFactory: TransportFactory | null
-  private readonly sessionId: string
-  private readonly maxRestarts = 5
-  private readonly restartBaseMs = 100
-  private readonly restartMaxMs = 5000
-  private started = false
-  private stopped = false
-  private nextNonce = 0
+  private state: RuntimeState<M>;
+  private readonly config: AppConfig<M>;
+  private transport: Transport;
+  private readonly transportFactory: TransportFactory | null;
+  private readonly sessionId: string;
+  private readonly maxRestarts = 5;
+  private readonly restartBaseMs = 100;
+  private readonly restartMaxMs = 5000;
+  private started = false;
+  private stopped = false;
+  private nextNonce = 0;
 
-  constructor(config: AppConfig<M>, transportOrFactory: Transport | TransportFactory, sessionId = "") {
-    this.config = config
-    this.sessionId = sessionId
+  constructor(
+    config: AppConfig<M>,
+    transportOrFactory: Transport | TransportFactory,
+    sessionId = "",
+  ) {
+    this.config = config;
+    this.sessionId = sessionId;
     if (typeof transportOrFactory === "function") {
-      this.transportFactory = transportOrFactory
-      this.transport = transportOrFactory()
+      this.transportFactory = transportOrFactory;
+      this.transport = transportOrFactory();
     } else {
-      this.transport = transportOrFactory
-      this.transportFactory = null
+      this.transport = transportOrFactory;
+      this.transportFactory = null;
     }
     this.state = {
       model: undefined as unknown as M,
@@ -109,32 +126,32 @@ export class Runtime<M> {
       restartCount: 0,
       coalescePending: false,
       pendingCoalesce: new Map(),
-    }
+    };
   }
 
   /** Current application model. */
   model(): M {
-    return this.state.model
+    return this.state.model;
   }
 
   /** Current normalized wire tree. */
   tree(): WireNode | null {
-    return this.state.tree
+    return this.state.tree;
   }
 
   /** Inject an external event into the update cycle. */
   injectEvent(event: Event): void {
-    this.handleEvent(event)
+    this.handleEvent(event);
   }
 
   /** Re-initialize the app: reset model from init, re-render as snapshot. */
   reinit(): void {
-    const [model, commands] = this.unwrapResult(this.config.init)
-    this.state.model = model
-    this.freezeModelIfDev()
-    this.renderAndSync(true)
+    const [model, commands] = this.unwrapResult(this.config.init);
+    this.state.model = model;
+    this.freezeModelIfDev();
+    this.renderAndSync(true);
     if (commands.length > 0) {
-      this.executeCommands(commands)
+      this.executeCommands(commands);
     }
   }
 
@@ -142,72 +159,72 @@ export class Runtime<M> {
    * Start the runtime: send settings, await hello, init, first render.
    */
   async start(): Promise<void> {
-    if (this.started) return
-    this.started = true
+    if (this.started) return;
+    this.started = true;
 
     // Wire up incoming messages
     this.transport.onMessage((raw) => {
-      this.handleRawMessage(raw)
-    })
+      this.handleRawMessage(raw);
+    });
 
     this.transport.onClose((reason) => {
       if (!this.stopped) {
-        this.handleRendererClose(reason)
+        this.handleRendererClose(reason);
       }
-    })
+    });
 
     // Send settings and await hello
-    const settings = this.buildSettings()
-    this.send(encodeSettings(this.sessionId, settings))
+    const settings = this.buildSettings();
+    this.send(encodeSettings(this.sessionId, settings));
 
     // Wait for hello
-    await this.awaitHello()
+    await this.awaitHello();
 
     // Init model
     try {
-      const initResult = this.config.init
-      const [model, commands] = this.unwrapResult(initResult)
-      this.state.model = model
+      const initResult = this.config.init;
+      const [model, commands] = this.unwrapResult(initResult);
+      this.state.model = model;
 
       // Freeze model in dev mode
-      this.freezeModelIfDev()
+      this.freezeModelIfDev();
 
       // First render (always snapshot, not diff)
-      this.renderAndSync(true)
+      this.renderAndSync(true);
 
       // Execute init commands
       if (commands.length > 0) {
-        this.executeCommands(commands)
+        this.executeCommands(commands);
       }
     } catch (error) {
-      console.error("[plushie] Error in init:", error)
-      throw error
+      console.error("[plushie] Error in init:", error);
+      throw error;
     }
   }
 
   /** Stop the runtime and clean up. */
   stop(): void {
-    this.stopped = true
+    this.stopped = true;
 
     // Cancel all async tasks
     for (const [, task] of this.state.asyncTasks) {
-      task.controller.abort()
+      task.controller.abort();
     }
-    this.state.asyncTasks.clear()
+    this.state.asyncTasks.clear();
 
     // Cancel all pending timers
     for (const [, timer] of this.state.pendingTimers) {
-      clearTimeout(timer)
+      clearTimeout(timer);
     }
-    this.state.pendingTimers.clear()
+    this.state.pendingTimers.clear();
 
     // Cancel all effect timeouts
     for (const [, timer] of this.state.pendingEffects) {
-      clearTimeout(timer)
+      clearTimeout(timer);
     }
-    this.state.pendingEffects.clear()
+    this.state.pendingEffects.clear();
 
-    this.transport.close()
+    this.transport.close();
   }
 
   // =======================================================================
@@ -215,18 +232,18 @@ export class Runtime<M> {
   // =======================================================================
 
   private buildSettings(): Record<string, unknown> {
-    const s = this.config.settings ?? {}
-    const result: Record<string, unknown> = {}
-    if (s.defaultTextSize !== undefined) result["default_text_size"] = s.defaultTextSize
-    if (s.defaultFont !== undefined) result["default_font"] = s.defaultFont
-    if (s.antialiasing !== undefined) result["antialiasing"] = s.antialiasing
-    if (s.vsync !== undefined) result["vsync"] = s.vsync
-    if (s.scaleFactor !== undefined) result["scale_factor"] = s.scaleFactor
-    if (s.theme !== undefined) result["theme"] = s.theme
-    if (s.fonts !== undefined) result["fonts"] = s.fonts
-    if (s.defaultEventRate !== undefined) result["default_event_rate"] = s.defaultEventRate
-    if (s.extensionConfig !== undefined) result["extension_config"] = s.extensionConfig
-    return result
+    const s = this.config.settings ?? {};
+    const result: Record<string, unknown> = {};
+    if (s.defaultTextSize !== undefined) result["default_text_size"] = s.defaultTextSize;
+    if (s.defaultFont !== undefined) result["default_font"] = s.defaultFont;
+    if (s.antialiasing !== undefined) result["antialiasing"] = s.antialiasing;
+    if (s.vsync !== undefined) result["vsync"] = s.vsync;
+    if (s.scaleFactor !== undefined) result["scale_factor"] = s.scaleFactor;
+    if (s.theme !== undefined) result["theme"] = s.theme;
+    if (s.fonts !== undefined) result["fonts"] = s.fonts;
+    if (s.defaultEventRate !== undefined) result["default_event_rate"] = s.defaultEventRate;
+    if (s.extensionConfig !== undefined) result["extension_config"] = s.extensionConfig;
+    return result;
   }
 
   // =======================================================================
@@ -236,26 +253,28 @@ export class Runtime<M> {
   private awaitHello(): Promise<void> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error("Renderer did not send hello within 10 seconds"))
-      }, 10_000)
+        reject(new Error("Renderer did not send hello within 10 seconds"));
+      }, 10_000);
 
-      const originalHandler = this.transport.onMessage.bind(this.transport)
+      const _originalHandler = this.transport.onMessage.bind(this.transport);
       this.transport.onMessage((raw) => {
-        const decoded = decodeMessage(raw)
+        const decoded = decodeMessage(raw);
         if (decoded?.type === "hello") {
-          clearTimeout(timeout)
+          clearTimeout(timeout);
           if (decoded.data.protocol !== PROTOCOL_VERSION) {
-            reject(new Error(
-              `Protocol mismatch: renderer=${String(decoded.data.protocol)}, SDK=${String(PROTOCOL_VERSION)}`,
-            ))
-            return
+            reject(
+              new Error(
+                `Protocol mismatch: renderer=${String(decoded.data.protocol)}, SDK=${String(PROTOCOL_VERSION)}`,
+              ),
+            );
+            return;
           }
           // Restore normal message handler
-          this.transport.onMessage((msg) => this.handleRawMessage(msg))
-          resolve()
+          this.transport.onMessage((msg) => this.handleRawMessage(msg));
+          resolve();
         }
-      })
-    })
+      });
+    });
   }
 
   // =======================================================================
@@ -263,22 +282,22 @@ export class Runtime<M> {
   // =======================================================================
 
   private handleRawMessage(raw: Record<string, unknown>): void {
-    const decoded = decodeMessage(raw)
-    if (decoded === null) return
+    const decoded = decodeMessage(raw);
+    if (decoded === null) return;
 
     switch (decoded.type) {
       case "event":
-        this.handleEvent(decoded.data)
-        break
+        this.handleEvent(decoded.data);
+        break;
       case "effect_response":
-        this.handleEffectResponse(decoded)
-        break
+        this.handleEffectResponse(decoded);
+        break;
       case "op_query_response":
-        this.handleOpQueryResponse(decoded)
-        break
+        this.handleOpQueryResponse(decoded);
+        break;
       // interact_step and interact_response handled by test framework
       default:
-        break
+        break;
     }
   }
 
@@ -287,58 +306,60 @@ export class Runtime<M> {
   // =======================================================================
 
   private handleEvent(event: Event): void {
-    if (this.stopped) return
+    if (this.stopped) return;
 
-    const coalesceKey = this.isCoalescable(event)
+    const coalesceKey = this.isCoalescable(event);
     if (coalesceKey !== null) {
-      this.state.pendingCoalesce.set(coalesceKey, event)
+      this.state.pendingCoalesce.set(coalesceKey, event);
       if (!this.state.coalescePending) {
-        this.state.coalescePending = true
-        queueMicrotask(() => this.flushCoalescables())
+        this.state.coalescePending = true;
+        queueMicrotask(() => this.flushCoalescables());
       }
-      return
+      return;
     }
 
     // Non-coalescable: flush pending first to preserve ordering
-    this.flushCoalescables()
-    this.dispatchEvent(event)
+    this.flushCoalescables();
+    this.dispatchEvent(event);
   }
 
   private flushCoalescables(): void {
-    this.state.coalescePending = false
+    this.state.coalescePending = false;
     for (const [, event] of this.state.pendingCoalesce) {
-      this.dispatchEvent(event)
+      this.dispatchEvent(event);
     }
-    this.state.pendingCoalesce.clear()
+    this.state.pendingCoalesce.clear();
   }
 
   private dispatchEvent(event: Event): void {
     // Widget events: check handler map first
     if (event.kind === "widget") {
-      const widgetEvent = event as WidgetEvent
-      const handler = this.lookupHandler(widgetEvent.id, widgetEvent.type)
+      const widgetEvent = event as WidgetEvent;
+      const handler = this.lookupHandler(widgetEvent.id, widgetEvent.type);
       if (handler) {
-        this.runUpdate(event, handler)
-        return
+        this.runUpdate(event, handler);
+        return;
       }
     }
 
     // Fall through to update()
     if (this.config.update) {
-      this.runUpdate(event)
+      this.runUpdate(event);
     }
   }
 
   private isCoalescable(event: Event): string | null {
-    if (event.kind === "mouse" && (event as PlushieMouseEvent).type === "moved") return "mouse:moved"
-    if (event.kind === "sensor" && (event as SensorEvent).type === "resize") return `sensor:${(event as SensorEvent).id}`
-    return null
+    if (event.kind === "mouse" && (event as PlushieMouseEvent).type === "moved")
+      return "mouse:moved";
+    if (event.kind === "sensor" && (event as SensorEvent).type === "resize")
+      return `sensor:${(event as SensorEvent).id}`;
+    return null;
   }
 
   private lookupHandler(widgetId: string, eventType: string): Handler<unknown> | null {
-    const typeMap = this.state.handlerMap.get(widgetId)
-    if (!typeMap) return null
-    return typeMap.get(eventType) ?? null
+    const typeMap = this.state.handlerMap.get(widgetId);
+    if (!typeMap) return null;
+    return typeMap.get(eventType) ?? null;
   }
 
   // =======================================================================
@@ -347,43 +368,43 @@ export class Runtime<M> {
 
   private runUpdate(event: Event, handler?: Handler<unknown>): void {
     try {
-      let result: UpdateResult<M>
+      let result: UpdateResult<M>;
       if (handler) {
-        result = handler(this.state.model, event as WidgetEvent) as UpdateResult<M>
+        result = handler(this.state.model, event as WidgetEvent) as UpdateResult<M>;
       } else if (this.config.update) {
-        result = this.config.update(this.state.model as never, event) as UpdateResult<M>
+        result = this.config.update(this.state.model as never, event) as UpdateResult<M>;
       } else {
-        return
+        return;
       }
 
       // Detect accidental Promise return
       if (result != null && typeof result === "object" && "then" in result) {
         console.error(
           `Handler returned a Promise. Handlers must be synchronous.\n` +
-          `Use Command.async() for async work:\n\n` +
-          `  import { Command } from 'plushie'\n\n` +
-          `  const fetchData = (state) => [\n` +
-          `    { ...state, loading: true },\n` +
-          `    Command.async(async () => fetch(url), 'result'),\n` +
-          `  ]\n`,
-        )
-        return
+            `Use Command.async() for async work:\n\n` +
+            `  import { Command } from 'plushie'\n\n` +
+            `  const fetchData = (state) => [\n` +
+            `    { ...state, loading: true },\n` +
+            `    Command.async(async () => fetch(url), 'result'),\n` +
+            `  ]\n`,
+        );
+        return;
       }
 
-      const [newModel, commands] = this.unwrapResult(result)
-      this.state.model = newModel
-      this.state.consecutiveErrors = 0
-      this.freezeModelIfDev()
+      const [newModel, commands] = this.unwrapResult(result);
+      this.state.model = newModel;
+      this.state.consecutiveErrors = 0;
+      this.freezeModelIfDev();
 
       // Execute commands
       if (commands.length > 0) {
-        this.executeCommands(commands)
+        this.executeCommands(commands);
       }
 
       // Re-render
-      this.renderAndSync(false)
+      this.renderAndSync(false);
     } catch (error) {
-      this.handleUpdateError(error)
+      this.handleUpdateError(error);
     }
   }
 
@@ -393,34 +414,34 @@ export class Runtime<M> {
 
   private renderAndSync(forceSnapshot: boolean): void {
     try {
-      clearHandlers()
-      const viewResult = this.config.view(this.state.model as never)
-      const tree = normalize(viewResult)
+      clearHandlers();
+      const viewResult = this.config.view(this.state.model as never);
+      const tree = normalize(viewResult);
 
       // Extract handlers registered during view()
-      const entries = drainHandlers()
-      this.state.handlerMap = this.buildHandlerMap(entries)
+      const entries = drainHandlers();
+      this.state.handlerMap = this.buildHandlerMap(entries);
 
       // Diff and send
       if (forceSnapshot || this.state.tree === null) {
-        this.send(encodeSnapshot(this.sessionId, tree as unknown as WireMessage))
+        this.send(encodeSnapshot(this.sessionId, tree as unknown as WireMessage));
       } else {
-        const ops = diff(this.state.tree, tree)
+        const ops = diff(this.state.tree, tree);
         if (ops.length > 0) {
-          this.send(encodePatch(this.sessionId, ops as unknown as WirePatchOp[]))
+          this.send(encodePatch(this.sessionId, ops as unknown as WirePatchOp[]));
         }
       }
 
-      this.state.tree = tree
+      this.state.tree = tree;
 
       // Sync subscriptions
-      this.syncSubscriptions()
+      this.syncSubscriptions();
 
       // Sync windows
-      this.syncWindows(tree)
+      this.syncWindows(tree);
     } catch (error) {
-      clearHandlers()
-      this.handleUpdateError(error)
+      clearHandlers();
+      this.handleUpdateError(error);
     }
   }
 
@@ -429,16 +450,16 @@ export class Runtime<M> {
   // =======================================================================
 
   private buildHandlerMap(entries: HandlerEntry[]): Map<string, Map<string, Handler<unknown>>> {
-    const map = new Map<string, Map<string, Handler<unknown>>>()
+    const map = new Map<string, Map<string, Handler<unknown>>>();
     for (const entry of entries) {
-      let typeMap = map.get(entry.widgetId)
+      let typeMap = map.get(entry.widgetId);
       if (!typeMap) {
-        typeMap = new Map()
-        map.set(entry.widgetId, typeMap)
+        typeMap = new Map();
+        map.set(entry.widgetId, typeMap);
       }
-      typeMap.set(entry.eventType, entry.handler)
+      typeMap.set(entry.eventType, entry.handler);
     }
-    return map
+    return map;
   }
 
   // =======================================================================
@@ -447,75 +468,79 @@ export class Runtime<M> {
 
   private syncSubscriptions(): void {
     const subs = this.config.subscriptions
-      ? this.config.subscriptions(this.state.model as never)
+      ? this.config
+          .subscriptions(this.state.model as never)
           .filter((s): s is Subscription => s !== false && s !== null && s !== undefined)
-      : []
+      : [];
 
-    const newKeys = new Map<string, Subscription>()
+    const newKeys = new Map<string, Subscription>();
     for (const sub of subs) {
-      newKeys.set(SubscriptionMod.key(sub), sub)
+      newKeys.set(SubscriptionMod.key(sub), sub);
     }
 
     // Stop removed subscriptions
     for (const oldKey of this.state.subscriptionMap.keys()) {
       if (!newKeys.has(oldKey)) {
-        this.stopSubscription(oldKey)
+        this.stopSubscription(oldKey);
       }
     }
 
     // Start new subscriptions
     for (const [newKey, sub] of newKeys) {
       if (!this.state.subscriptionMap.has(newKey)) {
-        this.startSubscription(newKey, sub)
+        this.startSubscription(newKey, sub);
       }
     }
 
     // Check for max_rate changes on surviving renderer subscriptions
     for (const [key, newSub] of newKeys) {
-      const oldSub = this.state.subscriptionMap.get(key)
+      const oldSub = this.state.subscriptionMap.get(key);
       if (oldSub && oldSub.maxRate !== newSub.maxRate && newSub.type !== "every") {
-        this.send(encodeSubscribe(this.sessionId, newSub.type, newSub.tag, newSub.maxRate))
+        this.send(encodeSubscribe(this.sessionId, newSub.type, newSub.tag, newSub.maxRate));
       }
     }
 
-    this.state.subscriptionMap = newKeys
+    this.state.subscriptionMap = newKeys;
   }
 
   private startTimerSubscription(key: string, interval: number, tag: string): void {
     const tick = () => {
-      const event: Event = { kind: "timer", tag, timestamp: Date.now() }
-      this.handleEvent(event)
+      const event: Event = { kind: "timer", tag, timestamp: Date.now() };
+      this.handleEvent(event);
       // Re-arm for next tick (Elixir pattern: interval measured from end of processing)
       if (this.state.pendingTimers.has(key)) {
-        this.state.pendingTimers.set(key, setTimeout(tick, interval) as ReturnType<typeof setTimeout>)
+        this.state.pendingTimers.set(
+          key,
+          setTimeout(tick, interval) as ReturnType<typeof setTimeout>,
+        );
       }
-    }
-    this.state.pendingTimers.set(key, setTimeout(tick, interval) as ReturnType<typeof setTimeout>)
+    };
+    this.state.pendingTimers.set(key, setTimeout(tick, interval) as ReturnType<typeof setTimeout>);
   }
 
   private startSubscription(key: string, sub: Subscription): void {
     if (sub.type === "every" && sub.interval !== undefined) {
-      this.startTimerSubscription(key, sub.interval, sub.tag)
+      this.startTimerSubscription(key, sub.interval, sub.tag);
     } else {
       // Renderer subscription: send subscribe message
-      this.send(encodeSubscribe(this.sessionId, sub.type, sub.tag, sub.maxRate))
+      this.send(encodeSubscribe(this.sessionId, sub.type, sub.tag, sub.maxRate));
     }
   }
 
   private stopSubscription(key: string): void {
     // Check if it's a timer
-    const timer = this.state.pendingTimers.get(key)
+    const timer = this.state.pendingTimers.get(key);
     if (timer) {
-      clearTimeout(timer)
-      this.state.pendingTimers.delete(key)
-      return
+      clearTimeout(timer);
+      this.state.pendingTimers.delete(key);
+      return;
     }
 
     // Renderer subscription: extract kind from key
-    const colonIdx = key.indexOf(":")
+    const colonIdx = key.indexOf(":");
     if (colonIdx !== -1) {
-      const kind = key.slice(0, colonIdx)
-      this.send(encodeUnsubscribe(this.sessionId, kind))
+      const kind = key.slice(0, colonIdx);
+      this.send(encodeUnsubscribe(this.sessionId, kind));
     }
   }
 
@@ -524,59 +549,59 @@ export class Runtime<M> {
   // =======================================================================
 
   private syncWindows(tree: WireNode): void {
-    const newWindows = detectWindows(tree)
-    const oldWindows = this.state.windowIds
+    const newWindows = detectWindows(tree);
+    const oldWindows = this.state.windowIds;
     const baseConfig = this.config.windowConfig
       ? this.config.windowConfig(this.state.model as never)
-      : {}
-    const newWindowProps = new Map<string, Record<string, unknown>>()
+      : {};
+    const newWindowProps = new Map<string, Record<string, unknown>>();
 
     // Open new windows
     for (const id of newWindows) {
-      const rawProps = this.extractWindowProps(tree, id)
-      const props = { ...baseConfig, ...rawProps }
-      newWindowProps.set(id, props)
+      const rawProps = this.extractWindowProps(tree, id);
+      const props = { ...baseConfig, ...rawProps };
+      newWindowProps.set(id, props);
       if (!oldWindows.has(id)) {
-        this.send(encodeWindowOp(this.sessionId, "open", id, props))
+        this.send(encodeWindowOp(this.sessionId, "open", id, props));
       }
     }
 
     // Close removed windows
     for (const id of oldWindows) {
       if (!newWindows.has(id)) {
-        this.send(encodeWindowOp(this.sessionId, "close", id, {}))
+        this.send(encodeWindowOp(this.sessionId, "close", id, {}));
       }
     }
 
     // Update surviving windows only if props changed
     for (const id of newWindows) {
       if (oldWindows.has(id)) {
-        const props = newWindowProps.get(id)!
-        const oldProps = this.state.windowProps.get(id)
+        const props = newWindowProps.get(id)!;
+        const oldProps = this.state.windowProps.get(id);
         if (!shallowEqual(props, oldProps)) {
-          this.send(encodeWindowOp(this.sessionId, "update", id, props))
+          this.send(encodeWindowOp(this.sessionId, "update", id, props));
         }
       }
     }
 
-    this.state.windowIds = newWindows
-    this.state.windowProps = newWindowProps
+    this.state.windowIds = newWindows;
+    this.state.windowProps = newWindowProps;
   }
 
   private extractWindowProps(tree: WireNode, windowId: string): Record<string, unknown> {
     // Find the window node
-    let windowNode: WireNode | null = null
+    let windowNode: WireNode | null = null;
     if (tree.id === windowId && tree.type === "window") {
-      windowNode = tree
+      windowNode = tree;
     } else {
       for (const child of tree.children) {
         if (child.id === windowId && child.type === "window") {
-          windowNode = child
-          break
+          windowNode = child;
+          break;
         }
       }
     }
-    return windowNode ? { ...windowNode.props } : {}
+    return windowNode ? { ...windowNode.props } : {};
   }
 
   // =======================================================================
@@ -585,49 +610,49 @@ export class Runtime<M> {
 
   private executeCommands(commands: Command[]): void {
     for (const cmd of commands) {
-      this.executeCommand(cmd)
+      this.executeCommand(cmd);
     }
   }
 
   private executeCommand(cmd: Command): void {
     switch (cmd.type) {
       case "none":
-        break
+        break;
 
       case "batch": {
-        const nested = cmd.payload["commands"] as Command[] | undefined
-        if (nested) this.executeCommands(nested)
-        break
+        const nested = cmd.payload["commands"] as Command[] | undefined;
+        if (nested) this.executeCommands(nested);
+        break;
       }
 
       case "exit":
-        this.stop()
-        break
+        this.stop();
+        break;
 
       case "async":
-        this.executeAsync(cmd)
-        break
+        this.executeAsync(cmd);
+        break;
 
       case "stream":
-        this.executeStream(cmd)
-        break
+        this.executeStream(cmd);
+        break;
 
       case "cancel":
-        this.cancelAsync(cmd.payload["tag"] as string)
-        break
+        this.cancelAsync(cmd.payload["tag"] as string);
+        break;
 
       case "send_after": {
-        const delay = cmd.payload["delay"] as number
-        const event = cmd.payload["event"] as Event
-        const timerKey = `send_after:${JSON.stringify(event)}`
-        const existing = this.state.pendingTimers.get(timerKey)
-        if (existing) clearTimeout(existing)
+        const delay = cmd.payload["delay"] as number;
+        const event = cmd.payload["event"] as Event;
+        const timerKey = `send_after:${JSON.stringify(event)}`;
+        const existing = this.state.pendingTimers.get(timerKey);
+        if (existing) clearTimeout(existing);
         const timer = setTimeout(() => {
-          this.state.pendingTimers.delete(timerKey)
-          this.handleEvent(event)
-        }, delay)
-        this.state.pendingTimers.set(timerKey, timer)
-        break
+          this.state.pendingTimers.delete(timerKey);
+          this.handleEvent(event);
+        }, delay);
+        this.state.pendingTimers.set(timerKey, timer);
+        break;
       }
 
       case "focus":
@@ -654,193 +679,211 @@ export class Runtime<M> {
       case "load_font":
       case "list_images":
       case "clear_images":
-        this.send(encodeWidgetOp(this.sessionId, cmd.type, cmd.payload as Record<string, unknown>))
-        break
+        this.send(encodeWidgetOp(this.sessionId, cmd.type, cmd.payload as Record<string, unknown>));
+        break;
 
       case "window_op":
-        this.send(encodeWindowOp(
-          this.sessionId,
-          cmd.payload["op"] as string,
-          cmd.payload["window_id"] as string,
-          cmd.payload as Record<string, unknown>,
-        ))
-        break
+        this.send(
+          encodeWindowOp(
+            this.sessionId,
+            cmd.payload["op"] as string,
+            cmd.payload["window_id"] as string,
+            cmd.payload as Record<string, unknown>,
+          ),
+        );
+        break;
 
       case "window_query":
-        this.send(encodeWindowOp(
-          this.sessionId,
-          cmd.payload["op"] as string,
-          cmd.payload["window_id"] as string,
-          cmd.payload as Record<string, unknown>,
-        ))
-        break
+        this.send(
+          encodeWindowOp(
+            this.sessionId,
+            cmd.payload["op"] as string,
+            cmd.payload["window_id"] as string,
+            cmd.payload as Record<string, unknown>,
+          ),
+        );
+        break;
 
       case "done": {
-        const value = cmd.payload["value"]
-        const mapper = cmd.payload["mapper"] as ((v: unknown) => unknown) | undefined
+        const value = cmd.payload["value"];
+        const mapper = cmd.payload["mapper"] as ((v: unknown) => unknown) | undefined;
         if (mapper) {
-          const mappedValue = mapper(value)
+          const mappedValue = mapper(value);
           // Defer to match Elixir's mailbox-based dispatch
           queueMicrotask(() => {
             if (this.config.update) {
-              this.runUpdate(mappedValue as Event)
+              this.runUpdate(mappedValue as Event);
             }
-          })
+          });
         }
-        break
+        break;
       }
 
       case "effect":
-        this.executeEffect(cmd)
-        break
+        this.executeEffect(cmd);
+        break;
 
       case "image_op":
-        this.send(encodeImageOp(this.sessionId, cmd.payload["op"] as string, cmd.payload as Record<string, unknown>))
-        break
+        this.send(
+          encodeImageOp(
+            this.sessionId,
+            cmd.payload["op"] as string,
+            cmd.payload as Record<string, unknown>,
+          ),
+        );
+        break;
 
       case "extension_command":
-        this.send(encodeExtensionCommand(
-          this.sessionId,
-          cmd.payload["node_id"] as string,
-          cmd.payload["op"] as string,
-          (cmd.payload["payload"] as Record<string, unknown> | undefined) ?? {},
-        ))
-        break
+        this.send(
+          encodeExtensionCommand(
+            this.sessionId,
+            cmd.payload["node_id"] as string,
+            cmd.payload["op"] as string,
+            (cmd.payload["payload"] as Record<string, unknown> | undefined) ?? {},
+          ),
+        );
+        break;
 
       case "extension_commands":
-        this.send(encodeExtensionCommands(
-          this.sessionId,
-          cmd.payload["commands"] as Array<{ nodeId: string; op: string; payload?: Record<string, unknown> }>,
-        ))
-        break
+        this.send(
+          encodeExtensionCommands(
+            this.sessionId,
+            cmd.payload["commands"] as Array<{
+              nodeId: string;
+              op: string;
+              payload?: Record<string, unknown>;
+            }>,
+          ),
+        );
+        break;
 
       case "advance_frame":
-        this.send(encodeAdvanceFrame(this.sessionId, cmd.payload["timestamp"] as number))
-        break
+        this.send(encodeAdvanceFrame(this.sessionId, cmd.payload["timestamp"] as number));
+        break;
 
       default:
         // Unknown command type -- send as widget_op
-        this.send(encodeWidgetOp(this.sessionId, cmd.type, cmd.payload as Record<string, unknown>))
+        this.send(encodeWidgetOp(this.sessionId, cmd.type, cmd.payload as Record<string, unknown>));
     }
   }
 
   // -- Async command execution --
 
   private executeAsync(cmd: Command): void {
-    const fn = cmd.payload["fn"] as (signal: AbortSignal) => Promise<unknown>
-    const tag = cmd.payload["tag"] as string
+    const fn = cmd.payload["fn"] as (signal: AbortSignal) => Promise<unknown>;
+    const tag = cmd.payload["tag"] as string;
 
     // Cancel existing task with same tag
-    this.cancelAsync(tag)
+    this.cancelAsync(tag);
 
-    const controller = new AbortController()
-    const nonce = ++this.nextNonce
-    this.state.asyncTasks.set(tag, { controller, nonce })
+    const controller = new AbortController();
+    const nonce = ++this.nextNonce;
+    this.state.asyncTasks.set(tag, { controller, nonce });
 
     void fn(controller.signal)
       .then((value) => {
-        const current = this.state.asyncTasks.get(tag)
-        if (!current || current.nonce !== nonce) return // stale
-        this.state.asyncTasks.delete(tag)
+        const current = this.state.asyncTasks.get(tag);
+        if (!current || current.nonce !== nonce) return; // stale
+        this.state.asyncTasks.delete(tag);
         this.handleEvent({
           kind: "async",
           tag,
           result: { ok: true, value },
-        })
+        });
       })
       .catch((error: unknown) => {
-        const current = this.state.asyncTasks.get(tag)
-        if (!current || current.nonce !== nonce) return // stale
-        this.state.asyncTasks.delete(tag)
+        const current = this.state.asyncTasks.get(tag);
+        if (!current || current.nonce !== nonce) return; // stale
+        this.state.asyncTasks.delete(tag);
         this.handleEvent({
           kind: "async",
           tag,
           result: { ok: false, error },
-        })
-      })
+        });
+      });
   }
 
   private executeStream(cmd: Command): void {
-    const fn = cmd.payload["fn"] as (signal: AbortSignal) => AsyncIterable<unknown>
-    const tag = cmd.payload["tag"] as string
+    const fn = cmd.payload["fn"] as (signal: AbortSignal) => AsyncIterable<unknown>;
+    const tag = cmd.payload["tag"] as string;
 
-    this.cancelAsync(tag)
+    this.cancelAsync(tag);
 
-    const controller = new AbortController()
-    const nonce = ++this.nextNonce
-    this.state.asyncTasks.set(tag, { controller, nonce })
+    const controller = new AbortController();
+    const nonce = ++this.nextNonce;
+    this.state.asyncTasks.set(tag, { controller, nonce });
 
     const run = async () => {
       try {
         for await (const value of fn(controller.signal)) {
-          const current = this.state.asyncTasks.get(tag)
-          if (!current || current.nonce !== nonce) return
-          this.handleEvent({ kind: "stream", tag, value })
+          const current = this.state.asyncTasks.get(tag);
+          if (!current || current.nonce !== nonce) return;
+          this.handleEvent({ kind: "stream", tag, value });
         }
-        const current = this.state.asyncTasks.get(tag)
-        if (!current || current.nonce !== nonce) return
-        this.state.asyncTasks.delete(tag)
+        const current = this.state.asyncTasks.get(tag);
+        if (!current || current.nonce !== nonce) return;
+        this.state.asyncTasks.delete(tag);
         this.handleEvent({
           kind: "async",
           tag,
           result: { ok: true, value: undefined },
-        })
+        });
       } catch (error) {
-        const current = this.state.asyncTasks.get(tag)
-        if (!current || current.nonce !== nonce) return
-        this.state.asyncTasks.delete(tag)
+        const current = this.state.asyncTasks.get(tag);
+        if (!current || current.nonce !== nonce) return;
+        this.state.asyncTasks.delete(tag);
         this.handleEvent({
           kind: "async",
           tag,
           result: { ok: false, error },
-        })
+        });
       }
-    }
+    };
 
-    void run()
+    void run();
   }
 
   private cancelAsync(tag: string): void {
-    const existing = this.state.asyncTasks.get(tag)
+    const existing = this.state.asyncTasks.get(tag);
     if (existing) {
-      existing.controller.abort()
-      this.state.asyncTasks.delete(tag)
+      existing.controller.abort();
+      this.state.asyncTasks.delete(tag);
     }
   }
 
   // -- Effect execution --
 
   private executeEffect(cmd: Command): void {
-    const id = cmd.payload["id"] as string
-    const kind = cmd.payload["kind"] as string
-    const payload = (cmd.payload["payload"] as Record<string, unknown>) ?? {}
-    const timeout = (cmd.payload["timeout"] as number | undefined) ?? 30_000
+    const id = cmd.payload["id"] as string;
+    const kind = cmd.payload["kind"] as string;
+    const payload = (cmd.payload["payload"] as Record<string, unknown>) ?? {};
+    const timeout = (cmd.payload["timeout"] as number | undefined) ?? 30_000;
 
-    this.send(encodeEffect(this.sessionId, id, kind, payload))
+    this.send(encodeEffect(this.sessionId, id, kind, payload));
 
     // Start timeout timer
     const timer = setTimeout(() => {
-      this.state.pendingEffects.delete(id)
+      this.state.pendingEffects.delete(id);
       this.handleEvent({
         kind: "effect",
         requestId: id,
         status: "error",
         result: null,
         error: "timeout",
-      })
-    }, timeout)
-    this.state.pendingEffects.set(id, timer)
+      });
+    }, timeout);
+    this.state.pendingEffects.set(id, timer);
   }
 
   private handleEffectResponse(response: DecodedResponse): void {
-    if (response.type !== "effect_response") return
-    const id = response.id
+    if (response.type !== "effect_response") return;
+    const id = response.id;
 
     // Cancel timeout
-    const timer = this.state.pendingEffects.get(id)
+    const timer = this.state.pendingEffects.get(id);
     if (timer) {
-      clearTimeout(timer)
-      this.state.pendingEffects.delete(id)
+      clearTimeout(timer);
+      this.state.pendingEffects.delete(id);
     }
 
     // Dispatch as event
@@ -850,17 +893,17 @@ export class Runtime<M> {
       status: response.status as "ok" | "cancelled" | "error",
       result: response.result,
       error: typeof response.error === "string" ? response.error : null,
-    })
+    });
   }
 
   private handleOpQueryResponse(response: DecodedResponse): void {
-    if (response.type !== "op_query_response") return
+    if (response.type !== "op_query_response") return;
     this.handleEvent({
       kind: "system",
       type: response.kind,
       tag: response.tag,
       data: response.data,
-    })
+    });
   }
 
   // =======================================================================
@@ -868,44 +911,41 @@ export class Runtime<M> {
   // =======================================================================
 
   private handleUpdateError(error: unknown): void {
-    this.state.consecutiveErrors++
-    const count = this.state.consecutiveErrors
+    this.state.consecutiveErrors++;
+    const count = this.state.consecutiveErrors;
 
     if (count <= 10) {
-      console.error(`[plushie] Error in update cycle:`, error)
+      console.error(`[plushie] Error in update cycle:`, error);
     } else if (count <= 100) {
       if (count % 10 === 0) {
-        console.debug(`[plushie] ${String(count)} consecutive errors (suppressing details)`)
+        console.debug(`[plushie] ${String(count)} consecutive errors (suppressing details)`);
       }
     } else if (count === 101) {
-      console.warn(`[plushie] 100 consecutive errors -- suppressing further logs`)
+      console.warn(`[plushie] 100 consecutive errors -- suppressing further logs`);
     } else if (count % 1000 === 0) {
-      console.warn(`[plushie] ${String(count)} consecutive errors`)
+      console.warn(`[plushie] ${String(count)} consecutive errors`);
     }
   }
 
   private handleRendererClose(reason: string): void {
-    console.warn(`[plushie] Renderer closed: ${reason}`)
+    console.warn(`[plushie] Renderer closed: ${reason}`);
 
     // Flush pending effects with error events
     for (const [id, timer] of this.state.pendingEffects) {
-      clearTimeout(timer)
+      clearTimeout(timer);
       this.dispatchEvent({
         kind: "effect",
         requestId: id,
         status: "error",
         result: null,
         error: "renderer_restarted",
-      } as EffectEvent)
+      } as EffectEvent);
     }
-    this.state.pendingEffects.clear()
+    this.state.pendingEffects.clear();
 
     if (this.config.handleRendererExit) {
       try {
-        this.state.model = this.config.handleRendererExit(
-          this.state.model as never,
-          reason,
-        )
+        this.state.model = this.config.handleRendererExit(this.state.model as never, reason);
       } catch {
         // Ignore errors in exit handler
       }
@@ -913,55 +953,52 @@ export class Runtime<M> {
 
     // Attempt restart if we have a factory and haven't exhausted retries
     if (this.transportFactory && this.state.restartCount < this.maxRestarts) {
-      this.scheduleRestart()
+      this.scheduleRestart();
     }
   }
 
   private scheduleRestart(): void {
-    const delay = Math.min(
-      this.restartBaseMs * Math.pow(2, this.state.restartCount),
-      this.restartMaxMs,
-    )
-    this.state.restartCount++
+    const delay = Math.min(this.restartBaseMs * 2 ** this.state.restartCount, this.restartMaxMs);
+    this.state.restartCount++;
 
     console.warn(
       `[plushie] Restarting renderer in ${String(delay)}ms ` +
-      `(attempt ${String(this.state.restartCount)}/${String(this.maxRestarts)})`,
-    )
+        `(attempt ${String(this.state.restartCount)}/${String(this.maxRestarts)})`,
+    );
 
     setTimeout(() => {
       void (async () => {
         try {
-          this.transport = this.transportFactory!()
-          this.transport.onMessage((raw) => this.handleRawMessage(raw))
+          this.transport = this.transportFactory!();
+          this.transport.onMessage((raw) => this.handleRawMessage(raw));
           this.transport.onClose((r) => {
-            if (!this.stopped) this.handleRendererClose(r)
-          })
+            if (!this.stopped) this.handleRendererClose(r);
+          });
 
           // Re-send settings and await hello
-          const settings = this.buildSettings()
-          this.send(encodeSettings(this.sessionId, settings))
-          await this.awaitHello()
+          const settings = this.buildSettings();
+          this.send(encodeSettings(this.sessionId, settings));
+          await this.awaitHello();
 
           // Re-send full snapshot (force by clearing previous tree)
-          this.state.tree = null
-          this.renderAndSync(true)
+          this.state.tree = null;
+          this.renderAndSync(true);
 
           // Re-sync subscriptions by resetting tracked keys so all are re-sent
-          this.state.subscriptionMap = new Map()
-          this.syncSubscriptions()
+          this.state.subscriptionMap = new Map();
+          this.syncSubscriptions();
 
           // Reset restart counter on success
-          this.state.restartCount = 0
-          console.info("[plushie] Renderer restarted successfully")
+          this.state.restartCount = 0;
+          console.info("[plushie] Renderer restarted successfully");
         } catch (err) {
-          console.error("[plushie] Restart failed:", err)
+          console.error("[plushie] Restart failed:", err);
           if (this.state.restartCount < this.maxRestarts) {
-            this.scheduleRestart()
+            this.scheduleRestart();
           }
         }
-      })()
-    }, delay)
+      })();
+    }, delay);
   }
 
   // =======================================================================
@@ -970,21 +1007,25 @@ export class Runtime<M> {
 
   private unwrapResult(result: UpdateResult<M>): [M, Command[]] {
     if (Array.isArray(result) && result.length === 2) {
-      const second = result[1]
-      if (second != null && typeof second === "object" && COMMAND in (second as Record<symbol, unknown>)) {
-        return [result[0] as M, [second as Command]]
+      const second = result[1];
+      if (
+        second != null &&
+        typeof second === "object" &&
+        COMMAND in (second as Record<symbol, unknown>)
+      ) {
+        return [result[0] as M, [second as Command]];
       }
       if (Array.isArray(second)) {
-        return [result[0] as M, second as Command[]]
+        return [result[0] as M, second as Command[]];
       }
     }
-    return [result as M, []]
+    return [result as M, []];
   }
 
   private freezeModelIfDev(): void {
     if (process.env["NODE_ENV"] !== "production") {
       try {
-        deepFreeze(this.state.model)
+        deepFreeze(this.state.model);
       } catch {
         // Some objects can't be frozen (e.g., class instances with non-configurable props)
       }
@@ -993,18 +1034,18 @@ export class Runtime<M> {
 
   private send(msg: WireMessage): void {
     if (!this.stopped) {
-      this.transport.send(msg as Record<string, unknown>)
+      this.transport.send(msg as Record<string, unknown>);
     }
   }
 }
 
 /** Recursively freeze an object (dev mode only). */
 function deepFreeze(obj: unknown): void {
-  if (obj === null || typeof obj !== "object") return
-  if (Object.isFrozen(obj)) return
-  Object.freeze(obj)
+  if (obj === null || typeof obj !== "object") return;
+  if (Object.isFrozen(obj)) return;
+  Object.freeze(obj);
   for (const value of Object.values(obj as Record<string, unknown>)) {
-    deepFreeze(value)
+    deepFreeze(value);
   }
 }
 
@@ -1013,13 +1054,13 @@ function shallowEqual(
   a: Record<string, unknown> | undefined,
   b: Record<string, unknown> | undefined,
 ): boolean {
-  if (a === b) return true
-  if (!a || !b) return false
-  const keysA = Object.keys(a)
-  const keysB = Object.keys(b)
-  if (keysA.length !== keysB.length) return false
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
   for (const key of keysA) {
-    if (a[key] !== b[key]) return false
+    if (a[key] !== b[key]) return false;
   }
-  return true
+  return true;
 }

@@ -7,48 +7,65 @@
 // - Data.query() for full-text search across fields
 // - View helper extraction (viewList, viewEdit)
 
-import { app, Selection, UndoStack, Route, Data, isClick, isInput, isToggle } from '../src/index.js'
-import type { Event, UINode } from '../src/index.js'
-import type { Selection as SelectionState } from '../src/selection.js'
-import type { UndoStack as UndoStackState } from '../src/undo.js'
-import type { Route as RouteState } from '../src/route.js'
+import type { Event, UINode } from "../src/index.js";
 import {
-  window, column, row, text, button, textInput, textEditor, scrollable, checkbox,
-} from '../src/ui/index.js'
+  app,
+  Data,
+  isClick,
+  isInput,
+  isToggle,
+  Route,
+  Selection,
+  UndoStack,
+} from "../src/index.js";
+import type { Route as RouteState } from "../src/route.js";
+import type { Selection as SelectionState } from "../src/selection.js";
+import {
+  button,
+  checkbox,
+  column,
+  row,
+  scrollable,
+  text,
+  textEditor,
+  textInput,
+  window,
+} from "../src/ui/index.js";
+import type { UndoStack as UndoStackState } from "../src/undo.js";
 
 // -- Types --------------------------------------------------------------------
 
 interface Note {
-  id: number
-  title: string
-  body: string
+  id: number;
+  title: string;
+  body: string;
 }
 
 interface EditorModel {
-  title: string
-  text: string
+  title: string;
+  text: string;
 }
 
 interface Model {
-  notes: Note[]
-  nextId: number
-  searchQuery: string
-  editingId: number | null
-  selection: SelectionState
-  undo: UndoStackState<EditorModel>
-  route: RouteState
+  notes: Note[];
+  nextId: number;
+  searchQuery: string;
+  editingId: number | null;
+  selection: SelectionState;
+  undo: UndoStackState<EditorModel>;
+  route: RouteState;
 }
 
 // -- Helpers ------------------------------------------------------------------
 
 function saveCurrentEdit(model: Model): Model {
-  if (model.editingId === null) return model
+  if (model.editingId === null) return model;
 
-  const current = UndoStack.current(model.undo)
+  const current = UndoStack.current(model.undo);
   const notes = model.notes.map((n) =>
     n.id === model.editingId ? { ...n, title: current.title, body: current.text } : n,
-  )
-  return { ...model, notes }
+  );
+  return { ...model, notes };
 }
 
 // -- View helpers -------------------------------------------------------------
@@ -57,9 +74,9 @@ function viewList(model: Model): UINode {
   const filtered =
     model.searchQuery === ""
       ? model.notes
-      : Data.query(model.notes as unknown as Record<string, unknown>[], {
+      : (Data.query(model.notes as unknown as Record<string, unknown>[], {
           search: { fields: ["title", "body"], query: model.searchQuery },
-        }).entries as unknown as Note[]
+        }).entries as unknown as Note[]);
 
   return window("main", { title: "Notes" }, [
     column({ padding: 16, spacing: 12, width: "fill" }, [
@@ -68,12 +85,17 @@ function viewList(model: Model): UINode {
       textInput("search", model.searchQuery, { placeholder: "Search notes..." }),
 
       scrollable({ id: "notes_list", height: "fill" }, [
-        column({ spacing: 4, width: "fill" },
+        column(
+          { spacing: 4, width: "fill" },
           filtered.map((note) =>
             row({ id: `note_row:${note.id}`, spacing: 8, width: "fill" }, [
-              checkbox(`note_select:${note.id}`, Selection.isSelected(model.selection, String(note.id)), {
-                label: note.title,
-              }),
+              checkbox(
+                `note_select:${note.id}`,
+                Selection.isSelected(model.selection, String(note.id)),
+                {
+                  label: note.title,
+                },
+              ),
               button(`note:${note.id}`, "Edit"),
             ]),
           ),
@@ -85,24 +107,20 @@ function viewList(model: Model): UINode {
         button("delete_selected", "Delete Selected"),
       ]),
     ]),
-  ])
+  ]);
 }
 
 function viewEdit(model: Model): UINode {
-  const current = UndoStack.current(model.undo)
+  const current = UndoStack.current(model.undo);
 
   return window("main", { title: "Edit Note" }, [
     column({ padding: 16, spacing: 12, width: "fill" }, [
-      row({ spacing: 8 }, [
-        button("back", "Back"),
-        button("undo", "Undo"),
-        button("redo", "Redo"),
-      ]),
+      row({ spacing: 8 }, [button("back", "Back"), button("undo", "Undo"), button("redo", "Redo")]),
 
       textInput("title", current.title, { placeholder: "Note title" }),
       textEditor("body", { content: current.text, width: "fill", height: "fill" }),
     ]),
-  ])
+  ]);
 }
 
 // -- App ----------------------------------------------------------------------
@@ -124,8 +142,8 @@ export default app<Model>({
 
   update(state, event: Event) {
     if (isClick(event, "new_note")) {
-      const id = state.nextId
-      const note: Note = { id, title: "", body: "" }
+      const id = state.nextId;
+      const note: Note = { id, title: "", body: "" };
       return {
         ...state,
         notes: [...state.notes, note],
@@ -133,49 +151,49 @@ export default app<Model>({
         editingId: id,
         undo: UndoStack.createUndoStack({ title: "", text: "" }),
         route: Route.push(state.route, "/edit"),
-      }
+      };
     }
 
     if (isClick(event)) {
-      const noteMatch = event.id.match(/^note:(\d+)$/)
+      const noteMatch = event.id.match(/^note:(\d+)$/);
       if (noteMatch) {
-        const id = Number(noteMatch[1])
-        const note = state.notes.find((n) => n.id === id)
-        if (!note) return state
+        const id = Number(noteMatch[1]);
+        const note = state.notes.find((n) => n.id === id);
+        if (!note) return state;
         return {
           ...state,
           editingId: id,
           undo: UndoStack.createUndoStack({ title: note.title, text: note.body }),
           route: Route.push(state.route, "/edit"),
-        }
+        };
       }
     }
 
     if (isClick(event, "back")) {
-      const saved = saveCurrentEdit(state)
+      const saved = saveCurrentEdit(state);
       return {
         ...saved,
         editingId: null,
         route: Route.pop(saved.route),
-      }
+      };
     }
 
     if (isClick(event, "delete_selected")) {
-      const sel = Selection.selected(state.selection)
+      const sel = Selection.selected(state.selection);
       return {
         ...state,
         notes: state.notes.filter((n) => !sel.has(String(n.id))),
         selection: Selection.clear(state.selection),
-      }
+      };
     }
 
     if (isInput(event, "search")) {
-      return { ...state, searchQuery: String(event.value) }
+      return { ...state, searchQuery: String(event.value) };
     }
 
     if (isInput(event, "title")) {
-      const oldTitle = UndoStack.current(state.undo).title
-      const value = String(event.value)
+      const oldTitle = UndoStack.current(state.undo).title;
+      const value = String(event.value);
       return {
         ...state,
         undo: UndoStack.applyCommand(state.undo, {
@@ -183,12 +201,12 @@ export default app<Model>({
           undo: (c) => ({ ...c, title: oldTitle }),
           label: "edit title",
         }),
-      }
+      };
     }
 
     if (isInput(event, "body")) {
-      const oldText = UndoStack.current(state.undo).text
-      const value = String(event.value)
+      const oldText = UndoStack.current(state.undo).text;
+      const value = String(event.value);
       return {
         ...state,
         undo: UndoStack.applyCommand(state.undo, {
@@ -196,28 +214,28 @@ export default app<Model>({
           undo: (c) => ({ ...c, text: oldText }),
           label: "edit body",
         }),
-      }
+      };
     }
 
     if (isClick(event, "undo")) {
-      return { ...state, undo: UndoStack.undo(state.undo) }
+      return { ...state, undo: UndoStack.undo(state.undo) };
     }
 
     if (isClick(event, "redo")) {
-      return { ...state, undo: UndoStack.redo(state.undo) }
+      return { ...state, undo: UndoStack.redo(state.undo) };
     }
 
     if (isToggle(event)) {
-      const selectMatch = event.id.match(/^note_select:(\d+)$/)
+      const selectMatch = event.id.match(/^note_select:(\d+)$/);
       if (selectMatch) {
         return {
           ...state,
           selection: Selection.toggle(state.selection, selectMatch[1]!),
-        }
+        };
       }
     }
 
-    return state
+    return state;
   },
 
   // -- View -------------------------------------------------------------------
@@ -225,9 +243,9 @@ export default app<Model>({
   view: (s) => {
     switch (Route.currentPath(s.route)) {
       case "/edit":
-        return viewEdit(s)
+        return viewEdit(s);
       default:
-        return viewList(s)
+        return viewList(s);
     }
   },
-})
+});

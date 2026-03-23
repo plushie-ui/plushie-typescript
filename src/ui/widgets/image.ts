@@ -4,79 +4,83 @@
  * @module
  */
 
-import type { UINode } from "../../types.js"
-import type { Length, ContentFit, FilterMethod, A11y } from "../types.js"
-import { encodeLength, encodeA11y } from "../types.js"
-import { leafNode, putIf, autoId } from "../build.js"
+import type { UINode } from "../../types.js";
+import { autoId, leafNode, putIf } from "../build.js";
+import type { A11y, ContentFit, FilterMethod, Length } from "../types.js";
+import { encodeA11y, encodeLength } from "../types.js";
 
 /** Props for the Image widget. */
 export interface ImageProps {
   /** Unique widget identifier. */
-  id?: string
+  id?: string;
   /** Image source: a file path string or an in-memory handle reference. */
-  source: string | { handle: string }
+  source: string | { handle: string };
   /** Width of the image. */
-  width?: Length
+  width?: Length;
   /** Height of the image. */
-  height?: Length
+  height?: Length;
   /** How the image fits within its bounds ("contain", "cover", "fill", "none", "scale_down"). */
-  contentFit?: ContentFit
+  contentFit?: ContentFit;
   /** Pixel sampling method ("nearest" or "linear"). */
-  filterMethod?: FilterMethod
+  filterMethod?: FilterMethod;
   /** Rotation angle in radians. */
-  rotation?: number
+  rotation?: number;
   /** Opacity from 0.0 (transparent) to 1.0 (opaque). */
-  opacity?: number
+  opacity?: number;
   /** Border radius in pixels for rounded corners. */
-  borderRadius?: number
+  borderRadius?: number;
   /** When true, expands the image to fill available space. */
-  expand?: boolean
+  expand?: boolean;
   /** Scale factor applied to the image. */
-  scale?: number
+  scale?: number;
   /** Crop rectangle defining a sub-region of the source image. */
-  crop?: { x: number; y: number; width: number; height: number }
+  crop?: { x: number; y: number; width: number; height: number };
   /** Accessible label announced by screen readers. */
-  alt?: string
+  alt?: string;
   /** Extended accessible description. */
-  description?: string
+  description?: string;
   /** When true, hides the image from assistive technology. Use for purely visual images. */
-  decorative?: boolean
+  decorative?: boolean;
   /** Accessibility properties. */
-  a11y?: A11y
+  a11y?: A11y;
 }
 
 export function Image(props: ImageProps): UINode {
-  const id = props.id ?? autoId("image")
-  const p: Record<string, unknown> = { source: props.source }
-  putIf(p, props.width, "width", encodeLength)
-  putIf(p, props.height, "height", encodeLength)
-  putIf(p, props.contentFit, "content_fit")
-  putIf(p, props.filterMethod, "filter_method")
-  putIf(p, props.rotation, "rotation")
-  putIf(p, props.opacity, "opacity")
-  putIf(p, props.borderRadius, "border_radius")
-  putIf(p, props.expand, "expand")
-  putIf(p, props.scale, "scale")
-  putIf(p, props.crop, "crop")
-  putIf(p, props.alt, "alt")
-  putIf(p, props.description, "description")
-  putIf(p, props.decorative, "decorative")
-  putIf(p, props.a11y, "a11y", encodeA11y)
-  return leafNode(id, "image", p)
+  const id = props.id ?? autoId("image");
+  const p: Record<string, unknown> = { source: props.source };
+  putIf(p, props.width, "width", encodeLength);
+  putIf(p, props.height, "height", encodeLength);
+  putIf(p, props.contentFit, "content_fit");
+  putIf(p, props.filterMethod, "filter_method");
+  putIf(p, props.rotation, "rotation");
+  putIf(p, props.opacity, "opacity");
+  putIf(p, props.borderRadius, "border_radius");
+  putIf(p, props.expand, "expand");
+  putIf(p, props.scale, "scale");
+  putIf(p, props.crop, "crop");
+  putIf(p, props.alt, "alt");
+  putIf(p, props.description, "description");
+  putIf(p, props.decorative, "decorative");
+  putIf(p, props.a11y, "a11y", encodeA11y);
+  return leafNode(id, "image", p);
 }
 
-export function image(source: string | { handle: string }): UINode
-export function image(id: string, source: string | { handle: string }, opts?: Omit<ImageProps, "id" | "source">): UINode
+export function image(source: string | { handle: string }): UINode;
+export function image(
+  id: string,
+  source: string | { handle: string },
+  opts?: Omit<ImageProps, "id" | "source">,
+): UINode;
 export function image(
   first: string | { handle: string },
   second?: string | { handle: string } | Omit<ImageProps, "id" | "source">,
   third?: Omit<ImageProps, "id" | "source">,
 ): UINode {
   if (second === undefined) {
-    return Image({ source: first })
+    return Image({ source: first });
   }
   if (typeof second === "string" || (typeof second === "object" && "handle" in second)) {
-    return Image({ id: first as string, source: second, ...third })
+    return Image({ id: first as string, source: second, ...third });
   }
-  return Image({ source: first, ...second })
+  return Image({ source: first, ...second });
 }

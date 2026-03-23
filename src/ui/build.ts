@@ -7,9 +7,9 @@
  * @module
  */
 
-import type { UINode, Handler } from "../types.js"
-import { registerHandler } from "./handlers.js"
-import { autoId } from "../tree/node.js"
+import { autoId } from "../tree/node.js";
+import type { Handler, UINode } from "../types.js";
+import { registerHandler } from "./handlers.js";
 
 /**
  * Add a prop to the accumulator only if the value is not undefined.
@@ -23,9 +23,9 @@ export function putIf(
   encode?: (v: never) => unknown,
 ): Record<string, unknown> {
   if (value !== undefined) {
-    props[key] = encode ? encode(value as never) : value
+    props[key] = encode ? encode(value as never) : value;
   }
-  return props
+  return props;
 }
 
 /**
@@ -36,17 +36,13 @@ export function putIf(
  * @param props - Wire-ready props (already encoded).
  * @returns Frozen UINode.
  */
-export function leafNode(
-  id: string,
-  type: string,
-  props: Record<string, unknown>,
-): UINode {
+export function leafNode(id: string, type: string, props: Record<string, unknown>): UINode {
   return Object.freeze({
     id,
     type,
     props: Object.freeze(props),
     children: Object.freeze([]) as readonly UINode[],
-  })
+  });
 }
 
 /**
@@ -69,7 +65,7 @@ export function containerNode(
     type,
     props: Object.freeze(props),
     children: Object.freeze(children),
-  })
+  });
 }
 
 /**
@@ -88,18 +84,18 @@ export function extractHandlers<T>(
   opts: T,
   handlerMap: Record<string, string>,
 ): T {
-  const clean = { ...opts } as Record<string, unknown>
+  const clean = { ...opts } as Record<string, unknown>;
   for (const [propName, eventType] of Object.entries(handlerMap)) {
-    const handler = clean[propName]
+    const handler = clean[propName];
     if (typeof handler === "function") {
-      registerHandler(widgetId, eventType, handler as Handler<unknown>)
+      registerHandler(widgetId, eventType, handler as Handler<unknown>);
     }
-    delete clean[propName]
+    delete clean[propName];
   }
-  return clean as T
+  return clean as T;
 }
 
 /**
  * Generate an auto-ID for display widgets that don't need explicit IDs.
  */
-export { autoId }
+export { autoId };

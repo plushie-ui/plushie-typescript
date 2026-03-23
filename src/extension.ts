@@ -12,10 +12,10 @@
  * @module
  */
 
-import type { UINode, Command, Handler } from "./types.js"
-import { COMMAND } from "./types.js"
-import { registerHandler } from "./ui/handlers.js"
-import { autoId } from "./tree/node.js"
+import { autoId } from "./tree/node.js";
+import type { Command, Handler, UINode } from "./types.js";
+import { COMMAND } from "./types.js";
+import { registerHandler } from "./ui/handlers.js";
 
 /**
  * Supported property types for extension widget props.
@@ -37,32 +37,32 @@ export type ExtensionPropType =
   | "font"
   | "style"
   | "any"
-  | { list: string }
+  | { list: string };
 
 /** Configuration for defining an extension widget. */
 export interface ExtensionWidgetConfig {
   /** Wire type name for the extension (e.g., "sparkline", "color_wheel"). */
-  readonly type: string
+  readonly type: string;
   /** Declared props with their types. Values are validated at build time. */
-  readonly props?: Readonly<Record<string, ExtensionPropType>>
+  readonly props?: Readonly<Record<string, ExtensionPropType>>;
   /** Event names this widget can emit (e.g., ["change", "hover"]). */
-  readonly events?: readonly string[]
+  readonly events?: readonly string[];
   /** If true, the widget accepts children (container widget). */
-  readonly container?: boolean
+  readonly container?: boolean;
   /** Command names this extension supports (native_widget only). */
-  readonly commands?: readonly string[]
+  readonly commands?: readonly string[];
   /**
    * Path to the Rust crate for native widget extensions (relative to project root).
    * Required for `npx plushie build` to include this extension in the custom binary.
    * The crate must implement the `WidgetExtension` trait from `plushie_core`.
    */
-  readonly rustCrate?: string
+  readonly rustCrate?: string;
   /**
    * Rust constructor expression for registering the extension.
    * Called in the generated main.rs via `.extension(constructor)`.
    * Example: `"MyExtension::new()"` or `"sparkline::SparklineExtension::new()"`
    */
-  readonly rustConstructor?: string
+  readonly rustConstructor?: string;
 }
 
 /**
@@ -71,13 +71,13 @@ export interface ExtensionWidgetConfig {
  */
 export interface ExtensionBuildConfig {
   /** List of extension widget configs to include in the custom binary. */
-  readonly extensions: readonly ExtensionWidgetConfig[]
+  readonly extensions: readonly ExtensionWidgetConfig[];
   /** Path to the plushie Rust source checkout. */
-  readonly sourcePath: string
+  readonly sourcePath: string;
   /** Custom binary name (defaults to "plushie-custom"). */
-  readonly binaryName?: string
+  readonly binaryName?: string;
   /** Build in release mode. */
-  readonly release?: boolean
+  readonly release?: boolean;
 }
 
 /**
@@ -85,10 +85,8 @@ export interface ExtensionBuildConfig {
  * "click" -> "onClick", "value_change" -> "onValueChange"
  */
 function handlerPropName(eventType: string): string {
-  const camel = eventType.replace(/_([a-z])/g, (_match, letter: string) =>
-    letter.toUpperCase(),
-  )
-  return `on${camel.charAt(0).toUpperCase()}${camel.slice(1)}`
+  const camel = eventType.replace(/_([a-z])/g, (_match, letter: string) => letter.toUpperCase());
+  return `on${camel.charAt(0).toUpperCase()}${camel.slice(1)}`;
 }
 
 /**
@@ -125,46 +123,46 @@ function handlerPropName(eventType: string): string {
 export function defineExtensionWidget(
   config: ExtensionWidgetConfig,
 ): (id: string, opts?: Record<string, unknown>, children?: UINode[]) => UINode {
-  const widgetType = config.type
-  const declaredEvents = config.events ?? []
-  const isContainer = config.container ?? false
+  const widgetType = config.type;
+  const declaredEvents = config.events ?? [];
+  const isContainer = config.container ?? false;
 
   // Build handler prop name -> wire event type mapping
-  const handlerMap = new Map<string, string>()
+  const handlerMap = new Map<string, string>();
   for (const eventType of declaredEvents) {
-    handlerMap.set(handlerPropName(eventType), eventType)
+    handlerMap.set(handlerPropName(eventType), eventType);
   }
 
   return (id: string, opts?: Record<string, unknown>, children?: UINode[]): UINode => {
-    const resolvedId = id === "" ? autoId(widgetType) : id
-    const props: Record<string, unknown> = {}
-    const allOpts = opts ?? {}
+    const resolvedId = id === "" ? autoId(widgetType) : id;
+    const props: Record<string, unknown> = {};
+    const allOpts = opts ?? {};
 
     for (const [key, value] of Object.entries(allOpts)) {
-      if (value === undefined) continue
+      if (value === undefined) continue;
 
       // Check if this is a handler prop
-      const eventType = handlerMap.get(key)
+      const eventType = handlerMap.get(key);
       if (eventType !== undefined) {
         if (typeof value === "function") {
-          registerHandler(resolvedId, eventType, value as Handler<unknown>)
+          registerHandler(resolvedId, eventType, value as Handler<unknown>);
         }
-        continue
+        continue;
       }
 
       // Regular prop -- include in wire props
-      props[key] = value
+      props[key] = value;
     }
 
-    const resolvedChildren = isContainer ? (children ?? []) : []
+    const resolvedChildren = isContainer ? (children ?? []) : [];
 
     return Object.freeze({
       id: resolvedId,
       type: widgetType,
       props: Object.freeze(props),
       children: Object.freeze(resolvedChildren) as readonly UINode[],
-    })
-  }
+    });
+  };
 }
 
 /**
@@ -188,7 +186,7 @@ export function defineExtensionWidget(
 export function extensionCommands(
   config: ExtensionWidgetConfig,
 ): Record<string, (nodeId: string, payload?: Record<string, unknown>) => Command> {
-  const cmds: Record<string, (nodeId: string, payload?: Record<string, unknown>) => Command> = {}
+  const cmds: Record<string, (nodeId: string, payload?: Record<string, unknown>) => Command> = {};
 
   for (const cmdName of config.commands ?? []) {
     cmds[cmdName] = (nodeId: string, payload: Record<string, unknown> = {}): Command =>
@@ -196,10 +194,10 @@ export function extensionCommands(
         [COMMAND]: true as const,
         type: "extension_command",
         payload: Object.freeze({ node_id: nodeId, op: cmdName, payload }),
-      })
+      });
   }
 
-  return cmds
+  return cmds;
 }
 
 // =========================================================================
@@ -218,40 +216,40 @@ export function extensionCommands(
  */
 export function validateExtensions(extensions: readonly ExtensionWidgetConfig[]): void {
   // Check for native build fields
-  const nativeExts = extensions.filter((e) => e.rustCrate || e.rustConstructor)
+  const nativeExts = extensions.filter((e) => e.rustCrate || e.rustConstructor);
   for (const ext of nativeExts) {
     if (!ext.rustCrate) {
-      throw new Error(`Extension "${ext.type}" has rustConstructor but no rustCrate`)
+      throw new Error(`Extension "${ext.type}" has rustConstructor but no rustCrate`);
     }
     if (!ext.rustConstructor) {
-      throw new Error(`Extension "${ext.type}" has rustCrate but no rustConstructor`)
+      throw new Error(`Extension "${ext.type}" has rustCrate but no rustConstructor`);
     }
   }
 
   // Check for type name collisions
-  const typeNames = new Map<string, string>()
+  const typeNames = new Map<string, string>();
   for (const ext of extensions) {
-    const existing = typeNames.get(ext.type)
+    const existing = typeNames.get(ext.type);
     if (existing !== undefined) {
       throw new Error(
         `Extension type name collision: "${ext.type}" is used by multiple extensions`,
-      )
+      );
     }
-    typeNames.set(ext.type, ext.type)
+    typeNames.set(ext.type, ext.type);
   }
 
   // Check for crate name collisions
-  const crateNames = new Map<string, string>()
+  const crateNames = new Map<string, string>();
   for (const ext of nativeExts) {
-    const crateName = ext.rustCrate!.split("/").pop() ?? ext.rustCrate!
-    const existing = crateNames.get(crateName)
+    const crateName = ext.rustCrate!.split("/").pop() ?? ext.rustCrate!;
+    const existing = crateNames.get(crateName);
     if (existing !== undefined) {
       throw new Error(
         `Extension crate name collision: "${crateName}" is used by extensions ` +
-        `"${existing}" and "${ext.type}". Rename one of the crate directories.`,
-      )
+          `"${existing}" and "${ext.type}". Rename one of the crate directories.`,
+      );
     }
-    crateNames.set(crateName, ext.type)
+    crateNames.set(crateName, ext.type);
   }
 }
 
@@ -262,28 +260,28 @@ export function validateExtensions(extensions: readonly ExtensionWidgetConfig[])
  * @returns Cargo.toml content as a string.
  */
 export function generateCargoToml(config: ExtensionBuildConfig): string {
-  const binName = config.binaryName ?? "plushie-custom"
-  const packageName = binName.replace(/-/g, "_")
-  const nativeExts = config.extensions.filter((e) => e.rustCrate)
+  const binName = config.binaryName ?? "plushie-custom";
+  const packageName = binName.replace(/-/g, "_");
+  const nativeExts = config.extensions.filter((e) => e.rustCrate);
 
-  const { resolve, relative, join, basename } = require("node:path") as typeof import("node:path")
-  const buildDir = resolve("node_modules", ".plushie", "build")
+  const { resolve, relative, join, basename } = require("node:path") as typeof import("node:path");
+  const buildDir = resolve("node_modules", ".plushie", "build");
 
   // Plushie core/bin dependencies -- use local source if available
-  const plushieCoreRel = relative(buildDir, join(config.sourcePath, "plushie-core"))
-  const plushieBinRel = relative(buildDir, join(config.sourcePath, "plushie"))
-  const plushieCoreDep = `plushie-core = { path = "${plushieCoreRel}" }`
-  const plushieBinDep = `plushie = { path = "${plushieBinRel}" }`
+  const plushieCoreRel = relative(buildDir, join(config.sourcePath, "plushie-core"));
+  const plushieBinRel = relative(buildDir, join(config.sourcePath, "plushie"));
+  const plushieCoreDep = `plushie-core = { path = "${plushieCoreRel}" }`;
+  const plushieBinDep = `plushie = { path = "${plushieBinRel}" }`;
 
   // Extension crate dependencies
   const extDeps = nativeExts
     .map((ext) => {
-      const cratePath = resolve(ext.rustCrate!)
-      const relPath = relative(buildDir, cratePath)
-      const crateName = basename(cratePath)
-      return `${crateName} = { path = "${relPath}" }`
+      const cratePath = resolve(ext.rustCrate!);
+      const relPath = relative(buildDir, cratePath);
+      const crateName = basename(cratePath);
+      return `${crateName} = { path = "${relPath}" }`;
     })
-    .join("\n")
+    .join("\n");
 
   return `[package]
 name = "${packageName}"
@@ -298,7 +296,7 @@ path = "src/main.rs"
 ${plushieCoreDep}
 ${plushieBinDep}
 ${extDeps}
-`
+`;
 }
 
 /**
@@ -308,23 +306,23 @@ ${extDeps}
  * @returns main.rs content as a string.
  */
 export function generateMainRs(extensions: readonly ExtensionWidgetConfig[]): string {
-  const nativeExts = extensions.filter((e) => e.rustConstructor)
+  const nativeExts = extensions.filter((e) => e.rustConstructor);
 
   // Validate constructors (must be valid Rust identifiers/paths)
-  const constructorPattern = /^[A-Za-z_][A-Za-z0-9_:]*(\([^)]*\))?$/
+  const constructorPattern = /^[A-Za-z_][A-Za-z0-9_:]*(\([^)]*\))?$/;
   for (const ext of nativeExts) {
     if (!constructorPattern.test(ext.rustConstructor!)) {
       throw new Error(
         `Extension "${ext.type}" rustConstructor "${ext.rustConstructor}" ` +
-        `contains invalid characters. Expected a Rust identifier, path (::), ` +
-        `or simple invocation (e.g. "MyExt::new()")`,
-      )
+          `contains invalid characters. Expected a Rust identifier, path (::), ` +
+          `or simple invocation (e.g. "MyExt::new()")`,
+      );
     }
   }
 
   const registrations = nativeExts
     .map((ext) => `        .extension(${ext.rustConstructor})`)
-    .join("\n")
+    .join("\n");
 
   return `// Auto-generated by npx plushie build
 // Do not edit manually.
@@ -336,5 +334,5 @@ fn main() -> iced::Result {
 ${registrations};
     plushie::run(builder)
 }
-`
+`;
 }

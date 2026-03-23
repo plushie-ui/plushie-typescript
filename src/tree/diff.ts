@@ -21,7 +21,7 @@
  * @module
  */
 
-import type { WireNode } from "./normalize.js"
+import type { WireNode } from "./normalize.js";
 
 // =========================================================================
 // Patch operation types
@@ -29,35 +29,35 @@ import type { WireNode } from "./normalize.js"
 
 /** Replace an entire subtree at the given path. */
 export interface ReplaceNode {
-  readonly op: "replace_node"
-  readonly path: readonly number[]
-  readonly node: WireNode
+  readonly op: "replace_node";
+  readonly path: readonly number[];
+  readonly node: WireNode;
 }
 
 /** Merge props into the node at the given path. Null values remove keys. */
 export interface UpdateProps {
-  readonly op: "update_props"
-  readonly path: readonly number[]
-  readonly props: Readonly<Record<string, unknown>>
+  readonly op: "update_props";
+  readonly path: readonly number[];
+  readonly props: Readonly<Record<string, unknown>>;
 }
 
 /** Insert a child at the given index under the parent at path. */
 export interface InsertChild {
-  readonly op: "insert_child"
-  readonly path: readonly number[]
-  readonly index: number
-  readonly node: WireNode
+  readonly op: "insert_child";
+  readonly path: readonly number[];
+  readonly index: number;
+  readonly node: WireNode;
 }
 
 /** Remove the child at the given index under the parent at path. */
 export interface RemoveChild {
-  readonly op: "remove_child"
-  readonly path: readonly number[]
-  readonly index: number
+  readonly op: "remove_child";
+  readonly path: readonly number[];
+  readonly index: number;
 }
 
 /** Union of all patch operation types. */
-export type PatchOp = ReplaceNode | UpdateProps | InsertChild | RemoveChild
+export type PatchOp = ReplaceNode | UpdateProps | InsertChild | RemoveChild;
 
 // =========================================================================
 // Diffing
@@ -83,39 +83,35 @@ export type PatchOp = ReplaceNode | UpdateProps | InsertChild | RemoveChild
  */
 export function diff(oldTree: WireNode | null, newTree: WireNode): PatchOp[] {
   if (oldTree === null) {
-    return [{ op: "replace_node", path: [], node: newTree }]
+    return [{ op: "replace_node", path: [], node: newTree }];
   }
-  return diffNode(oldTree, newTree, [])
+  return diffNode(oldTree, newTree, []);
 }
 
 /**
  * Recursively diff two nodes at the given path.
  */
-function diffNode(
-  oldNode: WireNode,
-  newNode: WireNode,
-  path: readonly number[],
-): PatchOp[] {
+function diffNode(oldNode: WireNode, newNode: WireNode, path: readonly number[]): PatchOp[] {
   // ID mismatch: completely different node
   if (oldNode.id !== newNode.id) {
-    return [{ op: "replace_node", path, node: newNode }]
+    return [{ op: "replace_node", path, node: newNode }];
   }
 
   // Type mismatch: different widget type
   if (oldNode.type !== newNode.type) {
-    return [{ op: "replace_node", path, node: newNode }]
+    return [{ op: "replace_node", path, node: newNode }];
   }
 
   // Check for reorder in children
-  const childResult = diffChildren(oldNode.children, newNode.children, path)
+  const childResult = diffChildren(oldNode.children, newNode.children, path);
   if (childResult === "reordered") {
-    return [{ op: "replace_node", path, node: newNode }]
+    return [{ op: "replace_node", path, node: newNode }];
   }
 
   // Diff props
-  const propOps = diffProps(oldNode.props, newNode.props, path)
+  const propOps = diffProps(oldNode.props, newNode.props, path);
 
-  return [...propOps, ...childResult]
+  return [...propOps, ...childResult];
 }
 
 /**
@@ -127,27 +123,27 @@ function diffProps(
   newProps: Readonly<Record<string, unknown>>,
   path: readonly number[],
 ): PatchOp[] {
-  const changes: Record<string, unknown> = {}
-  let hasChanges = false
+  const changes: Record<string, unknown> = {};
+  let hasChanges = false;
 
   // Check for changed and new props
   for (const key of Object.keys(newProps)) {
     if (!deepEqual(oldProps[key], newProps[key])) {
-      changes[key] = newProps[key]
-      hasChanges = true
+      changes[key] = newProps[key];
+      hasChanges = true;
     }
   }
 
   // Check for removed props (set to null on the wire)
   for (const key of Object.keys(oldProps)) {
     if (!(key in newProps)) {
-      changes[key] = null
-      hasChanges = true
+      changes[key] = null;
+      hasChanges = true;
     }
   }
 
-  if (!hasChanges) return []
-  return [{ op: "update_props", path, props: changes }]
+  if (!hasChanges) return [];
+  return [{ op: "update_props", path, props: changes }];
 }
 
 /**
@@ -160,65 +156,61 @@ function diffChildren(
   path: readonly number[],
 ): PatchOp[] | "reordered" {
   // Build ID -> {node, index} maps
-  const oldById = new Map<string, { node: WireNode; index: number }>()
+  const oldById = new Map<string, { node: WireNode; index: number }>();
   for (let i = 0; i < oldChildren.length; i++) {
-    oldById.set(oldChildren[i]!.id, { node: oldChildren[i]!, index: i })
+    oldById.set(oldChildren[i]!.id, { node: oldChildren[i]!, index: i });
   }
 
-  const newById = new Map<string, { node: WireNode; index: number }>()
+  const newById = new Map<string, { node: WireNode; index: number }>();
   for (let i = 0; i < newChildren.length; i++) {
-    newById.set(newChildren[i]!.id, { node: newChildren[i]!, index: i })
+    newById.set(newChildren[i]!.id, { node: newChildren[i]!, index: i });
   }
 
   // Extract common IDs in their original order
-  const commonOld = oldChildren
-    .filter((c) => newById.has(c.id))
-    .map((c) => c.id)
-  const commonNew = newChildren
-    .filter((c) => oldById.has(c.id))
-    .map((c) => c.id)
+  const commonOld = oldChildren.filter((c) => newById.has(c.id)).map((c) => c.id);
+  const commonNew = newChildren.filter((c) => oldById.has(c.id)).map((c) => c.id);
 
   // Reorder detection: if common children appear in different order,
   // force a full replace of this subtree
   if (commonOld.length !== commonNew.length) {
-    return "reordered" // shouldn't happen, but guard
+    return "reordered"; // shouldn't happen, but guard
   }
   for (let i = 0; i < commonOld.length; i++) {
     if (commonOld[i] !== commonNew[i]) {
-      return "reordered"
+      return "reordered";
     }
   }
 
-  const ops: PatchOp[] = []
+  const ops: PatchOp[] = [];
 
   // 1. Removals (descending index to avoid shifting)
-  const removedIndices: number[] = []
+  const removedIndices: number[] = [];
   for (let i = oldChildren.length - 1; i >= 0; i--) {
     if (!newById.has(oldChildren[i]!.id)) {
-      ops.push({ op: "remove_child", path, index: i })
-      removedIndices.push(i)
+      ops.push({ op: "remove_child", path, index: i });
+      removedIndices.push(i);
     }
   }
 
   // 2. Updates (with adjusted indices accounting for removals)
   for (const newChild of newChildren) {
-    const oldEntry = oldById.get(newChild.id)
+    const oldEntry = oldById.get(newChild.id);
     if (oldEntry !== undefined) {
-      const adjustedIndex = indexAfterRemovals(oldEntry.index, removedIndices)
-      const childPath = [...path, adjustedIndex]
-      const childOps = diffNode(oldEntry.node, newChild, childPath)
-      ops.push(...childOps)
+      const adjustedIndex = indexAfterRemovals(oldEntry.index, removedIndices);
+      const childPath = [...path, adjustedIndex];
+      const childOps = diffNode(oldEntry.node, newChild, childPath);
+      ops.push(...childOps);
     }
   }
 
   // 3. Inserts (ascending index)
   for (let i = 0; i < newChildren.length; i++) {
     if (!oldById.has(newChildren[i]!.id)) {
-      ops.push({ op: "insert_child", path, index: i, node: newChildren[i]! })
+      ops.push({ op: "insert_child", path, index: i, node: newChildren[i]! });
     }
   }
 
-  return ops
+  return ops;
 }
 
 /**
@@ -228,15 +220,12 @@ function diffChildren(
  * @param removedIndices - Indices that were removed (any order).
  * @returns The adjusted index.
  */
-function indexAfterRemovals(
-  oldIdx: number,
-  removedIndices: number[],
-): number {
-  let count = 0
+function indexAfterRemovals(oldIdx: number, removedIndices: number[]): number {
+  let count = 0;
   for (const removed of removedIndices) {
-    if (removed < oldIdx) count++
+    if (removed < oldIdx) count++;
   }
-  return oldIdx - count
+  return oldIdx - count;
 }
 
 /**
@@ -244,29 +233,29 @@ function indexAfterRemovals(
  * Handles primitives, arrays, and plain objects.
  */
 function deepEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true
-  if (a === null || b === null) return false
-  if (typeof a !== typeof b) return false
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== typeof b) return false;
 
   if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false
+    if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
-      if (!deepEqual(a[i], b[i])) return false
+      if (!deepEqual(a[i], b[i])) return false;
     }
-    return true
+    return true;
   }
 
   if (typeof a === "object" && typeof b === "object") {
-    const aObj = a as Record<string, unknown>
-    const bObj = b as Record<string, unknown>
-    const aKeys = Object.keys(aObj)
-    const bKeys = Object.keys(bObj)
-    if (aKeys.length !== bKeys.length) return false
+    const aObj = a as Record<string, unknown>;
+    const bObj = b as Record<string, unknown>;
+    const aKeys = Object.keys(aObj);
+    const bKeys = Object.keys(bObj);
+    if (aKeys.length !== bKeys.length) return false;
     for (const key of aKeys) {
-      if (!deepEqual(aObj[key], bObj[key])) return false
+      if (!deepEqual(aObj[key], bObj[key])) return false;
     }
-    return true
+    return true;
   }
 
-  return false
+  return false;
 }

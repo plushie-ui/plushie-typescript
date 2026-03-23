@@ -7,39 +7,30 @@
  * @module
  */
 
-import type {
-  Command,
-  DeepReadonly,
-  Event,
-  Handler,
-  Subscription,
-  UINode,
-  UpdateResult,
-  WidgetEvent,
-} from "./types.js"
-import { Runtime } from "./runtime.js"
-import { resolveBinary } from "./client/binary.js"
-import { SpawnTransport } from "./client/transport.js"
-import type { WireFormat } from "./client/transport.js"
+import { resolveBinary } from "./client/binary.js";
+import type { WireFormat } from "./client/transport.js";
+import { SpawnTransport } from "./client/transport.js";
+import { Runtime } from "./runtime.js";
+import type { Command, DeepReadonly, Event, Subscription, UINode, UpdateResult } from "./types.js";
 
 /**
  * Application settings passed to the renderer on startup.
  */
 export interface AppSettings {
-  readonly defaultTextSize?: number
-  readonly defaultFont?: string | { family: string; weight?: string; style?: string }
-  readonly antialiasing?: boolean
-  readonly vsync?: boolean
-  readonly scaleFactor?: number
-  readonly theme?: string | Record<string, unknown>
-  readonly fonts?: readonly string[]
-  readonly defaultEventRate?: number
+  readonly defaultTextSize?: number;
+  readonly defaultFont?: string | { family: string; weight?: string; style?: string };
+  readonly antialiasing?: boolean;
+  readonly vsync?: boolean;
+  readonly scaleFactor?: number;
+  readonly theme?: string | Record<string, unknown>;
+  readonly fonts?: readonly string[];
+  readonly defaultEventRate?: number;
   /**
    * Configuration passed to widget extensions at runtime.
    * Keyed by extension config key (matches the Rust extension's `config_key()`).
    * Sent in the Settings message so extensions can initialize their state.
    */
-  readonly extensionConfig?: Readonly<Record<string, unknown>>
+  readonly extensionConfig?: Readonly<Record<string, unknown>>;
 }
 
 /**
@@ -51,53 +42,50 @@ export interface AppSettings {
  */
 export interface AppConfig<M> {
   /** Initial state, optionally with startup commands. */
-  init: M | readonly [M, Command | Command[]]
+  init: M | readonly [M, Command | Command[]];
 
   /** Declarative view tree. Called after every state change. */
-  view: (state: DeepReadonly<M>) => UINode | readonly UINode[]
+  view: (state: DeepReadonly<M>) => UINode | readonly UINode[];
 
   /**
    * Fallback event handler for events without inline handlers
    * (subscription events, async results, unhandled widget events).
    */
-  update?: (
-    state: DeepReadonly<M>,
-    event: Event,
-  ) => UpdateResult<M>
+  update?: (state: DeepReadonly<M>, event: Event) => UpdateResult<M>;
 
   /** Active subscriptions, re-evaluated after every state change. */
-  subscriptions?: (state: DeepReadonly<M>) => (Subscription | false | null | undefined)[]
+  subscriptions?: (state: DeepReadonly<M>) => (Subscription | false | null | undefined)[];
 
   /** Renderer settings (sent once on startup). */
-  settings?: AppSettings
+  settings?: AppSettings;
 
   /** Default window configuration, merged under per-window props. */
-  windowConfig?: (state: DeepReadonly<M>) => Record<string, unknown>
+  windowConfig?: (state: DeepReadonly<M>) => Record<string, unknown>;
 
   /** Called when the renderer process exits unexpectedly. */
-  handleRendererExit?: (state: DeepReadonly<M>, reason: string) => M
+  handleRendererExit?: (state: DeepReadonly<M>, reason: string) => M;
 }
 
 /** Options for running an app. */
 export interface RunOptions {
   /** Path to the plushie binary. Resolved automatically if omitted. */
-  binary?: string
+  binary?: string;
   /** Wire format. Defaults to "msgpack". */
-  format?: WireFormat
+  format?: WireFormat;
   /** Additional CLI arguments for the renderer binary. */
-  args?: string[]
+  args?: string[];
   /** Override RUST_LOG for the renderer. */
-  rustLog?: string
+  rustLog?: string;
   /** Transport mode: "spawn" (default) or "stdio". */
-  transport?: "spawn" | "stdio"
+  transport?: "spawn" | "stdio";
 }
 
 /** Handle for a running app. */
 export interface AppHandle<M> {
   /** Stop the app and close the renderer. */
-  stop(): void
+  stop(): void;
   /** Get the current model (readonly). */
-  model(): DeepReadonly<M>
+  model(): DeepReadonly<M>;
 }
 
 /**
@@ -105,9 +93,9 @@ export interface AppHandle<M> {
  */
 export interface AppDefinition<M> {
   /** The app configuration. */
-  readonly config: AppConfig<M>
+  readonly config: AppConfig<M>;
   /** Start the app with a renderer. */
-  run(opts?: RunOptions): Promise<AppHandle<M>>
+  run(opts?: RunOptions): Promise<AppHandle<M>>;
 }
 
 /**
@@ -136,18 +124,18 @@ export function app<M>(config: AppConfig<M>): AppDefinition<M> {
   return {
     config,
     async run(opts: RunOptions = {}): Promise<AppHandle<M>> {
-      const binary = opts.binary ?? resolveBinary()
-      const transportOpts: import("./client/transport.js").SpawnTransportOptions = { binary }
-      if (opts.format !== undefined) transportOpts.format = opts.format
-      if (opts.args !== undefined) transportOpts.args = opts.args
-      if (opts.rustLog !== undefined) transportOpts.rustLog = opts.rustLog
-      const runtime = new Runtime(config, () => new SpawnTransport(transportOpts))
-      await runtime.start()
+      const binary = opts.binary ?? resolveBinary();
+      const transportOpts: import("./client/transport.js").SpawnTransportOptions = { binary };
+      if (opts.format !== undefined) transportOpts.format = opts.format;
+      if (opts.args !== undefined) transportOpts.args = opts.args;
+      if (opts.rustLog !== undefined) transportOpts.rustLog = opts.rustLog;
+      const runtime = new Runtime(config, () => new SpawnTransport(transportOpts));
+      await runtime.start();
 
       return {
         stop: () => runtime.stop(),
         model: () => runtime.model() as DeepReadonly<M>,
-      }
+      };
     },
-  }
+  };
 }

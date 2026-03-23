@@ -11,20 +11,20 @@
  * @module
  */
 
-import type { Handler } from "../types.js"
+import type { Handler } from "../types.js";
 
 /** A registered handler entry. */
 export interface HandlerEntry {
   /** The widget ID (will be scoped during normalization). */
-  readonly widgetId: string
+  readonly widgetId: string;
   /** The event type this handler responds to (e.g., "click", "input"). */
-  readonly eventType: string
+  readonly eventType: string;
   /** The handler function. */
-  readonly handler: Handler<unknown>
+  readonly handler: Handler<unknown>;
 }
 
 /** Module-level handler collector. Reset between view() calls. */
-let handlerEntries: HandlerEntry[] = []
+let handlerEntries: HandlerEntry[] = [];
 
 /**
  * Register a handler for a widget event.
@@ -37,7 +37,7 @@ export function registerHandler(
   eventType: string,
   handler: Handler<unknown>,
 ): void {
-  handlerEntries.push({ widgetId, eventType, handler })
+  handlerEntries.push({ widgetId, eventType, handler });
 }
 
 /**
@@ -48,9 +48,9 @@ export function registerHandler(
  * @internal
  */
 export function drainHandlers(): HandlerEntry[] {
-  const entries = handlerEntries
-  handlerEntries = []
-  return entries
+  const entries = handlerEntries;
+  handlerEntries = [];
+  return entries;
 }
 
 /**
@@ -60,5 +60,5 @@ export function drainHandlers(): HandlerEntry[] {
  * @internal
  */
 export function clearHandlers(): void {
-  handlerEntries = []
+  handlerEntries = [];
 }

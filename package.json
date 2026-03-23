@@ -85,9 +85,11 @@
   "scripts": {
     "build": "tsup",
     "check": "tsc --noEmit",
+    "lint": "biome check src/ test/ examples/",
+    "format": "biome format --write src/ test/ examples/",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preflight": "pnpm check && pnpm test && pnpm build"
+    "preflight": "pnpm lint && pnpm check && pnpm test && pnpm build"
   },
   "engines": {
     "node": ">=20"
@@ -111,6 +113,7 @@
     "@msgpack/msgpack": "^3.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.8",
     "@types/node": "^22.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",

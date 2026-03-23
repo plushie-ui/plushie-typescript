@@ -1,4 +1,4 @@
-import type { UINode } from "../types.js"
+import type { UINode } from "../types.js";
 
 /**
  * Internal: create a UINode. Handlers are stored separately from
@@ -15,16 +15,16 @@ export function createNode(
     type,
     props: Object.freeze(props),
     children: Object.freeze(children),
-  })
+  });
 }
 
 /** Auto-generate an ID from a content string and type. */
-let autoIdCounter = 0
+let autoIdCounter = 0;
 export function autoId(type: string): string {
-  return `auto:${type}:${++autoIdCounter}`
+  return `auto:${type}:${++autoIdCounter}`;
 }
 
 /** Reset the auto-ID counter (for testing). */
 export function resetAutoId(): void {
-  autoIdCounter = 0
+  autoIdCounter = 0;
 }

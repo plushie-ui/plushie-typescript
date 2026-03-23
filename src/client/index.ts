@@ -7,38 +7,63 @@
  * @module
  */
 
-export { encodePacket, decodePackets, encodeLine, decodeLines } from "./framing.js"
-export type { DecodePacketsResult, DecodeLinesResult } from "./framing.js"
-
 export {
-  encodeSettings, encodeSnapshot, encodePatch, encodeSubscribe,
-  encodeUnsubscribe, encodeWidgetOp, encodeWindowOp, encodeEffect,
-  encodeImageOp, encodeExtensionCommand, encodeExtensionCommands,
-  encodeQuery, encodeInteract, encodeTreeHash, encodeScreenshot,
-  encodeReset, encodeAdvanceFrame, decodeMessage, decodeEvent,
-  splitScopedId, stringifyKeys, PROTOCOL_VERSION,
-} from "./protocol.js"
+  BINARY_VERSION,
+  downloadBinary,
+  platformBinaryName,
+  RELEASE_BASE_URL,
+  resolveBinary,
+  validateArchitecture,
+} from "./binary.js";
+export { buildRendererEnv } from "./env.js";
+export type { DecodeLinesResult, DecodePacketsResult } from "./framing.js";
+export { decodeLines, decodePackets, encodeLine, encodePacket } from "./framing.js";
 export type {
-  WireMessage, WirePatchOp, HelloInfo, WireSelector, ScopedId,
   DecodedResponse,
-} from "./protocol.js"
-
+  HelloInfo,
+  ScopedId,
+  WireMessage,
+  WirePatchOp,
+  WireSelector,
+} from "./protocol.js";
 export {
-  resolveBinary, platformBinaryName, validateArchitecture,
-  downloadBinary, BINARY_VERSION, RELEASE_BASE_URL,
-} from "./binary.js"
-export { buildRendererEnv } from "./env.js"
-
-export { SpawnTransport, StdioTransport } from "./transport.js"
-export type { Transport, WireFormat, SpawnTransportOptions, StdioTransportOptions } from "./transport.js"
-
-export { SocketTransport } from "./socket_transport.js"
-export type { SocketTransportOptions } from "./socket_transport.js"
-
-export { WasmTransport } from "./wasm_transport.js"
+  decodeEvent,
+  decodeMessage,
+  encodeAdvanceFrame,
+  encodeEffect,
+  encodeExtensionCommand,
+  encodeExtensionCommands,
+  encodeImageOp,
+  encodeInteract,
+  encodePatch,
+  encodeQuery,
+  encodeReset,
+  encodeScreenshot,
+  encodeSettings,
+  encodeSnapshot,
+  encodeSubscribe,
+  encodeTreeHash,
+  encodeUnsubscribe,
+  encodeWidgetOp,
+  encodeWindowOp,
+  PROTOCOL_VERSION,
+  splitScopedId,
+  stringifyKeys,
+} from "./protocol.js";
+export type { ConnectOptions } from "./session.js";
+export { Session } from "./session.js";
+export type { SocketTransportOptions } from "./socket_transport.js";
+export { SocketTransport } from "./socket_transport.js";
 export type {
-  PlushieAppConstructor, PlushieAppInstance, WasmTransportOptions,
-} from "./wasm_transport.js"
-
-export { Session } from "./session.js"
-export type { ConnectOptions } from "./session.js"
+  SpawnTransportOptions,
+  StdioTransportOptions,
+  Transport,
+  WireFormat,
+} from "./transport.js";
+export { SpawnTransport, StdioTransport } from "./transport.js";
+export type {
+  PlushieAppConstructor,
+  PlushieAppInstance,
+  WasmTransportOptions,
+} from "./wasm_transport.js";
+export { WasmTransport } from "./wasm_transport.js";

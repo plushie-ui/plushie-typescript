@@ -8,15 +8,15 @@
  */
 
 export interface GradientStop {
-  readonly offset: number
-  readonly color: string
+  readonly offset: number;
+  readonly color: string;
 }
 
 export interface LinearGradient {
-  readonly type: "linear"
-  readonly start: readonly [number, number]
-  readonly end: readonly [number, number]
-  readonly stops: readonly (readonly [number, string])[]
+  readonly type: "linear";
+  readonly start: readonly [number, number];
+  readonly end: readonly [number, number];
+  readonly stops: readonly (readonly [number, string])[];
 }
 
 /** Builds a linear gradient usable as a fill value. */
@@ -30,5 +30,5 @@ export function linearGradient(
     start: from,
     end: to,
     stops: stops.map((s) => [s.offset, s.color] as const),
-  }
+  };
 }

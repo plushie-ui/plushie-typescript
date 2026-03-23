@@ -14,7 +14,7 @@
  * @module
  */
 
-import type { UINode } from "./types.js"
+import type { UINode } from "./types.js";
 
 /**
  * JSX element creation (production runtime).
@@ -29,9 +29,9 @@ export function jsx(
 ): UINode {
   // Normalize children
   if ("children" in props) {
-    props = { ...props, children: normalizeChildren(props["children"]) }
+    props = { ...props, children: normalizeChildren(props["children"]) };
   }
-  return type(props)
+  return type(props);
 }
 
 /**
@@ -43,11 +43,11 @@ export function jsxs(
   props: Record<string, unknown>,
   _key?: string,
 ): UINode {
-  return jsx(type, props, _key)
+  return jsx(type, props, _key);
 }
 
 /** Fragment support. Returns children as-is (array of UINodes). */
-export const Fragment = Symbol.for("plushie.fragment")
+export const Fragment = Symbol.for("plushie.fragment");
 
 /**
  * Normalize JSX children: filter out null/undefined/boolean,
@@ -56,23 +56,23 @@ export const Fragment = Symbol.for("plushie.fragment")
  */
 function normalizeChildren(children: unknown): unknown {
   if (children === null || children === undefined || typeof children === "boolean") {
-    return undefined
+    return undefined;
   }
   if (Array.isArray(children)) {
-    const flat: unknown[] = []
+    const flat: unknown[] = [];
     for (const child of children) {
-      if (child === null || child === undefined || typeof child === "boolean") continue
+      if (child === null || child === undefined || typeof child === "boolean") continue;
       if (Array.isArray(child)) {
         for (const nested of child) {
           if (nested !== null && nested !== undefined && typeof nested !== "boolean") {
-            flat.push(nested)
+            flat.push(nested);
           }
         }
       } else {
-        flat.push(child)
+        flat.push(child);
       }
     }
-    return flat
+    return flat;
   }
-  return children
+  return children;
 }

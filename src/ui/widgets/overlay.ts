@@ -5,53 +5,50 @@
  * @module
  */
 
-import type { UINode } from "../../types.js"
-import type { Length, Alignment, A11y } from "../types.js"
-import { encodeLength, encodeAlignment, encodeA11y } from "../types.js"
-import { containerNode, putIf, autoId } from "../build.js"
+import type { UINode } from "../../types.js";
+import { autoId, containerNode, putIf } from "../build.js";
+import type { A11y, Alignment, Length } from "../types.js";
+import { encodeA11y, encodeAlignment, encodeLength } from "../types.js";
 
 /** Props for the Overlay widget. */
 export interface OverlayProps {
   /** Unique widget identifier. */
-  id?: string
+  id?: string;
   /** Where the overlay appears relative to the anchor child. */
-  position?: "below" | "above" | "left" | "right"
+  position?: "below" | "above" | "left" | "right";
   /** Gap between the anchor and the overlay in pixels. */
-  gap?: number
+  gap?: number;
   /** Horizontal offset from the computed overlay position in pixels. */
-  offsetX?: number
+  offsetX?: number;
   /** Vertical offset from the computed overlay position in pixels. */
-  offsetY?: number
+  offsetY?: number;
   /** When true, the overlay flips to the opposite side if it would overflow the viewport. */
-  flip?: boolean
+  flip?: boolean;
   /** Alignment of the overlay along the cross-axis relative to the anchor. */
-  align?: Alignment
+  align?: Alignment;
   /** Width of the overlay container. */
-  width?: Length
+  width?: Length;
   /** Accessibility properties. */
-  a11y?: A11y
+  a11y?: A11y;
   /** Exactly 2 children: the anchor element and the overlay content. */
-  children?: UINode[]
+  children?: UINode[];
 }
 
 export function Overlay(props: OverlayProps): UINode {
-  const id = props.id ?? autoId("overlay")
-  const children = props.children ?? []
-  const p: Record<string, unknown> = {}
-  putIf(p, props.position, "position")
-  putIf(p, props.gap, "gap")
-  putIf(p, props.offsetX, "offset_x")
-  putIf(p, props.offsetY, "offset_y")
-  putIf(p, props.flip, "flip")
-  putIf(p, props.align, "align", encodeAlignment)
-  putIf(p, props.width, "width", encodeLength)
-  putIf(p, props.a11y, "a11y", encodeA11y)
-  return containerNode(id, "overlay", p, Array.isArray(children) ? children : [children])
+  const id = props.id ?? autoId("overlay");
+  const children = props.children ?? [];
+  const p: Record<string, unknown> = {};
+  putIf(p, props.position, "position");
+  putIf(p, props.gap, "gap");
+  putIf(p, props.offsetX, "offset_x");
+  putIf(p, props.offsetY, "offset_y");
+  putIf(p, props.flip, "flip");
+  putIf(p, props.align, "align", encodeAlignment);
+  putIf(p, props.width, "width", encodeLength);
+  putIf(p, props.a11y, "a11y", encodeA11y);
+  return containerNode(id, "overlay", p, Array.isArray(children) ? children : [children]);
 }
 
-export function overlay(
-  opts: Omit<OverlayProps, "children">,
-  children: UINode[],
-): UINode {
-  return Overlay({ ...opts, children })
+export function overlay(opts: Omit<OverlayProps, "children">, children: UINode[]): UINode {
+  return Overlay({ ...opts, children });
 }

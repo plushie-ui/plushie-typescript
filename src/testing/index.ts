@@ -24,30 +24,30 @@
  * @module
  */
 
-import type { AppDefinition, AppConfig } from "../app.js"
-import type { WireFormat } from "../client/transport.js"
-import { resolveBinary } from "../client/binary.js"
-import { SessionPool } from "../client/pool.js"
-import { TestSession } from "./session.js"
+import type { AppDefinition } from "../app.js";
+import { resolveBinary } from "../client/binary.js";
+import { SessionPool } from "../client/pool.js";
+import type { WireFormat } from "../client/transport.js";
+import { TestSession } from "./session.js";
 
-export type { TestSession, Element } from "./session.js"
+export type { Element, TestSession } from "./session.js";
 
 /** Options for creating test sessions. */
 export interface TestOptions {
   /** Path to the plushie binary. Resolved automatically if omitted. */
-  binary?: string
+  binary?: string;
   /** Renderer mode. Defaults to "mock". */
-  mode?: "mock" | "headless"
+  mode?: "mock" | "headless";
   /** Wire format. Defaults to "msgpack". */
-  format?: WireFormat
+  format?: WireFormat;
   /** Maximum concurrent sessions. Defaults to 8. */
-  maxSessions?: number
+  maxSessions?: number;
 }
 
 // -- Singleton pool -------------------------------------------------------
 
-let globalPool: SessionPool | null = null
-let poolOptions: TestOptions = {}
+let globalPool: SessionPool | null = null;
+let poolOptions: TestOptions = {};
 
 /**
  * Get or create the global session pool.
@@ -55,24 +55,24 @@ let poolOptions: TestOptions = {}
  */
 function getPool(opts: TestOptions = {}): SessionPool {
   if (!globalPool) {
-    const binary = opts.binary ?? resolveBinary()
+    const binary = opts.binary ?? resolveBinary();
     globalPool = new SessionPool({
       binary,
       mode: opts.mode ?? "mock",
       format: opts.format ?? "msgpack",
       maxSessions: opts.maxSessions ?? 8,
-    })
-    globalPool.start()
-    poolOptions = opts
+    });
+    globalPool.start();
+    poolOptions = opts;
   }
-  return globalPool
+  return globalPool;
 }
 
 /** Stop the global pool. Call in afterAll or globalTeardown. */
 export function stopPool(): void {
   if (globalPool) {
-    globalPool.stop()
-    globalPool = null
+    globalPool.stop();
+    globalPool = null;
   }
 }
 
@@ -90,12 +90,12 @@ export async function createSession<M>(
   appDef: AppDefinition<M>,
   opts?: TestOptions,
 ): Promise<TestSession<M>> {
-  const pool = getPool(opts)
-  const sessionId = pool.register()
-  const format = opts?.format ?? poolOptions.format ?? "msgpack"
-  const session = new TestSession(appDef.config, pool, sessionId, format)
-  await session.start()
-  return session
+  const pool = getPool(opts);
+  const sessionId = pool.register();
+  const format = opts?.format ?? poolOptions.format ?? "msgpack";
+  const session = new TestSession(appDef.config, pool, sessionId, format);
+  await session.start();
+  return session;
 }
 
 /**
@@ -117,21 +117,18 @@ export async function createSession<M>(
  * @param opts - Test options.
  * @returns A vitest-compatible test function with a `session` fixture.
  */
-export function testWith<M>(
-  appDef: AppDefinition<M>,
-  opts?: TestOptions,
-) {
+export function testWith<M>(appDef: AppDefinition<M>, opts?: TestOptions) {
   // Dynamic import to avoid hard dependency on vitest
   // Users who call testWith are already in a vitest context
   return async function testRunner(
-    name: string,
+    _name: string,
     fn: (ctx: { session: TestSession<M> }) => Promise<void>,
   ): Promise<void> {
-    const session = await createSession(appDef, opts)
+    const session = await createSession(appDef, opts);
     try {
-      await fn({ session })
+      await fn({ session });
     } finally {
-      session.stop()
+      session.stop();
     }
-  }
+  };
 }

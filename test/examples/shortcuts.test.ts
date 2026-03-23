@@ -1,38 +1,38 @@
-import { describe, test, expect } from "vitest"
-import shortcuts from "../../examples/shortcuts.js"
+import { describe, expect, test } from "vitest";
+import shortcuts from "../../examples/shortcuts.js";
 
 describe("shortcuts example", () => {
   test("exports a valid app definition", () => {
-    expect(shortcuts.config).toBeDefined()
-    expect(shortcuts.config.view).toBeTypeOf("function")
-    expect(shortcuts.run).toBeTypeOf("function")
-  })
+    expect(shortcuts.config).toBeDefined();
+    expect(shortcuts.config.view).toBeTypeOf("function");
+    expect(shortcuts.run).toBeTypeOf("function");
+  });
 
   test("init produces correct model shape", () => {
-    const init = shortcuts.config.init as Record<string, unknown>
-    expect(init).toHaveProperty("log")
-    expect(init).toHaveProperty("count")
-    expect(Array.isArray(init["log"])).toBe(true)
-    expect(init["count"]).toBe(0)
-  })
+    const init = shortcuts.config.init as Record<string, unknown>;
+    expect(init).toHaveProperty("log");
+    expect(init).toHaveProperty("count");
+    expect(Array.isArray(init["log"])).toBe(true);
+    expect(init["count"]).toBe(0);
+  });
 
   test("view produces a UINode tree", () => {
-    const model = shortcuts.config.init
-    const tree = shortcuts.config.view(model as any)
-    expect(typeof tree === "object" && tree !== null && "type" in tree).toBe(true)
+    const model = shortcuts.config.init;
+    const tree = shortcuts.config.view(model as any);
+    expect(typeof tree === "object" && tree !== null && "type" in tree).toBe(true);
     if (typeof tree === "object" && tree !== null && "type" in tree) {
-      expect(tree.type).toBe("window")
+      expect(tree.type).toBe("window");
     }
-  })
+  });
 
   test("has subscriptions for key press events", () => {
-    expect(shortcuts.config.subscriptions).toBeTypeOf("function")
-    const subs = shortcuts.config.subscriptions!(shortcuts.config.init as any)
-    expect(Array.isArray(subs)).toBe(true)
-    expect(subs.length).toBeGreaterThan(0)
-  })
+    expect(shortcuts.config.subscriptions).toBeTypeOf("function");
+    const subs = shortcuts.config.subscriptions!(shortcuts.config.init as any);
+    expect(Array.isArray(subs)).toBe(true);
+    expect(subs.length).toBeGreaterThan(0);
+  });
 
   test("has update handler", () => {
-    expect(shortcuts.config.update).toBeTypeOf("function")
-  })
-})
+    expect(shortcuts.config.update).toBeTypeOf("function");
+  });
+});

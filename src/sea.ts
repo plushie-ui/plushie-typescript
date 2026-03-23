@@ -8,9 +8,9 @@
  * @module
  */
 
-import { writeFileSync, chmodSync } from "node:fs"
-import { join } from "node:path"
-import { tmpdir } from "node:os"
+import { chmodSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 /**
  * Check if we're running inside a Node.js SEA bundle.
@@ -20,10 +20,10 @@ import { tmpdir } from "node:os"
  */
 export function isSEA(): boolean {
   try {
-    require("node:sea")
-    return true
+    require("node:sea");
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -39,38 +39,38 @@ export function isSEA(): boolean {
  * @throws {Error} If not running in SEA context or asset is missing.
  */
 export function extractBinaryFromSEA(assetKey = "plushie-binary"): string {
-  let sea: { getAsset(key: string): ArrayBuffer }
+  let sea: { getAsset(key: string): ArrayBuffer };
   try {
-    sea = require("node:sea") as typeof sea
+    sea = require("node:sea") as typeof sea;
   } catch {
-    throw new Error("extractBinaryFromSEA called outside of SEA context")
+    throw new Error("extractBinaryFromSEA called outside of SEA context");
   }
 
-  let asset: ArrayBuffer
+  let asset: ArrayBuffer;
   try {
-    asset = sea.getAsset(assetKey)
+    asset = sea.getAsset(assetKey);
   } catch {
     throw new Error(
       `SEA asset "${assetKey}" not found.\n` +
-      `Include the plushie binary in your SEA config:\n\n` +
-      `  "assets": { "${assetKey}": "path/to/plushie" }`,
-    )
+        `Include the plushie binary in your SEA config:\n\n` +
+        `  "assets": { "${assetKey}": "path/to/plushie" }`,
+    );
   }
 
-  const dest = join(tmpdir(), `plushie-sea-${process.pid}`)
-  writeFileSync(dest, Buffer.from(asset))
-  chmodSync(dest, 0o755)
-  return dest
+  const dest = join(tmpdir(), `plushie-sea-${process.pid}`);
+  writeFileSync(dest, Buffer.from(asset));
+  chmodSync(dest, 0o755);
+  return dest;
 }
 
 /** SEA configuration file structure. */
 export interface SEAConfig {
-  main: string
-  output: string
-  assets?: Record<string, string>
-  disableExperimentalSEAWarning?: boolean
-  useSnapshot?: boolean
-  useCodeCache?: boolean
+  main: string;
+  output: string;
+  assets?: Record<string, string>;
+  disableExperimentalSEAWarning?: boolean;
+  useSnapshot?: boolean;
+  useCodeCache?: boolean;
 }
 
 /**
@@ -84,20 +84,20 @@ export interface SEAConfig {
  * @returns A SEA config object suitable for writing to sea-config.json.
  */
 export function generateSEAConfig(opts: {
-  main: string
-  output: string
-  binaryPath?: string
-  wasmDir?: string
+  main: string;
+  output: string;
+  binaryPath?: string;
+  wasmDir?: string;
 }): SEAConfig {
-  const assets: Record<string, string> = {}
+  const assets: Record<string, string> = {};
 
   if (opts.binaryPath) {
-    assets["plushie-binary"] = opts.binaryPath
+    assets["plushie-binary"] = opts.binaryPath;
   }
 
   if (opts.wasmDir) {
-    assets["plushie-wasm-js"] = join(opts.wasmDir, "plushie_wasm.js")
-    assets["plushie-wasm-bg"] = join(opts.wasmDir, "plushie_wasm_bg.wasm")
+    assets["plushie-wasm-js"] = join(opts.wasmDir, "plushie_wasm.js");
+    assets["plushie-wasm-bg"] = join(opts.wasmDir, "plushie_wasm_bg.wasm");
   }
 
   const config: SEAConfig = {
@@ -106,11 +106,11 @@ export function generateSEAConfig(opts: {
     disableExperimentalSEAWarning: true,
     useSnapshot: false,
     useCodeCache: true,
-  }
+  };
 
   if (Object.keys(assets).length > 0) {
-    config.assets = assets
+    config.assets = assets;
   }
 
-  return config
+  return config;
 }

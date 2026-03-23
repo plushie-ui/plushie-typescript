@@ -4,86 +4,86 @@
  * @module
  */
 
-import type { UINode, Handler } from "../../types.js"
-import type { Length, Direction, Anchor, Color, A11y } from "../types.js"
-import { encodeLength, encodeColor, encodeA11y } from "../types.js"
-import { containerNode, putIf, autoId, extractHandlers } from "../build.js"
+import type { Handler, UINode } from "../../types.js";
+import { autoId, containerNode, extractHandlers, putIf } from "../build.js";
+import type { A11y, Anchor, Color, Direction, Length } from "../types.js";
+import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
-const SCROLLABLE_HANDLERS = { onScroll: "scroll" } as const
+const _SCROLLABLE_HANDLERS = { onScroll: "scroll" } as const;
 
 /** Props for the Scrollable widget. */
 export interface ScrollableProps {
   /** Unique widget identifier. */
-  id?: string
+  id?: string;
   /** Width of the scrollable viewport. */
-  width?: Length
+  width?: Length;
   /** Height of the scrollable viewport. */
-  height?: Length
+  height?: Length;
   /** Scroll direction: "horizontal", "vertical", or "both". */
-  direction?: Direction | "both"
+  direction?: Direction | "both";
   /** Spacing between children in pixels. */
-  spacing?: number
+  spacing?: number;
   /** Width of the scrollbar track in pixels. */
-  scrollbarWidth?: number
+  scrollbarWidth?: number;
   /** Margin between the scrollbar and the content edge in pixels. */
-  scrollbarMargin?: number
+  scrollbarMargin?: number;
   /** Width of the scroller handle in pixels. */
-  scrollerWidth?: number
+  scrollerWidth?: number;
   /** Color of the scrollbar track. */
-  scrollbarColor?: Color
+  scrollbarColor?: Color;
   /** Color of the scroller handle. */
-  scrollerColor?: Color
+  scrollerColor?: Color;
   /** Scroll anchor position ("start" or "end"). "end" keeps new content visible. */
-  anchor?: Anchor
+  anchor?: Anchor;
   /** When true, automatically scrolls to the end when new content is added. */
-  autoScroll?: boolean
+  autoScroll?: boolean;
   /** Style preset name. */
-  style?: string
+  style?: string;
   /** Accessibility properties. */
-  a11y?: A11y
+  a11y?: A11y;
   /** Maximum events per second for this widget's coalescable events. */
-  eventRate?: number
+  eventRate?: number;
   /** Scroll handler or boolean to enable scroll events. */
-  onScroll?: Handler<unknown> | boolean
+  onScroll?: Handler<unknown> | boolean;
   /** Child widgets rendered inside the scrollable viewport. */
-  children?: UINode[]
+  children?: UINode[];
 }
 
 export function Scrollable(props: ScrollableProps): UINode {
-  const id = props.id ?? autoId("scrollable")
-  const children = props.children ?? []
-  const handlerProps: Record<string, string> = {}
-  if (typeof props.onScroll === "function") handlerProps["onScroll"] = "scroll"
-  const clean = extractHandlers(id, props, handlerProps)
+  const id = props.id ?? autoId("scrollable");
+  const children = props.children ?? [];
+  const handlerProps: Record<string, string> = {};
+  if (typeof props.onScroll === "function") handlerProps["onScroll"] = "scroll";
+  const clean = extractHandlers(id, props, handlerProps);
 
-  const p: Record<string, unknown> = {}
-  putIf(p, clean.width, "width", encodeLength)
-  putIf(p, clean.height, "height", encodeLength)
-  putIf(p, clean.direction, "direction")
-  putIf(p, clean.spacing, "spacing")
-  putIf(p, clean.scrollbarWidth, "scrollbar_width")
-  putIf(p, clean.scrollbarMargin, "scrollbar_margin")
-  putIf(p, clean.scrollerWidth, "scroller_width")
-  putIf(p, clean.scrollbarColor, "scrollbar_color", encodeColor)
-  putIf(p, clean.scrollerColor, "scroller_color", encodeColor)
-  putIf(p, clean.anchor, "anchor")
-  putIf(p, clean.autoScroll, "auto_scroll")
-  putIf(p, clean.style, "style")
-  putIf(p, clean.a11y, "a11y", encodeA11y)
-  putIf(p, clean.eventRate, "event_rate")
-  if (typeof props.onScroll === "boolean") putIf(p, props.onScroll, "on_scroll")
-  else if (typeof props.onScroll === "function") p["on_scroll"] = true
-  return containerNode(id, "scrollable", p, Array.isArray(children) ? children : [children])
+  const p: Record<string, unknown> = {};
+  putIf(p, clean.width, "width", encodeLength);
+  putIf(p, clean.height, "height", encodeLength);
+  putIf(p, clean.direction, "direction");
+  putIf(p, clean.spacing, "spacing");
+  putIf(p, clean.scrollbarWidth, "scrollbar_width");
+  putIf(p, clean.scrollbarMargin, "scrollbar_margin");
+  putIf(p, clean.scrollerWidth, "scroller_width");
+  putIf(p, clean.scrollbarColor, "scrollbar_color", encodeColor);
+  putIf(p, clean.scrollerColor, "scroller_color", encodeColor);
+  putIf(p, clean.anchor, "anchor");
+  putIf(p, clean.autoScroll, "auto_scroll");
+  putIf(p, clean.style, "style");
+  putIf(p, clean.a11y, "a11y", encodeA11y);
+  putIf(p, clean.eventRate, "event_rate");
+  if (typeof props.onScroll === "boolean") putIf(p, props.onScroll, "on_scroll");
+  else if (typeof props.onScroll === "function") p["on_scroll"] = true;
+  return containerNode(id, "scrollable", p, Array.isArray(children) ? children : [children]);
 }
 
-export function scrollable(children: UINode[]): UINode
-export function scrollable(opts: Omit<ScrollableProps, "children">, children: UINode[]): UINode
+export function scrollable(children: UINode[]): UINode;
+export function scrollable(opts: Omit<ScrollableProps, "children">, children: UINode[]): UINode;
 export function scrollable(
   first: UINode[] | Omit<ScrollableProps, "children">,
   second?: UINode[],
 ): UINode {
   if (Array.isArray(first)) {
-    return Scrollable({ children: first })
+    return Scrollable({ children: first });
   }
-  return Scrollable({ ...first, children: second ?? [] })
+  return Scrollable({ ...first, children: second ?? [] });
 }

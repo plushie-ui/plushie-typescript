@@ -23,10 +23,10 @@
 // -- MessagePack framing (4-byte length prefix) ---------------------------
 
 /** Header size in bytes for the length prefix. */
-const HEADER_SIZE = 4
+const HEADER_SIZE = 4;
 
 /** Maximum message size (64 MiB, matching renderer limit). */
-const MAX_MESSAGE_SIZE = 64 * 1024 * 1024
+const MAX_MESSAGE_SIZE = 64 * 1024 * 1024;
 
 /**
  * Encode a binary payload with a 4-byte big-endian length prefix.
@@ -42,17 +42,15 @@ const MAX_MESSAGE_SIZE = 64 * 1024 * 1024
  * ```
  */
 export function encodePacket(payload: Uint8Array): Uint8Array {
-  const size = payload.byteLength
+  const size = payload.byteLength;
   if (size > MAX_MESSAGE_SIZE) {
-    throw new RangeError(
-      `Message size ${size} exceeds maximum ${MAX_MESSAGE_SIZE} bytes (64 MiB)`,
-    )
+    throw new RangeError(`Message size ${size} exceeds maximum ${MAX_MESSAGE_SIZE} bytes (64 MiB)`);
   }
-  const frame = new Uint8Array(HEADER_SIZE + size)
-  const view = new DataView(frame.buffer, frame.byteOffset, frame.byteLength)
-  view.setUint32(0, size, false) // big-endian
-  frame.set(payload, HEADER_SIZE)
-  return frame
+  const frame = new Uint8Array(HEADER_SIZE + size);
+  const view = new DataView(frame.buffer, frame.byteOffset, frame.byteLength);
+  view.setUint32(0, size, false); // big-endian
+  frame.set(payload, HEADER_SIZE);
+  return frame;
 }
 
 /**
@@ -60,9 +58,9 @@ export function encodePacket(payload: Uint8Array): Uint8Array {
  */
 export interface DecodePacketsResult {
   /** Complete message payloads extracted from the buffer. */
-  readonly messages: Uint8Array[]
+  readonly messages: Uint8Array[];
   /** Leftover bytes that don't form a complete frame yet. */
-  readonly remaining: Uint8Array
+  readonly remaining: Uint8Array;
 }
 
 /**
@@ -91,35 +89,31 @@ export interface DecodePacketsResult {
  * ```
  */
 export function decodePackets(buffer: Uint8Array): DecodePacketsResult {
-  const messages: Uint8Array[] = []
-  let offset = 0
+  const messages: Uint8Array[] = [];
+  let offset = 0;
 
   while (offset + HEADER_SIZE <= buffer.byteLength) {
-    const view = new DataView(
-      buffer.buffer,
-      buffer.byteOffset + offset,
-      HEADER_SIZE,
-    )
-    const size = view.getUint32(0, false) // big-endian
+    const view = new DataView(buffer.buffer, buffer.byteOffset + offset, HEADER_SIZE);
+    const size = view.getUint32(0, false); // big-endian
 
     if (size > MAX_MESSAGE_SIZE) {
       // Corrupt or malicious frame -- skip to end to avoid infinite loop.
       // Callers should treat this as a protocol error.
-      break
+      break;
     }
 
     if (offset + HEADER_SIZE + size > buffer.byteLength) {
       // Incomplete frame -- need more data.
-      break
+      break;
     }
 
-    const start = offset + HEADER_SIZE
-    messages.push(buffer.slice(start, start + size))
-    offset = start + size
+    const start = offset + HEADER_SIZE;
+    messages.push(buffer.slice(start, start + size));
+    offset = start + size;
   }
 
-  const remaining = offset === 0 ? buffer : buffer.slice(offset)
-  return { messages, remaining }
+  const remaining = offset === 0 ? buffer : buffer.slice(offset);
+  return { messages, remaining };
 }
 
 // -- JSON framing (newline-delimited) -------------------------------------
@@ -131,7 +125,7 @@ export function decodePackets(buffer: Uint8Array): DecodePacketsResult {
  * @returns The string with a trailing newline appended.
  */
 export function encodeLine(data: string): string {
-  return data + "\n"
+  return data + "\n";
 }
 
 /**
@@ -139,9 +133,9 @@ export function encodeLine(data: string): string {
  */
 export interface DecodeLinesResult {
   /** Complete lines (without the trailing newline). */
-  readonly lines: string[]
+  readonly lines: string[];
   /** Remaining partial line that doesn't end with a newline yet. */
-  readonly remaining: string
+  readonly remaining: string;
 }
 
 /**
@@ -162,11 +156,11 @@ export interface DecodeLinesResult {
  * ```
  */
 export function decodeLines(buffer: string): DecodeLinesResult {
-  const parts = buffer.split("\n")
+  const parts = buffer.split("\n");
   if (parts.length === 1) {
     // No newline found -- entire buffer is a partial line.
-    return { lines: [], remaining: buffer }
+    return { lines: [], remaining: buffer };
   }
-  const remaining = parts.pop()!
-  return { lines: parts, remaining }
+  const remaining = parts.pop()!;
+  return { lines: parts, remaining };
 }

@@ -1,4 +1,11 @@
-export { createNode, autoId, resetAutoId } from "./node.js"
-export { normalize, isAutoId, type WireNode } from "./normalize.js"
-export { diff, type PatchOp, type ReplaceNode, type UpdateProps, type InsertChild, type RemoveChild } from "./diff.js"
-export { findNode, findById, detectWindows } from "./search.js"
+export {
+  diff,
+  type InsertChild,
+  type PatchOp,
+  type RemoveChild,
+  type ReplaceNode,
+  type UpdateProps,
+} from "./diff.js";
+export { autoId, createNode, resetAutoId } from "./node.js";
+export { isAutoId, normalize, type WireNode } from "./normalize.js";
+export { detectWindows, findById, findNode } from "./search.js";

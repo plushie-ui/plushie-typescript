@@ -4,46 +4,43 @@
  * @module
  */
 
-import type { UINode } from "../../types.js"
-import type { Length, A11y } from "../types.js"
-import { encodeLength, encodeA11y } from "../types.js"
-import { containerNode, putIf, autoId } from "../build.js"
+import type { UINode } from "../../types.js";
+import { autoId, containerNode, putIf } from "../build.js";
+import type { A11y, Length } from "../types.js";
+import { encodeA11y, encodeLength } from "../types.js";
 
 /** Props for the Stack widget. */
 export interface StackProps {
   /** Unique widget identifier. */
-  id?: string
+  id?: string;
   /** Width of the stack. */
-  width?: Length
+  width?: Length;
   /** Height of the stack. */
-  height?: Length
+  height?: Length;
   /** When true, clips child content that overflows the stack bounds. */
-  clip?: boolean
+  clip?: boolean;
   /** Accessibility properties. */
-  a11y?: A11y
+  a11y?: A11y;
   /** Child widgets layered on top of each other (last child renders on top). */
-  children?: UINode[]
+  children?: UINode[];
 }
 
 export function Stack(props: StackProps): UINode {
-  const id = props.id ?? autoId("stack")
-  const children = props.children ?? []
-  const p: Record<string, unknown> = {}
-  putIf(p, props.width, "width", encodeLength)
-  putIf(p, props.height, "height", encodeLength)
-  putIf(p, props.clip, "clip")
-  putIf(p, props.a11y, "a11y", encodeA11y)
-  return containerNode(id, "stack", p, Array.isArray(children) ? children : [children])
+  const id = props.id ?? autoId("stack");
+  const children = props.children ?? [];
+  const p: Record<string, unknown> = {};
+  putIf(p, props.width, "width", encodeLength);
+  putIf(p, props.height, "height", encodeLength);
+  putIf(p, props.clip, "clip");
+  putIf(p, props.a11y, "a11y", encodeA11y);
+  return containerNode(id, "stack", p, Array.isArray(children) ? children : [children]);
 }
 
-export function stack(children: UINode[]): UINode
-export function stack(opts: Omit<StackProps, "children">, children: UINode[]): UINode
-export function stack(
-  first: UINode[] | Omit<StackProps, "children">,
-  second?: UINode[],
-): UINode {
+export function stack(children: UINode[]): UINode;
+export function stack(opts: Omit<StackProps, "children">, children: UINode[]): UINode;
+export function stack(first: UINode[] | Omit<StackProps, "children">, second?: UINode[]): UINode {
   if (Array.isArray(first)) {
-    return Stack({ children: first })
+    return Stack({ children: first });
   }
-  return Stack({ ...first, children: second ?? [] })
+  return Stack({ ...first, children: second ?? [] });
 }

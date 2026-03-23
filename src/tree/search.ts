@@ -4,7 +4,7 @@
  * @module
  */
 
-import type { WireNode } from "./normalize.js"
+import type { WireNode } from "./normalize.js";
 
 /**
  * Find the first node in the tree matching a predicate (depth-first).
@@ -13,16 +13,13 @@ import type { WireNode } from "./normalize.js"
  * @param predicate - Function that returns true for a matching node.
  * @returns The first matching node, or null if not found.
  */
-export function findNode(
-  tree: WireNode,
-  predicate: (node: WireNode) => boolean,
-): WireNode | null {
-  if (predicate(tree)) return tree
+export function findNode(tree: WireNode, predicate: (node: WireNode) => boolean): WireNode | null {
+  if (predicate(tree)) return tree;
   for (const child of tree.children) {
-    const found = findNode(child, predicate)
-    if (found !== null) return found
+    const found = findNode(child, predicate);
+    if (found !== null) return found;
   }
-  return null
+  return null;
 }
 
 /**
@@ -33,7 +30,7 @@ export function findNode(
  * @returns The matching node, or null if not found.
  */
 export function findById(tree: WireNode, id: string): WireNode | null {
-  return findNode(tree, (node) => node.id === id)
+  return findNode(tree, (node) => node.id === id);
 }
 
 /**
@@ -46,17 +43,17 @@ export function findById(tree: WireNode, id: string): WireNode | null {
  * @returns Set of window node IDs found.
  */
 export function detectWindows(tree: WireNode): Set<string> {
-  const windows = new Set<string>()
+  const windows = new Set<string>();
 
   if (tree.type === "window") {
-    windows.add(tree.id)
+    windows.add(tree.id);
   }
 
   for (const child of tree.children) {
     if (child.type === "window") {
-      windows.add(child.id)
+      windows.add(child.id);
     }
   }
 
-  return windows
+  return windows;
 }

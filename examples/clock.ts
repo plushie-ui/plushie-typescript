@@ -5,18 +5,18 @@
 // - isTimer() for narrowing timer events in update()
 // - Simple model with derived display value
 
-import { app, Subscription, isTimer } from '../src/index.js'
-import type { Event } from '../src/index.js'
-import { window, column, text } from '../src/ui/index.js'
+import type { Event } from "../src/index.js";
+import { app, isTimer, Subscription } from "../src/index.js";
+import { column, text, window } from "../src/ui/index.js";
 
 // -- Types --------------------------------------------------------------------
 
-type Model = { time: string }
+type Model = { time: string };
 
 // -- Helpers ------------------------------------------------------------------
 
 function currentTime(): string {
-  return new Date().toLocaleTimeString()
+  return new Date().toLocaleTimeString();
 }
 
 // -- App ----------------------------------------------------------------------
@@ -34,9 +34,9 @@ export default app<Model>({
 
   update(state, event: Event) {
     if (isTimer(event, "tick")) {
-      return { ...state, time: currentTime() }
+      return { ...state, time: currentTime() };
     }
-    return state
+    return state;
   },
 
   // -- View -------------------------------------------------------------------
@@ -48,4 +48,4 @@ export default app<Model>({
         text("subtitle", "Updates every second", { size: 12, color: "#888888" }),
       ]),
     ]),
-})
+});

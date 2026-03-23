@@ -19,39 +19,78 @@
 //
 // Uses update() for all event handling to showcase the event patterns.
 
-import { app, isClick, isInput, isToggle, isSlide, isSelect, isMouseArea, isSensor } from '../src/index.js'
-import type { Event, UINode } from '../src/index.js'
+import type { CanvasShape } from "../src/canvas/index.js";
+import { circle, line, rect, stroke } from "../src/canvas/index.js";
+import type { Event, UINode } from "../src/index.js";
 import {
-  window, column, row, text, button, rule, container, scrollable,
-  stack, grid, pin, floating, responsive, keyedColumn, themer, space,
-  textInput, checkbox, toggler, radio, slider, verticalSlider, pickList, comboBox, textEditor,
-  progressBar, tooltip, image, svg, markdown, richText,
-  mouseArea, sensor, paneGrid, table,
-} from '../src/ui/index.js'
-import { Canvas } from '../src/ui/widgets/canvas.js'
-import { rect, circle, line, stroke } from '../src/canvas/index.js'
-import type { CanvasShape } from '../src/canvas/index.js'
+  app,
+  isClick,
+  isInput,
+  isMouseArea,
+  isSelect,
+  isSensor,
+  isSlide,
+  isToggle,
+} from "../src/index.js";
+import {
+  button,
+  checkbox,
+  column,
+  comboBox,
+  container,
+  floating,
+  grid,
+  image,
+  keyedColumn,
+  markdown,
+  mouseArea,
+  paneGrid,
+  pickList,
+  pin,
+  progressBar,
+  radio,
+  responsive,
+  richText,
+  row,
+  rule,
+  scrollable,
+  sensor,
+  slider,
+  space,
+  stack,
+  svg,
+  table,
+  text,
+  textEditor,
+  textInput,
+  themer,
+  toggler,
+  tooltip,
+  verticalSlider,
+  window,
+} from "../src/ui/index.js";
+import { Canvas } from "../src/ui/widgets/canvas.js";
 
 // -- Types --------------------------------------------------------------------
 
 interface Model {
-  activeTab: string
-  demoTabsActive: string
-  textValue: string
-  checkboxChecked: boolean
-  togglerOn: boolean
-  sliderValue: number
-  vsliderValue: number
-  radioSelected: string
-  pickListSelected: string | null
-  comboValue: string | null
-  editorContent: string
-  progress: number
-  panelCollapsed: boolean
-  modalVisible: boolean
-  clickCount: number
-  mouseAreaStatus: string
-  sensorStatus: string
+  activeTab: string;
+  demoTabsActive: string;
+  textValue: string;
+  checkboxChecked: boolean;
+  togglerOn: boolean;
+  sliderValue: number;
+  vsliderValue: number;
+  radioSelected: string;
+  pickListSelected: string | null;
+  comboValue: string | null;
+  editorContent: string;
+  progress: number;
+  panelCollapsed: boolean;
+  modalVisible: boolean;
+  clickCount: number;
+  mouseAreaStatus: string;
+  sensorStatus: string;
 }
 
 // -- Tab views ----------------------------------------------------------------
@@ -61,22 +100,13 @@ function layoutTab(): UINode {
     text("layout_heading", "Layout Widgets", { size: 18 }),
 
     // Row
-    row({ spacing: 8 }, [
-      text("Row child 1"),
-      text("Row child 2"),
-      text("Row child 3"),
-    ]),
+    row({ spacing: 8 }, [text("Row child 1"), text("Row child 2"), text("Row child 3")]),
 
     // Nested column
-    column({ spacing: 4 }, [
-      text("Nested column child 1"),
-      text("Nested column child 2"),
-    ]),
+    column({ spacing: 4 }, [text("Nested column child 1"), text("Nested column child 2")]),
 
     // Container with padding
-    container("demo_container", { padding: 12 }, [
-      text("Inside a container"),
-    ]),
+    container("demo_container", { padding: 12 }, [text("Inside a container")]),
 
     // Scrollable
     scrollable({ id: "demo_scrollable" }, [
@@ -90,10 +120,7 @@ function layoutTab(): UINode {
     ]),
 
     // Stack - layers on top of each other
-    stack([
-      text("Stack layer 1 (back)"),
-      text("Stack layer 2 (front)"),
-    ]),
+    stack([text("Stack layer 1 (back)"), text("Stack layer 2 (front)")]),
 
     // Grid layout
     grid({ columns: 3, spacing: 4 }, [
@@ -106,21 +133,13 @@ function layoutTab(): UINode {
     ]),
 
     // Pin - positioned element
-    pin({ id: "demo_pin", x: 0, y: 0 }, [
-      text("Pinned content"),
-    ]),
+    pin({ id: "demo_pin", x: 0, y: 0 }, [text("Pinned content")]),
 
     // Float - floating overlay element with translation
-    floating({ id: "demo_float", translateX: 100, translateY: 10 }, [
-      text("Floating element"),
-    ]),
+    floating({ id: "demo_float", translateX: 100, translateY: 10 }, [text("Floating element")]),
 
     // Responsive layout
-    responsive([
-      column([
-        text("Responsive content adapts to width"),
-      ]),
-    ]),
+    responsive([column([text("Responsive content adapts to width")])]),
 
     // Keyed column - stable identity for children
     keyedColumn({ spacing: 4 }, [
@@ -130,21 +149,18 @@ function layoutTab(): UINode {
     ]),
 
     // Themer - overrides the theme for its subtree
-    themer(
-      { background: "#1a1a2e", text: "#e0e0e0", primary: "#0f3460" },
-      [
-        container("themed_box", { padding: 12 }, [
-          column({ spacing: 4 }, [
-            text("Themed section with custom palette"),
-            button("themed_btn", "Themed Button"),
-          ]),
+    themer({ background: "#1a1a2e", text: "#e0e0e0", primary: "#0f3460" }, [
+      container("themed_box", { padding: 12 }, [
+        column({ spacing: 4 }, [
+          text("Themed section with custom palette"),
+          button("themed_btn", "Themed Button"),
         ]),
-      ],
-    ),
+      ]),
+    ]),
 
     // Space - explicit gap
     space({ height: 16 }),
-  ])
+  ]);
 }
 
 function inputTab(model: Model): UINode {
@@ -191,7 +207,7 @@ function inputTab(model: Model): UINode {
 
     // Text editor
     textEditor("demo_editor", { content: model.editorContent, height: 100 }),
-  ])
+  ]);
 }
 
 function displayTab(model: Model): UINode {
@@ -199,7 +215,7 @@ function displayTab(model: Model): UINode {
     rect(10, 10, 80, 60, { fill: "#3498db" }),
     circle(150, 75, 40, { fill: "#e74c3c" }),
     line(10, 130, 190, 130, { stroke: stroke("#2ecc71", 2) }),
-  ]
+  ];
 
   return column({ spacing: 8 }, [
     text("display_heading", "Display Widgets", { size: 18 }),
@@ -228,7 +244,10 @@ function displayTab(model: Model): UINode {
     svg("demo_svg", "/assets/icon.svg", { width: 24, height: 24 }),
 
     // Markdown with settings
-    markdown("demo_markdown", "## Markdown\n\nSome **bold** and *italic* text.\n\n- Item one\n- Item two"),
+    markdown(
+      "demo_markdown",
+      "## Markdown\n\nSome **bold** and *italic* text.\n\n- Item one\n- Item two",
+    ),
 
     // Rich text with styled spans
     richText("demo_rich_text", [
@@ -245,7 +264,7 @@ function displayTab(model: Model): UINode {
       height: 150,
       children: canvasShapes as unknown as UINode[],
     }),
-  ])
+  ]);
 }
 
 function compositeTab(model: Model): UINode {
@@ -254,28 +273,19 @@ function compositeTab(model: Model): UINode {
 
     // Mouse area wrapping content -- detects hover enter/exit
     mouseArea({ id: "demo_mouse_area", onEnter: true, onExit: true }, [
-      container("mouse_area_box", { padding: 12 }, [
-        text(`Mouse area: ${model.mouseAreaStatus}`),
-      ]),
+      container("mouse_area_box", { padding: 12 }, [text(`Mouse area: ${model.mouseAreaStatus}`)]),
     ]),
 
     // Sensor detecting pointer events
     sensor({ id: "demo_sensor", onResize: true }, [
-      container("sensor_box", { padding: 12 }, [
-        text(`Sensor: ${model.sensorStatus}`),
-      ]),
+      container("sensor_box", { padding: 12 }, [text(`Sensor: ${model.sensorStatus}`)]),
     ]),
 
     // Simulated tab switching using buttons and conditional content
     container("demo_tabs", {}, [
       column({ spacing: 4 }, [
-        row({ spacing: 4 }, [
-          button("tab_one", "Tab One"),
-          button("tab_two", "Tab Two"),
-        ]),
-        model.demoTabsActive === "tab_one"
-          ? text("Tab one content")
-          : text("Tab two content"),
+        row({ spacing: 4 }, [button("tab_one", "Tab One"), button("tab_two", "Tab Two")]),
+        model.demoTabsActive === "tab_one" ? text("Tab one content") : text("Tab two content"),
       ]),
     ]),
 
@@ -283,21 +293,18 @@ function compositeTab(model: Model): UINode {
     button("show_modal", "Show Modal"),
 
     ...(model.modalVisible
-      ? [container("demo_modal", { padding: 16 }, [
-          column({ spacing: 8 }, [
-            text("Modal Content"),
-            button("hide_modal", "Close"),
+      ? [
+          container("demo_modal", { padding: 16 }, [
+            column({ spacing: 8 }, [text("Modal Content"), button("hide_modal", "Close")]),
           ]),
-        ])]
+        ]
       : []),
 
     // Collapsible panel simulation
     button("demo_panel", model.panelCollapsed ? "Expand Panel" : "Collapse Panel"),
 
     ...(!model.panelCollapsed
-      ? [container("panel_content", { padding: 8 }, [
-          text("Panel content that can be collapsed"),
-        ])]
+      ? [container("panel_content", { padding: 8 }, [text("Panel content that can be collapsed")])]
       : []),
 
     // Counter demonstrating click events updating model
@@ -309,16 +316,10 @@ function compositeTab(model: Model): UINode {
     // PaneGrid with multiple panes
     paneGrid({ id: "demo_panes", spacing: 2 }, [
       container("pane_left", { padding: 8 }, [
-        column([
-          text("Left pane"),
-          text("Navigation or file tree"),
-        ]),
+        column([text("Left pane"), text("Navigation or file tree")]),
       ]),
       container("pane_right", { padding: 8 }, [
-        column([
-          text("Right pane"),
-          text("Main editor area"),
-        ]),
+        column([text("Right pane"), text("Main editor area")]),
       ]),
     ]),
 
@@ -336,7 +337,7 @@ function compositeTab(model: Model): UINode {
         { name: "React", lang: "JavaScript", stars: "220k" },
       ],
     ),
-  ])
+  ]);
 }
 
 // -- App ----------------------------------------------------------------------
@@ -368,49 +369,50 @@ export default app<Model>({
 
   update(state, event: Event) {
     // Tab switching
-    if (isClick(event, "tab_layout")) return { ...state, activeTab: "layout" }
-    if (isClick(event, "tab_input")) return { ...state, activeTab: "input" }
-    if (isClick(event, "tab_display")) return { ...state, activeTab: "display" }
-    if (isClick(event, "tab_composite")) return { ...state, activeTab: "composite" }
+    if (isClick(event, "tab_layout")) return { ...state, activeTab: "layout" };
+    if (isClick(event, "tab_input")) return { ...state, activeTab: "input" };
+    if (isClick(event, "tab_display")) return { ...state, activeTab: "display" };
+    if (isClick(event, "tab_composite")) return { ...state, activeTab: "composite" };
 
     // Input widgets
-    if (isInput(event, "demo_input")) return { ...state, textValue: String(event.value) }
-    if (isToggle(event, "demo_check")) return { ...state, checkboxChecked: Boolean(event.value) }
-    if (isToggle(event, "demo_toggler")) return { ...state, togglerOn: Boolean(event.value) }
-    if (isSlide(event, "demo_slider")) return { ...state, sliderValue: Number(event.value) }
-    if (isSlide(event, "demo_vslider")) return { ...state, vsliderValue: Number(event.value) }
-    if (isSelect(event, "demo_radio")) return { ...state, radioSelected: String(event.value) }
-    if (isSelect(event, "demo_pick")) return { ...state, pickListSelected: String(event.value) }
-    if (isSelect(event, "demo_combo")) return { ...state, comboValue: String(event.value) }
-    if (isInput(event, "demo_editor")) return { ...state, editorContent: String(event.value) }
+    if (isInput(event, "demo_input")) return { ...state, textValue: String(event.value) };
+    if (isToggle(event, "demo_check")) return { ...state, checkboxChecked: Boolean(event.value) };
+    if (isToggle(event, "demo_toggler")) return { ...state, togglerOn: Boolean(event.value) };
+    if (isSlide(event, "demo_slider")) return { ...state, sliderValue: Number(event.value) };
+    if (isSlide(event, "demo_vslider")) return { ...state, vsliderValue: Number(event.value) };
+    if (isSelect(event, "demo_radio")) return { ...state, radioSelected: String(event.value) };
+    if (isSelect(event, "demo_pick")) return { ...state, pickListSelected: String(event.value) };
+    if (isSelect(event, "demo_combo")) return { ...state, comboValue: String(event.value) };
+    if (isInput(event, "demo_editor")) return { ...state, editorContent: String(event.value) };
 
     // Composite section - simulated tab switching with buttons
-    if (isClick(event, "tab_one")) return { ...state, demoTabsActive: "tab_one" }
-    if (isClick(event, "tab_two")) return { ...state, demoTabsActive: "tab_two" }
+    if (isClick(event, "tab_one")) return { ...state, demoTabsActive: "tab_one" };
+    if (isClick(event, "tab_two")) return { ...state, demoTabsActive: "tab_two" };
 
     // Modal show/hide
-    if (isClick(event, "show_modal")) return { ...state, modalVisible: true }
-    if (isClick(event, "hide_modal")) return { ...state, modalVisible: false }
+    if (isClick(event, "show_modal")) return { ...state, modalVisible: true };
+    if (isClick(event, "hide_modal")) return { ...state, modalVisible: false };
 
     // Panel collapse toggle
-    if (isClick(event, "demo_panel")) return { ...state, panelCollapsed: !state.panelCollapsed }
+    if (isClick(event, "demo_panel")) return { ...state, panelCollapsed: !state.panelCollapsed };
 
     // Interactive widgets
-    if (isClick(event, "counter_btn")) return { ...state, clickCount: state.clickCount + 1 }
-    if (isClick(event, "inc_progress")) return { ...state, progress: Math.min(state.progress + 5, 100) }
+    if (isClick(event, "counter_btn")) return { ...state, clickCount: state.clickCount + 1 };
+    if (isClick(event, "inc_progress"))
+      return { ...state, progress: Math.min(state.progress + 5, 100) };
 
     // Mouse area enter/exit
     if (isMouseArea(event) && event.id === "demo_mouse_area") {
-      if (event.type === "enter") return { ...state, mouseAreaStatus: "hovering" }
-      if (event.type === "exit") return { ...state, mouseAreaStatus: "idle" }
+      if (event.type === "enter") return { ...state, mouseAreaStatus: "hovering" };
+      if (event.type === "exit") return { ...state, mouseAreaStatus: "idle" };
     }
 
     // Sensor resize
     if (isSensor(event) && event.id === "demo_sensor") {
-      if (event.type === "resize") return { ...state, sensorStatus: "activated" }
+      if (event.type === "resize") return { ...state, sensorStatus: "activated" };
     }
 
-    return state
+    return state;
   },
 
   // -- View -------------------------------------------------------------------
@@ -430,10 +432,13 @@ export default app<Model>({
 
         rule(),
 
-        s.activeTab === "layout" ? layoutTab() :
-        s.activeTab === "input" ? inputTab(s) :
-        s.activeTab === "display" ? displayTab(s) :
-        compositeTab(s),
+        s.activeTab === "layout"
+          ? layoutTab()
+          : s.activeTab === "input"
+            ? inputTab(s)
+            : s.activeTab === "display"
+              ? displayTab(s)
+              : compositeTab(s),
       ]),
     ]),
-})
+});

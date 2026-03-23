@@ -7,86 +7,98 @@
  * @module
  */
 
-import type { UINode, Handler } from "../../types.js"
+import type { Handler, UINode } from "../../types.js";
+import { extractHandlers, leafNode, putIf } from "../build.js";
 import type {
-  Length, Padding, Font, Alignment, Color, LineHeight,
-  StyleMap, A11y,
-} from "../types.js"
+  A11y,
+  Alignment,
+  Color,
+  Font,
+  Length,
+  LineHeight,
+  Padding,
+  StyleMap,
+} from "../types.js";
 import {
-  encodeLength, encodePadding, encodeFont, encodeAlignment,
-  encodeColor, encodeLineHeight, encodeStyleMap, encodeA11y,
-} from "../types.js"
-import { leafNode, putIf, extractHandlers } from "../build.js"
+  encodeA11y,
+  encodeAlignment,
+  encodeColor,
+  encodeFont,
+  encodeLength,
+  encodeLineHeight,
+  encodePadding,
+  encodeStyleMap,
+} from "../types.js";
 
 /** Handler prop names -> wire event types for TextInput. */
-const TEXT_INPUT_HANDLERS = {
+const _TEXT_INPUT_HANDLERS = {
   onInput: "input",
   onSubmit: "submit",
   onPaste: "paste",
-} as const
+} as const;
 
 /** Icon specification for text input. */
 export interface TextInputIcon {
-  codePoint: number
-  size?: number
-  spacing?: number
-  side?: "left" | "right"
-  font?: Font
+  codePoint: number;
+  size?: number;
+  spacing?: number;
+  side?: "left" | "right";
+  font?: Font;
 }
 
 /** Props for the TextInput widget. */
 export interface TextInputProps {
   /** Unique widget identifier. Required (stateful widget). */
-  id: string
+  id: string;
   /** Current text content of the input. */
-  value: string
+  value: string;
   /** Placeholder text shown when the input is empty. */
-  placeholder?: string
+  placeholder?: string;
   /** Inner padding around the text content. */
-  padding?: Padding
+  padding?: Padding;
   /** Width of the input field. */
-  width?: Length
+  width?: Length;
   /** Font size in pixels. */
-  size?: number
+  size?: number;
   /** Font family and weight. */
-  font?: Font
+  font?: Font;
   /** Line height multiplier or fixed height. */
-  lineHeight?: LineHeight
+  lineHeight?: LineHeight;
   /** Horizontal text alignment within the input. */
-  alignX?: Alignment
+  alignX?: Alignment;
   /** Icon displayed inside the input field. */
-  icon?: TextInputIcon
+  icon?: TextInputIcon;
   /** Submit handler or boolean to enable submit events on Enter. */
-  onSubmit?: Handler<unknown> | boolean
+  onSubmit?: Handler<unknown> | boolean;
   /** Paste handler or boolean to enable paste events. */
-  onPaste?: Handler<unknown> | boolean
+  onPaste?: Handler<unknown> | boolean;
   /** When true, masks input like a password field. */
-  secure?: boolean
+  secure?: boolean;
   /** Hint to the input method editor about the expected content type. */
-  imePurpose?: "normal" | "secure" | "terminal"
+  imePurpose?: "normal" | "secure" | "terminal";
   /** Style preset name or StyleMap overrides. */
-  style?: StyleMap
+  style?: StyleMap;
   /** Color of the placeholder text. */
-  placeholderColor?: Color
+  placeholderColor?: Color;
   /** Color of the text selection highlight. */
-  selectionColor?: Color
+  selectionColor?: Color;
   /** When true, the input is non-interactive. */
-  disabled?: boolean
+  disabled?: boolean;
   /** Accessibility properties. */
-  a11y?: A11y
+  a11y?: A11y;
   /** Maximum events per second for this widget's coalescable events. */
-  eventRate?: number
+  eventRate?: number;
   /** Input change handler. Pure function: (state, event) => newState. */
-  onInput?: Handler<unknown>
+  onInput?: Handler<unknown>;
 }
 
 function encodeIcon(icon: TextInputIcon): Record<string, unknown> {
-  const result: Record<string, unknown> = { code_point: icon.codePoint }
-  if (icon.size !== undefined) result["size"] = icon.size
-  if (icon.spacing !== undefined) result["spacing"] = icon.spacing
-  if (icon.side !== undefined) result["side"] = icon.side
-  if (icon.font !== undefined) result["font"] = encodeFont(icon.font)
-  return result
+  const result: Record<string, unknown> = { code_point: icon.codePoint };
+  if (icon.size !== undefined) result["size"] = icon.size;
+  if (icon.spacing !== undefined) result["spacing"] = icon.spacing;
+  if (icon.side !== undefined) result["side"] = icon.side;
+  if (icon.font !== undefined) result["font"] = encodeFont(icon.font);
+  return result;
 }
 
 /**
@@ -98,37 +110,37 @@ function encodeIcon(icon: TextInputIcon): Record<string, unknown> {
  * ```
  */
 export function TextInput(props: TextInputProps): UINode {
-  const { id } = props
+  const { id } = props;
   // Extract handler functions, but keep boolean onSubmit/onPaste as wire props
-  const handlerProps: Record<string, string> = {}
-  if (typeof props.onInput === "function") handlerProps["onInput"] = "input"
-  if (typeof props.onSubmit === "function") handlerProps["onSubmit"] = "submit"
-  if (typeof props.onPaste === "function") handlerProps["onPaste"] = "paste"
-  const clean = extractHandlers(id, props, handlerProps)
+  const handlerProps: Record<string, string> = {};
+  if (typeof props.onInput === "function") handlerProps["onInput"] = "input";
+  if (typeof props.onSubmit === "function") handlerProps["onSubmit"] = "submit";
+  if (typeof props.onPaste === "function") handlerProps["onPaste"] = "paste";
+  const clean = extractHandlers(id, props, handlerProps);
 
-  const p: Record<string, unknown> = { value: clean.value }
-  putIf(p, clean.placeholder, "placeholder")
-  putIf(p, clean.padding, "padding", encodePadding)
-  putIf(p, clean.width, "width", encodeLength)
-  putIf(p, clean.size, "size")
-  putIf(p, clean.font, "font", encodeFont)
-  putIf(p, clean.lineHeight, "line_height", encodeLineHeight)
-  putIf(p, clean.alignX, "align_x", encodeAlignment)
-  putIf(p, clean.icon, "icon", encodeIcon)
+  const p: Record<string, unknown> = { value: clean.value };
+  putIf(p, clean.placeholder, "placeholder");
+  putIf(p, clean.padding, "padding", encodePadding);
+  putIf(p, clean.width, "width", encodeLength);
+  putIf(p, clean.size, "size");
+  putIf(p, clean.font, "font", encodeFont);
+  putIf(p, clean.lineHeight, "line_height", encodeLineHeight);
+  putIf(p, clean.alignX, "align_x", encodeAlignment);
+  putIf(p, clean.icon, "icon", encodeIcon);
   // onSubmit/onPaste can be boolean flags (enable the event) or handler functions
-  if (typeof props.onSubmit === "boolean") putIf(p, props.onSubmit, "on_submit")
-  else if (typeof props.onSubmit === "function") p["on_submit"] = true
-  if (typeof props.onPaste === "boolean") putIf(p, props.onPaste, "on_paste")
-  else if (typeof props.onPaste === "function") p["on_paste"] = true
-  putIf(p, clean.secure, "secure")
-  putIf(p, clean.imePurpose, "ime_purpose")
-  putIf(p, clean.style, "style", encodeStyleMap)
-  putIf(p, clean.placeholderColor, "placeholder_color", encodeColor)
-  putIf(p, clean.selectionColor, "selection_color", encodeColor)
-  putIf(p, clean.disabled, "disabled")
-  putIf(p, clean.a11y, "a11y", encodeA11y)
-  putIf(p, clean.eventRate, "event_rate")
-  return leafNode(id, "text_input", p)
+  if (typeof props.onSubmit === "boolean") putIf(p, props.onSubmit, "on_submit");
+  else if (typeof props.onSubmit === "function") p["on_submit"] = true;
+  if (typeof props.onPaste === "boolean") putIf(p, props.onPaste, "on_paste");
+  else if (typeof props.onPaste === "function") p["on_paste"] = true;
+  putIf(p, clean.secure, "secure");
+  putIf(p, clean.imePurpose, "ime_purpose");
+  putIf(p, clean.style, "style", encodeStyleMap);
+  putIf(p, clean.placeholderColor, "placeholder_color", encodeColor);
+  putIf(p, clean.selectionColor, "selection_color", encodeColor);
+  putIf(p, clean.disabled, "disabled");
+  putIf(p, clean.a11y, "a11y", encodeA11y);
+  putIf(p, clean.eventRate, "event_rate");
+  return leafNode(id, "text_input", p);
 }
 
 /**
@@ -143,5 +155,5 @@ export function textInput(
   value: string,
   opts?: Omit<TextInputProps, "id" | "value">,
 ): UINode {
-  return TextInput({ id, value, ...opts })
+  return TextInput({ id, value, ...opts });
 }

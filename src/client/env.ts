@@ -33,7 +33,7 @@ const EXACT_WHITELIST = new Set([
   "RUST_BACKTRACE",
   "HOME",
   "USER",
-])
+]);
 
 /** Prefix-based forwarding: any variable starting with these. */
 const PREFIX_WHITELIST = [
@@ -45,7 +45,7 @@ const PREFIX_WHITELIST = [
   "GALLIUM_",
   "AT_SPI_",
   "FONTCONFIG_",
-]
+];
 
 /**
  * Build a clean environment for the renderer subprocess.
@@ -57,27 +57,27 @@ const PREFIX_WHITELIST = [
  * @returns An environment object suitable for `child_process.spawn`.
  */
 export function buildRendererEnv(opts?: { rustLog?: string }): Record<string, string> {
-  const env: Record<string, string> = {}
+  const env: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(process.env)) {
-    if (value === undefined) continue
+    if (value === undefined) continue;
     if (isWhitelisted(key)) {
-      env[key] = value
+      env[key] = value;
     }
   }
 
   // Override RUST_LOG if specified
   if (opts?.rustLog !== undefined) {
-    env["RUST_LOG"] = opts.rustLog
+    env["RUST_LOG"] = opts.rustLog;
   }
 
-  return env
+  return env;
 }
 
 function isWhitelisted(key: string): boolean {
-  if (EXACT_WHITELIST.has(key)) return true
+  if (EXACT_WHITELIST.has(key)) return true;
   for (const prefix of PREFIX_WHITELIST) {
-    if (key.startsWith(prefix)) return true
+    if (key.startsWith(prefix)) return true;
   }
-  return false
+  return false;
 }

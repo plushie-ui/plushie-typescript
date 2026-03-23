@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    name: CI (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Download plushie binary
+        run: node dist/cli/index.js download || echo "Download failed -- integration tests will be skipped"
+
+      - name: Check formatting
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm check
+
+      - name: Test (mock backend)
+        run: pnpm test
+
+      - name: Test (headless backend)
+        run: PLUSHIE_TEST_BACKEND=headless pnpm test || echo "Headless tests skipped (binary may not be available)"
+
+      - name: Build
+        run: pnpm build

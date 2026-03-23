@@ -8,51 +8,58 @@
 // - Filter buttons with conditional list rendering
 // - View helper extraction (todoRow, filtered)
 
-import { app, Command, isInput, isSubmit, isClick } from '../src/index.js'
-import type { Event, WidgetEvent, Handler, UINode } from '../src/index.js'
-import { window, column, row, text, button, textInput, container, checkbox } from '../src/ui/index.js'
+import type { Event, Handler, UINode, WidgetEvent } from "../src/index.js";
+import { app, Command, isClick, isInput, isSubmit } from "../src/index.js";
+import {
+  button,
+  checkbox,
+  column,
+  container,
+  row,
+  text,
+  textInput,
+  window,
+} from "../src/ui/index.js";
 
 // -- Types --------------------------------------------------------------------
 
 interface Todo {
-  id: string
-  text: string
-  done: boolean
+  id: string;
+  text: string;
+  done: boolean;
 }
 
-type Filter = "all" | "active" | "done"
+type Filter = "all" | "active" | "done";
 
 interface Model {
-  todos: Todo[]
-  input: string
-  filter: Filter
-  nextId: number
+  todos: Todo[];
+  input: string;
+  filter: Filter;
+  nextId: number;
 }
 
 // -- Handlers -----------------------------------------------------------------
 
 const toggleTodo: Handler<Model> = (s, e: WidgetEvent) => ({
   ...s,
-  todos: s.todos.map((t) =>
-    t.id === e.scope[0] ? { ...t, done: !t.done } : t,
-  ),
-})
+  todos: s.todos.map((t) => (t.id === e.scope[0] ? { ...t, done: !t.done } : t)),
+});
 
 const deleteTodo: Handler<Model> = (s, e: WidgetEvent) => ({
   ...s,
   todos: s.todos.filter((t) => t.id !== e.scope[0]),
-})
+});
 
 // -- View helpers -------------------------------------------------------------
 
 function filtered(model: Model): readonly Todo[] {
   switch (model.filter) {
     case "active":
-      return model.todos.filter((t) => !t.done)
+      return model.todos.filter((t) => !t.done);
     case "done":
-      return model.todos.filter((t) => t.done)
+      return model.todos.filter((t) => t.done);
     default:
-      return model.todos
+      return model.todos;
   }
 }
 
@@ -63,7 +70,7 @@ function todoRow(todo: Todo): UINode {
       text(todo.text),
       button("delete", "x", { onClick: deleteTodo }),
     ]),
-  ])
+  ]);
 }
 
 // -- App ----------------------------------------------------------------------
@@ -77,24 +84,24 @@ export default app<Model>({
 
   update(state, event: Event) {
     if (isInput(event, "new_todo")) {
-      return { ...state, input: String(event.value) }
+      return { ...state, input: String(event.value) };
     }
     if (isSubmit(event, "new_todo")) {
-      if (state.input.trim() === "") return state
+      if (state.input.trim() === "") return state;
       const todo: Todo = {
         id: `todo_${state.nextId}`,
         text: state.input,
         done: false,
-      }
+      };
       return [
         { ...state, todos: [todo, ...state.todos], input: "", nextId: state.nextId + 1 },
         Command.focus("app/new_todo"),
-      ] as const
+      ] as const;
     }
-    if (isClick(event, "filter_all")) return { ...state, filter: "all" as const }
-    if (isClick(event, "filter_active")) return { ...state, filter: "active" as const }
-    if (isClick(event, "filter_done")) return { ...state, filter: "done" as const }
-    return state
+    if (isClick(event, "filter_all")) return { ...state, filter: "all" as const };
+    if (isClick(event, "filter_active")) return { ...state, filter: "active" as const };
+    if (isClick(event, "filter_done")) return { ...state, filter: "done" as const };
+    return state;
   },
 
   // -- View -------------------------------------------------------------------
@@ -115,4 +122,4 @@ export default app<Model>({
         column({ id: "list", spacing: 4 }, filtered(s).map(todoRow)),
       ]),
     ]),
-})
+});
