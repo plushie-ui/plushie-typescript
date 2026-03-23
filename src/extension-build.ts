@@ -21,8 +21,8 @@ import type { ExtensionWidgetConfig } from "./extension.js";
 export interface ExtensionBuildConfig {
   /** List of extension widget configs to include in the custom binary. */
   readonly extensions: readonly ExtensionWidgetConfig[];
-  /** Path to the plushie Rust source checkout. */
-  readonly sourcePath: string;
+  /** Path to the plushie Rust source checkout. If omitted, uses published crates. */
+  readonly sourcePath?: string;
   /** Custom binary name (defaults to "plushie-custom"). */
   readonly binaryName?: string;
   /** Build in release mode. */
@@ -91,17 +91,26 @@ export function generateCargoToml(config: ExtensionBuildConfig): string {
 
   const buildDir = nodePath.resolve("node_modules", ".plushie", "build");
 
-  // Plushie ext/renderer dependencies -- use local source if available
-  const plushieExtRel = nodePath.relative(
-    buildDir,
-    nodePath.join(config.sourcePath, "plushie-ext"),
-  );
-  const plushieRendererRel = nodePath.relative(
-    buildDir,
-    nodePath.join(config.sourcePath, "plushie-renderer"),
-  );
-  const plushieExtDep = `plushie-ext = { path = "${plushieExtRel}" }`;
-  const plushieRendererDep = `plushie-renderer = { path = "${plushieRendererRel}" }`;
+  // Plushie dependencies -- use local source if available, otherwise crates.io
+  let plushieExtDep: string;
+  let plushieRendererDep: string;
+
+  if (config.sourcePath) {
+    const plushieExtRel = nodePath.relative(
+      buildDir,
+      nodePath.join(config.sourcePath, "plushie-ext"),
+    );
+    const plushieRendererRel = nodePath.relative(
+      buildDir,
+      nodePath.join(config.sourcePath, "plushie-renderer"),
+    );
+    plushieExtDep = `plushie-ext = { path = "${plushieExtRel}" }`;
+    plushieRendererDep = `plushie-renderer = { path = "${plushieRendererRel}" }`;
+  } else {
+    // Use published crates from crates.io
+    plushieExtDep = `plushie-ext = "0.5"`;
+    plushieRendererDep = `plushie-renderer = "0.5"`;
+  }
 
   // Extension crate dependencies
   const extDeps = nativeExts
@@ -112,10 +121,6 @@ export function generateCargoToml(config: ExtensionBuildConfig): string {
       return `${crateName} = { path = "${relPath}" }`;
     })
     .join("\n");
-
-  // The generated main.rs uses iced::Result, so we need iced as a dependency.
-  // Use the same vendored fork that plushie-ext uses.
-  const icedDep = `iced = { version = "0.7", package = "plushie-iced" }`;
 
   return `[package]
 name = "${packageName}"
@@ -129,7 +134,6 @@ path = "src/main.rs"
 [dependencies]
 ${plushieExtDep}
 ${plushieRendererDep}
-${icedDep}
 ${extDeps}
 `;
 }
@@ -164,7 +168,7 @@ export function generateMainRs(extensions: readonly ExtensionWidgetConfig[]): st
 
 use plushie_ext::app::PlushieAppBuilder;
 
-fn main() -> iced::Result {
+fn main() -> plushie_ext::iced::Result {
     let builder = PlushieAppBuilder::new()
 ${registrations};
     plushie_renderer::run(builder)

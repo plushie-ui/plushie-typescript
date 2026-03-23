@@ -306,16 +306,8 @@ async function downloadWasm(force: boolean, wasmDir?: string): Promise<void> {
 // =========================================================================
 
 function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConfig): void {
-  // Resolve source path: env var > config > error
+  // Resolve source path: env var > config > undefined (uses crates.io for extensions)
   const sourcePath = process.env["PLUSHIE_SOURCE_PATH"] ?? config?.source_path;
-  if (!sourcePath) {
-    console.error(
-      "Rust source path not set.\n" +
-        "Either set PLUSHIE_SOURCE_PATH or add source_path to plushie.extensions.json.",
-    );
-    process.exitCode = 1;
-    return;
-  }
 
   const explicitBin = flags.includes("--bin");
   const explicitWasm = flags.includes("--wasm");
@@ -343,6 +335,14 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
   }
 
   if (wantWasm) {
+    if (!sourcePath) {
+      console.error(
+        "Rust source path required for WASM builds.\n" +
+          "Set PLUSHIE_SOURCE_PATH or add source_path to plushie.extensions.json.",
+      );
+      process.exitCode = 1;
+      return;
+    }
     const wpCheck = spawnSync("which", ["wasm-pack"], { stdio: "pipe" });
     if (wpCheck.status !== 0) {
       console.error(
@@ -413,6 +413,14 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
       }
     }
 
+    if (!sourcePath) {
+      console.error(
+        "Rust source path required for stock binary builds.\n" +
+          "Set PLUSHIE_SOURCE_PATH or add source_path to plushie.extensions.json.",
+      );
+      process.exitCode = 1;
+      return;
+    }
     const buildArgs = ["build", "-p", "plushie-renderer"];
     if (isRelease) buildArgs.push("--release");
     console.log(`Building plushie binary in ${sourcePath}...`);
@@ -429,7 +437,7 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
 }
 
 /** Returns true if the extension build was initiated, false if no native extensions found. */
-function handleExtensionBuild(sourcePath: string, configPath: string, release: boolean): boolean {
+function handleExtensionBuild(sourcePath: string | undefined, configPath: string, release: boolean): boolean {
   const { validateExtensions, generateCargoToml, generateMainRs } =
     require("../extension-build.js") as typeof import("../extension-build.js");
 
