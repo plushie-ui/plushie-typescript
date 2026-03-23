@@ -1,36 +1,41 @@
 import { describe, test, expect } from "vitest"
 import clock from "../../examples/clock.js"
+import { normalize, findById } from "../../src/tree/index.js"
+import type { UINode, TimerEvent } from "../../src/types.js"
 
 describe("clock example", () => {
-  test("exports a valid app definition", () => {
-    expect(clock.config).toBeDefined()
-    expect(clock.config.view).toBeTypeOf("function")
-    expect(clock.run).toBeTypeOf("function")
+  const initModel = clock.config.init as Record<string, unknown>
+  const update = clock.config.update!
+
+  test("init produces a time string", () => {
+    expect(typeof initModel["time"]).toBe("string")
+    expect((initModel["time"] as string).length).toBeGreaterThan(0)
   })
 
-  test("init produces a model with a time string", () => {
-    const init = clock.config.init as { time: string }
-    expect(init.time).toBeTypeOf("string")
-    expect(init.time.length).toBeGreaterThan(0)
+  test("timer tick updates the time", () => {
+    const event: TimerEvent = { kind: "timer", tag: "tick", timestamp: Date.now() }
+    const result = update(initModel as never, event)
+    const m = result as Record<string, unknown>
+    expect(typeof m["time"]).toBe("string")
   })
 
-  test("view produces a UINode tree", () => {
-    const model = clock.config.init as { time: string }
-    const tree = clock.config.view(model as any)
-    expect(typeof tree === "object" && tree !== null && "type" in tree).toBe(true)
-    if (typeof tree === "object" && tree !== null && "type" in tree) {
-      expect(tree.type).toBe("window")
-    }
+  test("unknown events are ignored", () => {
+    const event: TimerEvent = { kind: "timer", tag: "unknown", timestamp: 0 }
+    const result = update(initModel as never, event)
+    expect(result).toEqual(initModel)
   })
 
-  test("has subscriptions", () => {
-    expect(clock.config.subscriptions).toBeTypeOf("function")
-    const subs = clock.config.subscriptions!(clock.config.init as any)
-    expect(Array.isArray(subs)).toBe(true)
-    expect(subs.length).toBeGreaterThan(0)
+  test("has a tick subscription", () => {
+    const subs = clock.config.subscriptions!(initModel as never)
+    const active = subs.filter(Boolean)
+    expect(active.length).toBeGreaterThan(0)
+    expect(active.some((s) => s && s.type === "every")).toBe(true)
   })
 
-  test("has update for timer events", () => {
-    expect(clock.config.update).toBeTypeOf("function")
+  test("view shows the time", () => {
+    const tree = normalize(clock.config.view(initModel as never) as UINode)
+    const display = findById(tree, "clock_display")
+    expect(display).not.toBeNull()
+    expect(display!.props["content"]).toBe(initModel["time"])
   })
 })

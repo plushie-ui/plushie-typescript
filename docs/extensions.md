@@ -828,6 +828,32 @@ iced = { workspace = true }
 serde_json = "1"
 ```
 
+### plushie.extensions.json
+
+```json
+{
+  "extensions": [
+    {
+      "type": "gauge",
+      "rustCrate": "native/gauge",
+      "rustConstructor": "gauge::GaugeExtension::new()",
+      "props": {
+        "value": "number",
+        "min": "number",
+        "max": "number",
+        "color": "color",
+        "label": "string",
+        "width": "length",
+        "height": "length"
+      },
+      "events": ["value_changed"],
+      "commands": ["set_value", "animate_to"]
+    }
+  ],
+  "binaryName": "my-app-plushie"
+}
+```
+
 ### Project structure
 
 ```

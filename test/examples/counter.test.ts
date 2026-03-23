@@ -1,30 +1,35 @@
 import { describe, test, expect } from "vitest"
 import counter from "../../examples/counter.js"
+import { normalize, findById } from "../../src/tree/index.js"
+import type { UINode } from "../../src/types.js"
 
 describe("counter example", () => {
-  test("exports a valid app definition", () => {
-    expect(counter.config).toBeDefined()
-    expect(counter.config.view).toBeTypeOf("function")
-    expect(counter.run).toBeTypeOf("function")
+  test("init produces count: 0", () => {
+    expect(counter.config.init).toEqual({ count: 0 })
   })
 
-  test("init produces correct model", () => {
-    const init = counter.config.init
-    expect(init).toEqual({ count: 0 })
-  })
-
-  test("view produces a UINode tree", () => {
+  test("view produces a window with counter display", () => {
     const model = counter.config.init as { count: number }
-    const tree = counter.config.view(model as any)
-    expect(tree).toBeDefined()
-    expect(typeof tree === "object" && tree !== null && "type" in tree).toBe(true)
-    if (typeof tree === "object" && tree !== null && "type" in tree) {
-      expect(tree.type).toBe("window")
-      expect(tree.id).toBe("main")
-    }
+    const tree = normalize(counter.config.view(model as never) as UINode)
+    expect(tree.type).toBe("window")
+    const countNode = findById(tree, "count")
+    expect(countNode).not.toBeNull()
+    expect(countNode!.props["content"]).toBe("Count: 0")
   })
 
-  test("does not define update (uses inline handlers only)", () => {
-    expect(counter.config.update).toBeUndefined()
+  test("view shows updated count", () => {
+    const tree = normalize(counter.config.view({ count: 5 } as never) as UINode)
+    const countNode = findById(tree, "count")
+    expect(countNode!.props["content"]).toBe("Count: 5")
+  })
+
+  test("view has increment and decrement buttons", () => {
+    const tree = normalize(counter.config.view({ count: 0 } as never) as UINode)
+    const inc = findById(tree, "increment")
+    const dec = findById(tree, "decrement")
+    expect(inc).not.toBeNull()
+    expect(inc!.type).toBe("button")
+    expect(dec).not.toBeNull()
+    expect(dec!.type).toBe("button")
   })
 })
