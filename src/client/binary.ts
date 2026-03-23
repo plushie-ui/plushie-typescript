@@ -32,13 +32,13 @@ export const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie/releases/
 /**
  * Map Node.js platform/arch to plushie binary naming convention.
  *
- * @returns Platform-specific binary name (e.g., "plushie-linux-x86_64").
+ * @returns Platform-specific binary name (e.g., "plushie-renderer-linux-x86_64").
  */
 export function platformBinaryName(): string {
   const os = platformOs();
   const cpu = platformArch();
   const ext = os === "windows" ? ".exe" : "";
-  return `plushie-${os}-${cpu}${ext}`;
+  return `plushie-renderer-${os}-${cpu}${ext}`;
 }
 
 function platformOs(): string {
