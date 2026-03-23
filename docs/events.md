@@ -371,34 +371,34 @@ function update(state: Model, event: Event): UpdateResult<Model> {
 }
 ```
 
-## Canvas shape events
+## Canvas element events
 
 When a canvas contains shapes with an `interactive` field (see
 [composition patterns](composition-patterns.md#canvas-interactive-shapes)),
 the renderer handles hit testing locally and emits semantic shape
 events. These arrive as `kind: "widget"` events (not `kind: "canvas"`).
-The `id` is the canvas widget ID; `data.shape_id` identifies the
+The `id` is the canvas widget ID; `data.element_id` identifies the
 specific shape.
 
 ```typescript
 // event shapes:
-// { kind: "widget", type: "canvas_shape_enter", id: "chart",
-//   data: { shape_id: "bar-jan", x: 15.0, y: 70.0 } }
+// { kind: "widget", type: "canvas_element_enter", id: "chart",
+//   data: { element_id: "bar-jan", x: 15.0, y: 70.0 } }
 //
-// { kind: "widget", type: "canvas_shape_leave", id: "chart",
-//   data: { shape_id: "bar-jan" } }
+// { kind: "widget", type: "canvas_element_leave", id: "chart",
+//   data: { element_id: "bar-jan" } }
 //
-// { kind: "widget", type: "canvas_shape_click", id: "chart",
-//   data: { shape_id: "bar-jan", x: 15.0, y: 70.0, button: "left" } }
+// { kind: "widget", type: "canvas_element_click", id: "chart",
+//   data: { element_id: "bar-jan", x: 15.0, y: 70.0, button: "left" } }
 //
-// { kind: "widget", type: "canvas_shape_drag", id: "chart",
-//   data: { shape_id: "handle", x: 50.0, y: 80.0, delta_x: 2.0, delta_y: -1.0 } }
+// { kind: "widget", type: "canvas_element_drag", id: "chart",
+//   data: { element_id: "handle", x: 50.0, y: 80.0, delta_x: 2.0, delta_y: -1.0 } }
 //
-// { kind: "widget", type: "canvas_shape_drag_end", id: "chart",
-//   data: { shape_id: "handle", x: 52.0, y: 79.0 } }
+// { kind: "widget", type: "canvas_element_drag_end", id: "chart",
+//   data: { element_id: "handle", x: 52.0, y: 79.0 } }
 //
-// { kind: "widget", type: "canvas_shape_focused", id: "chart",
-//   data: { shape_id: "bar-jan" } }
+// { kind: "widget", type: "canvas_element_focused", id: "chart",
+//   data: { element_id: "bar-jan" } }
 ```
 
 Hover styles, pressed styles, cursors, and tooltips on shapes are
@@ -407,12 +407,12 @@ give the host semantic actions (clicks, drags, focus changes) instead
 of raw coordinates.
 
 ```typescript
-if (isWidget(event) && event.type === 'canvas_shape_click' && event.id === 'chart') {
+if (isWidget(event) && event.type === 'canvas_element_click' && event.id === 'chart') {
   const d = event.data as Record<string, unknown>
-  return { ...state, selectedBar: d['shape_id'] as string }
+  return { ...state, selectedBar: d['element_id'] as string }
 }
 
-if (isWidget(event) && event.type === 'canvas_shape_drag' && event.id === 'chart') {
+if (isWidget(event) && event.type === 'canvas_element_drag' && event.id === 'chart') {
   const d = event.data as Record<string, unknown>
   return {
     ...state,

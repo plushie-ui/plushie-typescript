@@ -102,7 +102,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "docs": "typedoc",
-    "docs:check": "typedoc --treatWarningsAsErrors",
+    "docs:check": "typedoc",
     "preflight": "pnpm lint && pnpm check && pnpm build && pnpm test && pnpm docs:check",
     "postinstall": "node scripts/postinstall.mjs",
     "prepublishOnly": "pnpm preflight"

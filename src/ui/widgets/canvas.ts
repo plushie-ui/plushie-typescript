@@ -34,6 +34,10 @@ export interface CanvasProps {
   description?: string;
   /** Accessibility properties. */
   a11y?: A11y;
+  /** Accessible role for the canvas (e.g. "radiogroup", "toolbar"). */
+  role?: string;
+  /** Arrow key navigation mode ("wrap", "clamp", "linear", "none"). */
+  arrowMode?: string;
   /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number;
   /** Mouse press handler or boolean to enable press events. */
@@ -67,6 +71,8 @@ export function Canvas(props: CanvasProps): UINode {
   putIf(p, clean.alt, "alt");
   putIf(p, clean.description, "description");
   putIf(p, clean.a11y, "a11y", encodeA11y);
+  putIf(p, clean.role, "role");
+  putIf(p, clean.arrowMode, "arrow_mode");
   putIf(p, clean.eventRate, "event_rate");
   for (const [key, wire] of Object.entries(CANVAS_HANDLERS)) {
     const val = (props as Record<string, unknown>)[key];

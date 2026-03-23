@@ -402,16 +402,16 @@ describe("decodeEvent", () => {
     }
   });
 
-  test("decodes canvas_shape_click event", () => {
+  test("decodes canvas_element_click event", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
-      family: "canvas_shape_click",
+      family: "canvas_element_click",
       id: "canvas_1",
-      data: { shape_id: "bar-jan", x: 25, y: 150, button: "left" },
+      data: { element_id: "bar-jan", x: 25, y: 150, button: "left" },
     });
     if (event.kind === "widget") {
-      expect(event.type).toBe("canvas_shape_click");
+      expect(event.type).toBe("canvas_element_click");
     }
   });
 

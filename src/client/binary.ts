@@ -128,9 +128,9 @@ export function resolveBinary(): string {
 
   // 4. Common local paths (for development against local builds)
   const localPaths = [
-    resolve("plushie"),
-    resolve("..", "plushie", "target", "release", "plushie"),
-    resolve("..", "plushie", "target", "debug", "plushie"),
+    resolve("plushie-renderer"),
+    resolve("..", "plushie-renderer", "target", "release", "plushie-renderer"),
+    resolve("..", "plushie-renderer", "target", "debug", "plushie-renderer"),
   ];
   for (const p of localPaths) {
     if (existsSync(p)) {

@@ -9,9 +9,10 @@
  */
 
 import type { LinearGradient } from "./gradient.js";
-import type { InteractiveDescriptor } from "./interactive.js";
+import type { DragBounds, HitRect } from "./interactive.js";
 import type { PathCommand } from "./path.js";
 import type { Stroke } from "./stroke.js";
+import type { ClipRect, TransformValue } from "./transform.js";
 
 // -- Shape types --------------------------------------------------------------
 
@@ -26,7 +27,6 @@ export interface RectShape {
   readonly opacity?: number;
   readonly radius?: number;
   readonly fill_rule?: "non_zero" | "even_odd";
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface CircleShape {
@@ -38,7 +38,6 @@ export interface CircleShape {
   readonly stroke?: Stroke;
   readonly opacity?: number;
   readonly fill_rule?: "non_zero" | "even_odd";
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface LineShape {
@@ -49,7 +48,6 @@ export interface LineShape {
   readonly y2: number;
   readonly stroke?: Stroke;
   readonly opacity?: number;
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface CanvasTextShape {
@@ -63,7 +61,6 @@ export interface CanvasTextShape {
   readonly align_x?: "left" | "center" | "right";
   readonly align_y?: "top" | "center" | "bottom";
   readonly opacity?: number;
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface PathShape {
@@ -73,7 +70,6 @@ export interface PathShape {
   readonly stroke?: Stroke;
   readonly opacity?: number;
   readonly fill_rule?: "non_zero" | "even_odd";
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface CanvasImageShape {
@@ -85,7 +81,6 @@ export interface CanvasImageShape {
   readonly h: number;
   readonly rotation?: number;
   readonly opacity?: number;
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface CanvasSvgShape {
@@ -95,15 +90,28 @@ export interface CanvasSvgShape {
   readonly y: number;
   readonly w: number;
   readonly h: number;
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface GroupShape {
   readonly type: "group";
   readonly children: readonly CanvasShape[];
-  readonly x?: number;
-  readonly y?: number;
-  readonly interactive?: InteractiveDescriptor;
+  readonly transforms?: readonly TransformValue[];
+  readonly clip?: ClipRect;
+  readonly id?: string;
+  readonly on_click?: boolean;
+  readonly on_hover?: boolean;
+  readonly draggable?: boolean;
+  readonly drag_axis?: "x" | "y" | "both";
+  readonly drag_bounds?: DragBounds;
+  readonly cursor?: string;
+  readonly hit_rect?: HitRect;
+  readonly tooltip?: string;
+  readonly hover_style?: Readonly<Record<string, unknown>>;
+  readonly pressed_style?: Readonly<Record<string, unknown>>;
+  readonly focus_style?: Readonly<Record<string, unknown>>;
+  readonly show_focus_ring?: boolean;
+  readonly a11y?: Readonly<Record<string, unknown>>;
+  readonly focusable?: boolean;
 }
 
 /** Union of all canvas shape types. */
@@ -125,7 +133,6 @@ export interface RectOpts {
   readonly opacity?: number;
   readonly radius?: number;
   readonly fill_rule?: "non_zero" | "even_odd";
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface CircleOpts {
@@ -133,13 +140,11 @@ export interface CircleOpts {
   readonly stroke?: Stroke;
   readonly opacity?: number;
   readonly fill_rule?: "non_zero" | "even_odd";
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface LineOpts {
   readonly stroke?: Stroke;
   readonly opacity?: number;
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface CanvasTextOpts {
@@ -149,7 +154,6 @@ export interface CanvasTextOpts {
   readonly align_x?: "left" | "center" | "right";
   readonly align_y?: "top" | "center" | "bottom";
   readonly opacity?: number;
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface PathOpts {
@@ -157,19 +161,32 @@ export interface PathOpts {
   readonly stroke?: Stroke;
   readonly opacity?: number;
   readonly fill_rule?: "non_zero" | "even_odd";
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface CanvasImageOpts {
   readonly rotation?: number;
   readonly opacity?: number;
-  readonly interactive?: InteractiveDescriptor;
 }
 
 export interface GroupOpts {
   readonly x?: number;
   readonly y?: number;
-  readonly interactive?: InteractiveDescriptor;
+  readonly transforms?: readonly TransformValue[];
+  readonly clip?: ClipRect;
+  readonly on_click?: boolean;
+  readonly on_hover?: boolean;
+  readonly draggable?: boolean;
+  readonly drag_axis?: "x" | "y" | "both";
+  readonly drag_bounds?: DragBounds;
+  readonly cursor?: string;
+  readonly hit_rect?: HitRect;
+  readonly tooltip?: string;
+  readonly hover_style?: Readonly<Record<string, unknown>>;
+  readonly pressed_style?: Readonly<Record<string, unknown>>;
+  readonly focus_style?: Readonly<Record<string, unknown>>;
+  readonly show_focus_ring?: boolean;
+  readonly a11y?: Readonly<Record<string, unknown>>;
+  readonly focusable?: boolean;
 }
 
 // -- Builder functions --------------------------------------------------------
@@ -180,7 +197,6 @@ export function rect(x: number, y: number, w: number, h: number, opts?: RectOpts
   if (opts) applyFillStrokeOpacity(shape, opts);
   if (opts?.radius !== undefined) shape["radius"] = opts.radius;
   if (opts?.fill_rule !== undefined) shape["fill_rule"] = opts.fill_rule;
-  if (opts?.interactive !== undefined) shape["interactive"] = opts.interactive;
   return shape as unknown as RectShape;
 }
 
@@ -189,7 +205,6 @@ export function circle(x: number, y: number, r: number, opts?: CircleOpts): Circ
   const shape: Record<string, unknown> = { type: "circle", x, y, r };
   if (opts) applyFillStrokeOpacity(shape, opts);
   if (opts?.fill_rule !== undefined) shape["fill_rule"] = opts.fill_rule;
-  if (opts?.interactive !== undefined) shape["interactive"] = opts.interactive;
   return shape as unknown as CircleShape;
 }
 
@@ -198,7 +213,6 @@ export function line(x1: number, y1: number, x2: number, y2: number, opts?: Line
   const shape: Record<string, unknown> = { type: "line", x1, y1, x2, y2 };
   if (opts?.stroke !== undefined) shape["stroke"] = opts.stroke;
   if (opts?.opacity !== undefined) shape["opacity"] = opts.opacity;
-  if (opts?.interactive !== undefined) shape["interactive"] = opts.interactive;
   return shape as unknown as LineShape;
 }
 
@@ -216,7 +230,6 @@ export function canvasText(
   if (opts?.align_x !== undefined) shape["align_x"] = opts.align_x;
   if (opts?.align_y !== undefined) shape["align_y"] = opts.align_y;
   if (opts?.opacity !== undefined) shape["opacity"] = opts.opacity;
-  if (opts?.interactive !== undefined) shape["interactive"] = opts.interactive;
   return shape as unknown as CanvasTextShape;
 }
 
@@ -225,7 +238,6 @@ export function path(commands: readonly PathCommand[], opts?: PathOpts): PathSha
   const shape: Record<string, unknown> = { type: "path", commands };
   if (opts) applyFillStrokeOpacity(shape, opts);
   if (opts?.fill_rule !== undefined) shape["fill_rule"] = opts.fill_rule;
-  if (opts?.interactive !== undefined) shape["interactive"] = opts.interactive;
   return shape as unknown as PathShape;
 }
 
@@ -241,7 +253,6 @@ export function canvasImage(
   const shape: Record<string, unknown> = { type: "image", source, x, y, w, h };
   if (opts?.rotation !== undefined) shape["rotation"] = opts.rotation;
   if (opts?.opacity !== undefined) shape["opacity"] = opts.opacity;
-  if (opts?.interactive !== undefined) shape["interactive"] = opts.interactive;
   return shape as unknown as CanvasImageShape;
 }
 
@@ -252,19 +263,58 @@ export function canvasSvg(
   y: number,
   w: number,
   h: number,
-  opts?: { readonly interactive?: InteractiveDescriptor },
 ): CanvasSvgShape {
-  const shape: Record<string, unknown> = { type: "svg", source, x, y, w, h };
-  if (opts?.interactive !== undefined) shape["interactive"] = opts.interactive;
-  return shape as unknown as CanvasSvgShape;
+  return { type: "svg", source, x, y, w, h };
 }
 
-/** Group child shapes with optional translation. */
-export function group(children: readonly CanvasShape[], opts?: GroupOpts): GroupShape {
+/** Group child shapes with optional transforms, clip, and interactive fields. */
+export function group(
+  idOrChildren: string | readonly CanvasShape[],
+  childrenOrOpts?: readonly CanvasShape[] | GroupOpts,
+  maybeOpts?: GroupOpts,
+): GroupShape {
+  let id: string | undefined;
+  let children: readonly CanvasShape[];
+  let opts: GroupOpts | undefined;
+
+  if (typeof idOrChildren === "string") {
+    id = idOrChildren;
+    children = childrenOrOpts as readonly CanvasShape[];
+    opts = maybeOpts;
+  } else {
+    children = idOrChildren;
+    opts = childrenOrOpts as GroupOpts | undefined;
+  }
+
   const shape: Record<string, unknown> = { type: "group", children };
-  if (opts?.x !== undefined) shape["x"] = opts.x;
-  if (opts?.y !== undefined) shape["y"] = opts.y;
-  if (opts?.interactive !== undefined) shape["interactive"] = opts.interactive;
+  if (id !== undefined) shape["id"] = id;
+
+  // Desugar x/y to leading translate
+  const transforms: Record<string, unknown>[] = [];
+  if (opts?.x !== undefined || opts?.y !== undefined) {
+    transforms.push({ type: "translate", x: opts?.x ?? 0, y: opts?.y ?? 0 });
+  }
+  if (opts?.transforms) {
+    transforms.push(...opts.transforms);
+  }
+  if (transforms.length > 0) shape["transforms"] = transforms;
+
+  if (opts?.clip !== undefined) shape["clip"] = opts.clip;
+  if (opts?.on_click !== undefined) shape["on_click"] = opts.on_click;
+  if (opts?.on_hover !== undefined) shape["on_hover"] = opts.on_hover;
+  if (opts?.draggable !== undefined) shape["draggable"] = opts.draggable;
+  if (opts?.drag_axis !== undefined) shape["drag_axis"] = opts.drag_axis;
+  if (opts?.drag_bounds !== undefined) shape["drag_bounds"] = opts.drag_bounds;
+  if (opts?.cursor !== undefined) shape["cursor"] = opts.cursor;
+  if (opts?.hit_rect !== undefined) shape["hit_rect"] = opts.hit_rect;
+  if (opts?.tooltip !== undefined) shape["tooltip"] = opts.tooltip;
+  if (opts?.hover_style !== undefined) shape["hover_style"] = opts.hover_style;
+  if (opts?.pressed_style !== undefined) shape["pressed_style"] = opts.pressed_style;
+  if (opts?.focus_style !== undefined) shape["focus_style"] = opts.focus_style;
+  if (opts?.show_focus_ring !== undefined) shape["show_focus_ring"] = opts.show_focus_ring;
+  if (opts?.a11y !== undefined) shape["a11y"] = opts.a11y;
+  if (opts?.focusable !== undefined) shape["focusable"] = opts.focusable;
+
   return shape as unknown as GroupShape;
 }
 

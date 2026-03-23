@@ -341,14 +341,14 @@ function handleBuild(flags: string[]): void {
       }
     }
 
-    const buildArgs = ["build", "-p", "plushie"];
+    const buildArgs = ["build", "-p", "plushie-renderer"];
     if (isRelease) buildArgs.push("--release");
     console.log(`Building plushie binary in ${sourcePath}...`);
     const child = spawn("cargo", buildArgs, { cwd: sourcePath, stdio: "inherit" });
     child.on("exit", (code) => {
       if (code === 0) {
         const profile = isRelease ? "release" : "debug";
-        const binPath = resolve(sourcePath, "target", profile, "plushie");
+        const binPath = resolve(sourcePath, "target", profile, "plushie-renderer");
         console.log(`\nBinary built at: ${binPath}`);
       }
       process.exitCode = code ?? 1;

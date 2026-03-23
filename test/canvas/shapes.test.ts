@@ -7,6 +7,7 @@ import {
   canvasSvg,
   canvasText,
   circle,
+  clip,
   close,
   ellipse,
   group,
@@ -16,15 +17,12 @@ import {
   lineTo,
   moveTo,
   path,
-  popClip,
-  popTransform,
-  pushClip,
-  pushTransform,
   quadraticTo,
   rect,
   rotate,
   roundedRect,
   scale,
+  scaleUniform,
   stroke,
   translate,
 } from "../../src/canvas/index.js";
@@ -151,13 +149,44 @@ describe("group", () => {
     expect(g.children).toHaveLength(2);
   });
 
-  test("accepts x, y offset", () => {
+  test("desugars x/y to leading translate transform", () => {
     const g = group([rect(0, 0, 10, 10)], { x: 50, y: 100 });
-    expect(g.x).toBe(50);
-    expect(g.y).toBe(100);
+    expect(g.transforms).toEqual([{ type: "translate", x: 50, y: 100 }]);
   });
 
-  test("omits x/y when not provided", () => {
+  test("accepts an id as first argument", () => {
+    const g = group("my-group", [rect(0, 0, 10, 10)]);
+    expect(g.id).toBe("my-group");
+    expect(g.children).toHaveLength(1);
+  });
+
+  test("accepts transforms and clip", () => {
+    const g = group([], {
+      transforms: [translate(10, 20), rotate(Math.PI)],
+      clip: clip(0, 0, 100, 100),
+    });
+    expect(g.transforms).toEqual([
+      { type: "translate", x: 10, y: 20 },
+      { type: "rotate", angle: Math.PI },
+    ]);
+    expect(g.clip).toEqual({ x: 0, y: 0, w: 100, h: 100 });
+  });
+
+  test("prepends x/y translate before explicit transforms", () => {
+    const g = group([], { x: 5, y: 10, transforms: [rotate(1)] });
+    expect(g.transforms).toEqual([
+      { type: "translate", x: 5, y: 10 },
+      { type: "rotate", angle: 1 },
+    ]);
+  });
+
+  test("accepts interactive fields", () => {
+    const g = group("btn", [rect(0, 0, 10, 10)], { on_click: true, cursor: "pointer" });
+    expect(g.on_click).toBe(true);
+    expect(g.cursor).toBe("pointer");
+  });
+
+  test("omits optional fields when not provided", () => {
     const g = group([]);
     expect(Object.keys(g)).toEqual(["type", "children"]);
   });
@@ -214,12 +243,7 @@ describe("path commands", () => {
 
 // -- Transform/clip commands --------------------------------------------------
 
-describe("transform commands", () => {
-  test("pushTransform / popTransform", () => {
-    expect(pushTransform()).toEqual({ type: "push_transform" });
-    expect(popTransform()).toEqual({ type: "pop_transform" });
-  });
-
+describe("transform values", () => {
   test("translate", () => {
     expect(translate(100, 200)).toEqual({ type: "translate", x: 100, y: 200 });
   });
@@ -236,9 +260,12 @@ describe("transform commands", () => {
     expect(scale(2)).toEqual({ type: "scale", x: 2, y: 2 });
   });
 
-  test("pushClip / popClip", () => {
-    expect(pushClip(10, 10, 100, 80)).toEqual({ type: "push_clip", x: 10, y: 10, w: 100, h: 80 });
-    expect(popClip()).toEqual({ type: "pop_clip" });
+  test("scaleUniform", () => {
+    expect(scaleUniform(3)).toEqual({ type: "scale", x: 3, y: 3 });
+  });
+
+  test("clip rect", () => {
+    expect(clip(10, 10, 100, 80)).toEqual({ x: 10, y: 10, w: 100, h: 80 });
   });
 });
 
@@ -269,31 +296,45 @@ describe("stroke", () => {
 // -- Interactive --------------------------------------------------------------
 
 describe("interactive", () => {
-  test("attaches interactive descriptor to a shape", () => {
+  test("wraps a leaf shape in a group with interactive fields", () => {
     const r = rect(0, 0, 100, 40, { fill: "#3498db" });
-    const ir = interactive(r, { id: "btn", on_click: true, cursor: "pointer" });
-    expect(ir.type).toBe("rect");
-    expect(ir.fill).toBe("#3498db");
-    expect(ir.interactive).toEqual({ id: "btn", on_click: true, cursor: "pointer" });
+    const ir = interactive(r, "btn", { on_click: true, cursor: "pointer" });
+    expect(ir.type).toBe("group");
+    expect(ir.id).toBe("btn");
+    expect(ir.on_click).toBe(true);
+    expect(ir.cursor).toBe("pointer");
+    expect(ir.children).toHaveLength(1);
+    expect(ir.children[0]).toEqual(r);
   });
 
-  test("omits unset interactive fields", () => {
+  test("merges interactive fields onto an existing group", () => {
+    const g = group([rect(0, 0, 10, 10)]);
+    const ig = interactive(g, "panel", { on_hover: true, tooltip: "info" });
+    expect(ig.type).toBe("group");
+    expect(ig.id).toBe("panel");
+    expect(ig.on_hover).toBe(true);
+    expect(ig.tooltip).toBe("info");
+    expect(ig.children).toHaveLength(1);
+  });
+
+  test("creates group with only id when no opts given", () => {
     const c = circle(0, 0, 10);
-    const ic = interactive(c, { id: "dot" });
-    expect(Object.keys(ic.interactive)).toEqual(["id"]);
+    const ic = interactive(c, "dot");
+    expect(ic.type).toBe("group");
+    expect(ic.id).toBe("dot");
+    expect(ic.children).toEqual([c]);
   });
 
   test("includes drag options", () => {
     const r = rect(0, 0, 50, 50);
-    const ir = interactive(r, {
-      id: "handle",
+    const ir = interactive(r, "handle", {
       draggable: true,
       drag_axis: "x",
       drag_bounds: { min_x: 0, max_x: 200 },
     });
-    expect(ir.interactive.draggable).toBe(true);
-    expect(ir.interactive.drag_axis).toBe("x");
-    expect(ir.interactive.drag_bounds).toEqual({ min_x: 0, max_x: 200 });
+    expect(ir.draggable).toBe(true);
+    expect(ir.drag_axis).toBe("x");
+    expect(ir.drag_bounds).toEqual({ min_x: 0, max_x: 200 });
   });
 });
 

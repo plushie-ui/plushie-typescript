@@ -1,9 +1,12 @@
 /**
  * Interactive shape wrapper for canvas hit testing and events.
  *
- * Attaches an `interactive` field to any shape object, enabling
- * click/hover/drag behavior, tooltips, and accessibility annotations.
+ * Makes a shape interactive by merging interactive fields onto a group.
+ * If the shape is already a group, fields are merged directly.
+ * If the shape is a leaf, it is wrapped as the sole child of a new group.
  */
+
+import type { GroupShape } from "./shapes.js";
 
 export interface DragBounds {
   readonly min_x?: number;
@@ -20,7 +23,6 @@ export interface HitRect {
 }
 
 export interface InteractiveOpts {
-  readonly id: string;
   readonly on_click?: boolean;
   readonly on_hover?: boolean;
   readonly draggable?: boolean;
@@ -29,50 +31,60 @@ export interface InteractiveOpts {
   readonly cursor?: string;
   readonly hover_style?: Readonly<Record<string, unknown>>;
   readonly pressed_style?: Readonly<Record<string, unknown>>;
+  readonly focus_style?: Readonly<Record<string, unknown>>;
+  readonly show_focus_ring?: boolean;
   readonly tooltip?: string;
   readonly a11y?: Readonly<Record<string, unknown>>;
   readonly hit_rect?: HitRect;
+  readonly focusable?: boolean;
 }
 
-export interface InteractiveDescriptor {
-  readonly id: string;
-  readonly on_click?: boolean;
-  readonly on_hover?: boolean;
-  readonly draggable?: boolean;
-  readonly drag_axis?: "x" | "y" | "both";
-  readonly drag_bounds?: DragBounds;
-  readonly cursor?: string;
-  readonly hover_style?: Readonly<Record<string, unknown>>;
-  readonly pressed_style?: Readonly<Record<string, unknown>>;
-  readonly tooltip?: string;
-  readonly a11y?: Readonly<Record<string, unknown>>;
-  readonly hit_rect?: HitRect;
-}
+const INTERACTIVE_KEYS: readonly (keyof InteractiveOpts)[] = [
+  "on_click",
+  "on_hover",
+  "draggable",
+  "drag_axis",
+  "drag_bounds",
+  "cursor",
+  "hover_style",
+  "pressed_style",
+  "focus_style",
+  "show_focus_ring",
+  "tooltip",
+  "a11y",
+  "hit_rect",
+  "focusable",
+];
 
-function buildInteractive(opts: InteractiveOpts): InteractiveDescriptor {
-  const result: Record<string, unknown> = { id: opts.id };
-  if (opts.on_click !== undefined) result["on_click"] = opts.on_click;
-  if (opts.on_hover !== undefined) result["on_hover"] = opts.on_hover;
-  if (opts.draggable !== undefined) result["draggable"] = opts.draggable;
-  if (opts.drag_axis !== undefined) result["drag_axis"] = opts.drag_axis;
-  if (opts.drag_bounds !== undefined) result["drag_bounds"] = opts.drag_bounds;
-  if (opts.cursor !== undefined) result["cursor"] = opts.cursor;
-  if (opts.hover_style !== undefined) result["hover_style"] = opts.hover_style;
-  if (opts.pressed_style !== undefined) result["pressed_style"] = opts.pressed_style;
-  if (opts.tooltip !== undefined) result["tooltip"] = opts.tooltip;
-  if (opts.a11y !== undefined) result["a11y"] = opts.a11y;
-  if (opts.hit_rect !== undefined) result["hit_rect"] = opts.hit_rect;
-  return result as unknown as InteractiveDescriptor;
+function mergeInteractiveFields(
+  target: Record<string, unknown>,
+  opts: InteractiveOpts | undefined,
+): void {
+  if (!opts) return;
+  for (const key of INTERACTIVE_KEYS) {
+    if (opts[key] !== undefined) target[key] = opts[key];
+  }
 }
 
 /**
- * Marks a shape as interactive by attaching an `interactive` field.
+ * Make a shape interactive.
  *
- * Returns a new shape object with the `interactive` descriptor added.
+ * If the shape is a group, interactive fields are merged at top level.
+ * If the shape is a leaf (rect, circle, etc.), it is wrapped as the
+ * sole child of a new group.
  */
 export function interactive<T extends Record<string, unknown>>(
   shape: T,
-  opts: InteractiveOpts,
-): T & { readonly interactive: InteractiveDescriptor } {
-  return { ...shape, interactive: buildInteractive(opts) };
+  id: string,
+  opts?: InteractiveOpts,
+): GroupShape {
+  if (shape["type"] === "group") {
+    const result: Record<string, unknown> = { ...shape, id };
+    mergeInteractiveFields(result, opts);
+    return result as unknown as GroupShape;
+  }
+
+  const group: Record<string, unknown> = { type: "group", id, children: [shape] };
+  mergeInteractiveFields(group, opts);
+  return group as unknown as GroupShape;
 }

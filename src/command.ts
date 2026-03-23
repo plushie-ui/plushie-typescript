@@ -96,6 +96,11 @@ export function focus(widgetId: string): Command {
   return cmd("focus", { target: widgetId });
 }
 
+/** Focus a specific element within a canvas by its element ID. */
+export function focusElement(canvasId: string, elementId: string): Command {
+  return cmd("widget_op", { op: "focus_element", target: canvasId, element_id: elementId });
+}
+
 /** Move focus to the next focusable widget. */
 export function focusNext(): Command {
   return cmd("focus_next");

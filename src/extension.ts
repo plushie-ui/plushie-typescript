@@ -54,7 +54,7 @@ export interface ExtensionWidgetConfig {
   /**
    * Path to the Rust crate for native widget extensions (relative to project root).
    * Required for `npx plushie build` to include this extension in the custom binary.
-   * The crate must implement the `WidgetExtension` trait from `plushie_core`.
+   * The crate must implement the `WidgetExtension` trait from `plushie_ext`.
    */
   readonly rustCrate?: string;
   /**

@@ -7,6 +7,10 @@
  * @module
  */
 
+// Tree normalization (UINode -> WireNode) -- needed by advanced users
+// building custom transports or shared-state servers.
+export type { WireNode } from "../tree/normalize.js";
+export { normalize } from "../tree/normalize.js";
 export {
   BINARY_VERSION,
   downloadBinary,
@@ -15,10 +19,6 @@ export {
   resolveBinary,
   validateArchitecture,
 } from "./binary.js";
-// Tree normalization (UINode -> WireNode) -- needed by advanced users
-// building custom transports or shared-state servers.
-export type { WireNode } from "../tree/normalize.js";
-export { normalize } from "../tree/normalize.js";
 export { buildRendererEnv } from "./env.js";
 export type { DecodeLinesResult, DecodePacketsResult } from "./framing.js";
 export { decodeLines, decodePackets, encodeLine, encodePacket } from "./framing.js";

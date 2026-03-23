@@ -3,7 +3,7 @@
  *
  * Provides shape builders (rect, circle, line, path, text, image, svg,
  * group), path commands (moveTo, lineTo, bezierTo, arc, etc.), transform
- * and clip operations, stroke configuration, interactive shape descriptors,
+ * values, clip rects, stroke configuration, interactive shape support,
  * and linear gradients.
  *
  * Canvas shapes are used as children of the Canvas widget. Each shape
@@ -18,7 +18,6 @@ export { linearGradient } from "./gradient.js";
 export type {
   DragBounds,
   HitRect,
-  InteractiveDescriptor,
   InteractiveOpts,
 } from "./interactive.js";
 export { interactive } from "./interactive.js";
@@ -64,13 +63,5 @@ export {
 } from "./shapes.js";
 export type { Dash, Stroke, StrokeOpts } from "./stroke.js";
 export { stroke } from "./stroke.js";
-export type { TransformCommand } from "./transform.js";
-export {
-  popClip,
-  popTransform,
-  pushClip,
-  pushTransform,
-  rotate,
-  scale,
-  translate,
-} from "./transform.js";
+export type { ClipRect, TransformValue } from "./transform.js";
+export { clip, rotate, scale, scaleUniform, translate } from "./transform.js";
