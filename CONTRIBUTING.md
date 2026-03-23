@@ -26,8 +26,8 @@ This runs, in order:
 
 1. **Lint** (`pnpm lint`) -- Biome linter and formatter check
 2. **Type check** (`pnpm check`) -- `tsc --noEmit` with strict settings
-3. **Test** (`pnpm test`) -- vitest, all unit and integration tests
-4. **Build** (`pnpm build`) -- tsup (ESM + CJS + declarations)
+3. **Build** (`pnpm build`) -- tsup (ESM + CJS + declarations)
+4. **Test** (`pnpm test`) -- vitest, all unit and integration tests
 5. **Docs** (`pnpm docs:check`) -- TypeDoc API reference (warnings as errors)
 
 Preflight mirrors CI. If it passes locally, CI will pass.

@@ -42,14 +42,9 @@ jobs:
 
       - name: Download plushie binary
         run: node dist/cli/index.js download
-        continue-on-error: true
 
-      - name: Test (mock backend)
+      - name: Test
         run: pnpm test
-
-      - name: Test (headless backend)
-        run: PLUSHIE_TEST_BACKEND=headless pnpm test
-        continue-on-error: true
 
       - name: API docs
         run: pnpm docs:check
