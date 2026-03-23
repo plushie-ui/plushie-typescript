@@ -9,7 +9,7 @@ export type {
   Length, Padding, Color, Gradient, Font, FontWeight, FontStyle, FontStretch,
   Alignment, Border, CornerRadius, Shadow, StyleMap, StatusOverride,
   A11y, ContentFit, FilterMethod, Wrapping, Shaping, Direction,
-  Anchor, LineHeight,
+  Anchor, LineHeight, BuiltinTheme, Theme, Position,
 } from "./types.js"
 export {
   encodeLength, encodePadding, encodeColor, encodeGradient, encodeBackground,

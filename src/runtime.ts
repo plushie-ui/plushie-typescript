@@ -41,6 +41,9 @@ import * as SubscriptionMod from "./subscription.js"
 // Types
 // =========================================================================
 
+/** A factory function that creates new Transport instances. */
+export type TransportFactory = () => Transport
+
 /** Internal state for the runtime. */
 interface RuntimeState<M> {
   model: M
@@ -52,6 +55,7 @@ interface RuntimeState<M> {
   pendingTimers: Map<string, ReturnType<typeof setTimeout>>
   pendingEffects: Map<string, ReturnType<typeof setTimeout>>
   consecutiveErrors: number
+  restartCount: number
   coalescePending: boolean
   pendingCoalesce: Map<string, Event>
 }
@@ -69,15 +73,25 @@ interface RuntimeState<M> {
 export class Runtime<M> {
   private state: RuntimeState<M>
   private readonly config: AppConfig<M>
-  private readonly transport: Transport
+  private transport: Transport
+  private readonly transportFactory: TransportFactory | null
   private readonly sessionId: string
+  private readonly maxRestarts = 5
+  private readonly restartBaseMs = 100
+  private readonly restartMaxMs = 5000
   private started = false
   private stopped = false
 
-  constructor(config: AppConfig<M>, transport: Transport, sessionId = "") {
+  constructor(config: AppConfig<M>, transportOrFactory: Transport | TransportFactory, sessionId = "") {
     this.config = config
-    this.transport = transport
     this.sessionId = sessionId
+    if (typeof transportOrFactory === "function") {
+      this.transportFactory = transportOrFactory
+      this.transport = transportOrFactory()
+    } else {
+      this.transport = transportOrFactory
+      this.transportFactory = null
+    }
     this.state = {
       model: undefined as unknown as M,
       tree: null,
@@ -88,6 +102,7 @@ export class Runtime<M> {
       pendingTimers: new Map(),
       pendingEffects: new Map(),
       consecutiveErrors: 0,
+      restartCount: 0,
       coalescePending: false,
       pendingCoalesce: new Map(),
     }
@@ -865,6 +880,58 @@ export class Runtime<M> {
         // Ignore errors in exit handler
       }
     }
+
+    // Attempt restart if we have a factory and haven't exhausted retries
+    if (this.transportFactory && this.state.restartCount < this.maxRestarts) {
+      this.scheduleRestart()
+    }
+  }
+
+  private scheduleRestart(): void {
+    const delay = Math.min(
+      this.restartBaseMs * Math.pow(2, this.state.restartCount),
+      this.restartMaxMs,
+    )
+    this.state.restartCount++
+
+    console.warn(
+      `[plushie] Restarting renderer in ${String(delay)}ms ` +
+      `(attempt ${String(this.state.restartCount)}/${String(this.maxRestarts)})`,
+    )
+
+    setTimeout(() => {
+      void (async () => {
+        try {
+          this.transport = this.transportFactory!()
+          this.transport.onMessage((raw) => this.handleRawMessage(raw))
+          this.transport.onClose((r) => {
+            if (!this.stopped) this.handleRendererClose(r)
+          })
+
+          // Re-send settings and await hello
+          const settings = this.buildSettings()
+          this.send(encodeSettings(this.sessionId, settings))
+          await this.awaitHello()
+
+          // Re-send full snapshot (force by clearing previous tree)
+          this.state.tree = null
+          this.renderAndSync(true)
+
+          // Re-sync subscriptions by resetting tracked keys so all are re-sent
+          this.state.subscriptionKeys = new Set()
+          this.syncSubscriptions()
+
+          // Reset restart counter on success
+          this.state.restartCount = 0
+          console.log("[plushie] Renderer restarted successfully")
+        } catch (err) {
+          console.error("[plushie] Restart failed:", err)
+          if (this.state.restartCount < this.maxRestarts) {
+            this.scheduleRestart()
+          }
+        }
+      })()
+    }, delay)
   }
 
   // =======================================================================

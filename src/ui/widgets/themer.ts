@@ -5,14 +5,14 @@
  */
 
 import type { UINode } from "../../types.js"
-import type { A11y } from "../types.js"
+import type { A11y, Theme } from "../types.js"
 import { encodeA11y } from "../types.js"
 import { containerNode, putIf, autoId } from "../build.js"
 
 /** Props for the Themer widget. */
 export interface ThemerProps {
   id?: string
-  theme?: string | Record<string, unknown>
+  theme?: Theme
   a11y?: A11y
   children?: UINode[]
 }
@@ -27,7 +27,7 @@ export function Themer(props: ThemerProps): UINode {
 }
 
 export function themer(
-  theme: string | Record<string, unknown>,
+  theme: Theme,
   children: UINode[],
 ): UINode {
   return Themer({ theme, children })

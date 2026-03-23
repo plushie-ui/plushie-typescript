@@ -17,10 +17,17 @@
  * @module
  */
 
-import { existsSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { existsSync, mkdirSync, createWriteStream, chmodSync } from "node:fs"
+import { join, resolve, dirname } from "node:path"
 import { platform, arch } from "node:process"
+import { get as httpsGet } from "node:https"
 import { isSEA, extractBinaryFromSEA } from "../sea.js"
+
+/** Binary version matching this SDK release. */
+export const BINARY_VERSION = "0.4.1"
+
+/** GitHub release base URL. */
+export const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie/releases/download"
 
 /**
  * Map Node.js platform/arch to plushie binary naming convention.
@@ -88,6 +95,7 @@ export function resolveBinary(): string {
   const downloadDir = resolve("node_modules", ".plushie", "bin")
   const downloadPath = join(downloadDir, platformBinaryName())
   if (existsSync(downloadPath)) {
+    validateArchitecture(downloadPath)
     return downloadPath
   }
 
@@ -98,7 +106,10 @@ export function resolveBinary(): string {
     resolve("..", "plushie", "target", "debug", "plushie"),
   ]
   for (const p of localPaths) {
-    if (existsSync(p)) return p
+    if (existsSync(p)) {
+      validateArchitecture(p)
+      return p
+    }
   }
 
   // 5. Not found
@@ -110,4 +121,93 @@ export function resolveBinary(): string {
     `Expected binary name: ${platformBinaryName()}\n` +
     `Checked: ${downloadPath}`,
   )
+}
+
+/**
+ * Validate that the binary matches the current system architecture.
+ * Best-effort: silently succeeds if the `file` command is unavailable.
+ *
+ * @throws {Error} If the binary architecture doesn't match the system.
+ */
+export function validateArchitecture(binaryPath: string): void {
+  try {
+    const { execSync } = require("node:child_process") as typeof import("node:child_process")
+    const output = execSync(`file "${binaryPath}"`, { encoding: "utf-8" })
+
+    const is64 = output.includes("x86-64") || output.includes("x86_64") || output.includes("amd64")
+    const isArm = output.includes("aarch64") || output.includes("arm64") || output.includes("ARM aarch64")
+
+    const systemArch = process.arch // "x64" or "arm64"
+
+    if (systemArch === "x64" && isArm && !is64) {
+      throw new Error(
+        `Architecture mismatch: binary is ARM64 but system is x86_64.\n` +
+        `Download the correct binary: ${platformBinaryName()}`,
+      )
+    }
+    if (systemArch === "arm64" && is64 && !isArm) {
+      throw new Error(
+        `Architecture mismatch: binary is x86_64 but system is ARM64.\n` +
+        `Download the correct binary: ${platformBinaryName()}`,
+      )
+    }
+  } catch (err) {
+    // If it's our own Error, re-throw
+    if (err instanceof Error && err.message.includes("Architecture mismatch")) throw err
+    // Otherwise silently succeed (file command not available)
+  }
+}
+
+/**
+ * Download the precompiled plushie binary for the current platform.
+ *
+ * @param opts.destDir - Destination directory. Defaults to node_modules/.plushie/bin/
+ * @param opts.force - Re-download even if binary already exists.
+ * @returns Path to the downloaded binary.
+ */
+export async function downloadBinary(opts?: {
+  destDir?: string
+  force?: boolean
+}): Promise<string> {
+  const name = platformBinaryName()
+  const destDir = opts?.destDir ?? resolve("node_modules", ".plushie", "bin")
+  const destPath = join(destDir, name)
+  const url = `${RELEASE_BASE_URL}/v${BINARY_VERSION}/${name}`
+
+  if (!opts?.force && existsSync(destPath)) return destPath
+
+  mkdirSync(destDir, { recursive: true })
+
+  await new Promise<void>((res, rej) => {
+    const follow = (currentUrl: string, depth = 0) => {
+      if (depth > 5) {
+        rej(new Error("Too many redirects"))
+        return
+      }
+      httpsGet(currentUrl, { headers: { "User-Agent": "plushie-ts-sdk" } }, (response) => {
+        if ((response.statusCode === 301 || response.statusCode === 302) && response.headers["location"]) {
+          follow(response.headers["location"], depth + 1)
+          return
+        }
+        if (response.statusCode !== 200) {
+          rej(new Error(`HTTP ${String(response.statusCode)} downloading ${currentUrl}`))
+          return
+        }
+        const dir = dirname(destPath)
+        mkdirSync(dir, { recursive: true })
+        const file = createWriteStream(destPath)
+        response.pipe(file)
+        file.on("finish", () => {
+          file.close()
+          res()
+        })
+        file.on("error", rej)
+      }).on("error", rej)
+    }
+    follow(url)
+  })
+
+  if (process.platform !== "win32") chmodSync(destPath, 0o755)
+
+  return destPath
 }

@@ -499,3 +499,29 @@ export function encodeLineHeight(value: LineHeight): unknown {
   if ("absolute" in value) return { absolute: value.absolute }
   return { relative: value.relative }
 }
+
+// =========================================================================
+// Theme
+// =========================================================================
+
+/** Built-in theme names supported by the renderer. */
+export type BuiltinTheme =
+  | "light" | "dark" | "system"
+  | "dracula" | "nord" | "solarized" | "gruvbox"
+  | "catppuccin" | "tokyo_night" | "kanagawa"
+  | "moonfly" | "nightfly" | "oxocarbon" | "ferra"
+
+/**
+ * Theme specification.
+ *
+ * A string selects a built-in theme. An object defines a custom
+ * palette with shade overrides.
+ */
+export type Theme = BuiltinTheme | string | Record<string, unknown>
+
+// =========================================================================
+// Position
+// =========================================================================
+
+/** Position mode. */
+export type Position = "relative" | "absolute"

@@ -21,14 +21,12 @@ import { existsSync, mkdirSync, createWriteStream, chmodSync, readFileSync, writ
 import { resolve, join, dirname } from "node:path"
 import { get as httpsGet } from "node:https"
 import { spawnSync, spawn } from "node:child_process"
-import { platformBinaryName } from "../client/binary.js"
+import {
+  platformBinaryName,
+  downloadBinary as downloadBinaryAPI,
+  BINARY_VERSION, RELEASE_BASE_URL as BASE_URL,
+} from "../client/binary.js"
 import { DEFAULT_WASM_DIR, WASM_JS_FILE, WASM_BG_FILE } from "../wasm.js"
-
-/** Binary version matching this SDK release. */
-const BINARY_VERSION = "0.4.1"
-
-/** GitHub release download base URL. */
-const BASE_URL = "https://github.com/plushie-ui/plushie/releases/download"
 
 function readVersion(): string {
   const require = createRequire(import.meta.url)
@@ -139,11 +137,11 @@ async function handleDownload(flags: string[]): Promise<void> {
   if (isWasm) {
     await downloadWasm(force)
   } else {
-    await downloadBinary(force)
+    await handleDownloadBinary(force)
   }
 }
 
-async function downloadBinary(force: boolean): Promise<void> {
+async function handleDownloadBinary(force: boolean): Promise<void> {
   const binaryName = platformBinaryName()
   const destDir = resolve("node_modules", ".plushie", "bin")
   const destPath = join(destDir, binaryName)
@@ -160,16 +158,33 @@ async function downloadBinary(force: boolean): Promise<void> {
   console.log(`  From: ${url}`)
   console.log()
 
-  await downloadWithChecksum(url, destPath, binaryName)
+  // Use the programmatic API for the actual download
+  const resultPath = await downloadBinaryAPI({ destDir, force: true })
 
-  // Make executable on Unix
-  if (process.platform !== "win32") {
-    chmodSync(destPath, 0o755)
-    console.log("  Made executable (chmod +x)")
+  // Verify checksum on top of the API download
+  const checksumUrl = `${url}.sha256`
+  try {
+    const checksumPath = `${resultPath}.sha256`
+    await downloadFile(checksumUrl, checksumPath)
+
+    const { createHash } = await import("node:crypto")
+    const fileData = readFileSync(resultPath)
+    const actualHash = createHash("sha256").update(fileData).digest("hex")
+    const expectedHash = readFileSync(checksumPath, "utf-8").trim().split(/\s+/)[0] ?? ""
+
+    if (actualHash !== expectedHash) {
+      console.error(`  WARNING: SHA256 mismatch for ${binaryName}`)
+      console.error(`    expected: ${expectedHash}`)
+      console.error(`    actual:   ${actualHash}`)
+    } else {
+      console.log(`  SHA256 verified: ${actualHash.slice(0, 16)}...`)
+    }
+  } catch {
+    console.log("  (checksum verification skipped)")
   }
 
   console.log()
-  console.log(`Binary installed to ${destPath}`)
+  console.log(`Binary installed to ${resultPath}`)
 }
 
 async function downloadWasm(force: boolean): Promise<void> {

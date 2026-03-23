@@ -23,7 +23,10 @@ export type {
   DecodedResponse,
 } from "./protocol.js"
 
-export { resolveBinary, platformBinaryName } from "./binary.js"
+export {
+  resolveBinary, platformBinaryName, validateArchitecture,
+  downloadBinary, BINARY_VERSION, RELEASE_BASE_URL,
+} from "./binary.js"
 export { buildRendererEnv } from "./env.js"
 
 export { SpawnTransport, StdioTransport } from "./transport.js"

@@ -11,7 +11,7 @@
  */
 
 import type { UINode } from "../../types.js"
-import type { A11y } from "../types.js"
+import type { A11y, Theme } from "../types.js"
 import { encodeA11y } from "../types.js"
 import { containerNode, putIf } from "../build.js"
 
@@ -38,7 +38,7 @@ export interface WindowProps {
   exitOnCloseRequest?: boolean
   scaleFactor?: number
   padding?: number
-  theme?: string | Record<string, unknown>
+  theme?: Theme
   a11y?: A11y
   children?: UINode[]
 }

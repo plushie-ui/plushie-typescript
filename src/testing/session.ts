@@ -331,6 +331,64 @@ export class TestSession<M> {
   }
 
   // =======================================================================
+  // Tree query + screenshot persistence
+  // =======================================================================
+
+  /**
+   * Query the renderer's full tree.
+   * Returns the tree as the renderer sees it, which may differ
+   * from the local tree() if patches haven't been fully applied.
+   */
+  async queryTree(): Promise<Element | null> {
+    const id = this.nextId()
+    const msg = encodeQuery(this.sessionId, id, "tree", {})
+
+    return new Promise<Element | null>((resolve) => {
+      const originalHandler = this.getMessageHandler()
+      this.pool.onSessionMessage(this.sessionId, (raw) => {
+        if (raw["type"] === "query_response" && raw["id"] === id) {
+          this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}))
+          const data = raw["data"]
+          if (data === null || data === undefined) {
+            resolve(null)
+          } else {
+            resolve(wireNodeToElement(data as Record<string, unknown>))
+          }
+        } else {
+          originalHandler?.(raw)
+        }
+      })
+      this.pool.sendToSession(this.sessionId, msg)
+    })
+  }
+
+  /**
+   * Save a screenshot as raw RGBA data with a JSON metadata sidecar.
+   * Captures the current rendered state and writes files to test/screenshots/.
+   */
+  async saveScreenshot(name: string, opts?: { width?: number; height?: number }): Promise<void> {
+    const result = await this.screenshot(name, opts)
+    if (result.rgba === null || result.rgba === undefined) return // mock mode stub
+
+    const screenshotDir = path.resolve("test", "screenshots")
+    fs.mkdirSync(screenshotDir, { recursive: true })
+
+    // Write raw RGBA data
+    const filePath = path.join(screenshotDir, `${name}.rgba`)
+    if (result.rgba instanceof Uint8Array || Buffer.isBuffer(result.rgba)) {
+      fs.writeFileSync(filePath, result.rgba as Buffer)
+    }
+
+    // Write metadata sidecar
+    const metaPath = path.join(screenshotDir, `${name}.json`)
+    fs.writeFileSync(metaPath, JSON.stringify({
+      hash: result.hash,
+      width: result.width,
+      height: result.height,
+    }, null, 2) + "\n", "utf-8")
+  }
+
+  // =======================================================================
   // Queries (send Query to renderer, await response)
   // =======================================================================
 

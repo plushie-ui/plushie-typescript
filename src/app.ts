@@ -132,9 +132,7 @@ export function app<M>(config: AppConfig<M>): AppDefinition<M> {
       if (opts.format !== undefined) transportOpts.format = opts.format
       if (opts.args !== undefined) transportOpts.args = opts.args
       if (opts.rustLog !== undefined) transportOpts.rustLog = opts.rustLog
-      const transport = new SpawnTransport(transportOpts)
-
-      const runtime = new Runtime(config, transport)
+      const runtime = new Runtime(config, () => new SpawnTransport(transportOpts))
       await runtime.start()
 
       return {
