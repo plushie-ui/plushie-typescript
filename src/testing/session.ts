@@ -44,13 +44,11 @@ export class TestSession<M> {
   private readonly runtime: Runtime<M>;
   private readonly pool: SessionPool;
   private readonly sessionId: string;
-  private readonly config: AppConfig<M>;
   private requestCounter = 0;
 
   constructor(config: AppConfig<M>, pool: SessionPool, sessionId: string, format: WireFormat) {
     this.pool = pool;
     this.sessionId = sessionId;
-    this.config = config;
     const transport = new PooledTransport(pool, sessionId, format);
     this.runtime = new Runtime(config, transport, sessionId);
   }

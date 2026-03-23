@@ -15,7 +15,7 @@ export const binaryPath: string | null = (() => {
   if (envPath && existsSync(envPath)) return envPath;
 
   // 2. Downloaded binary
-  const { resolve, join } = require("node:path") as typeof import("node:path");
+  const { resolve } = require("node:path") as typeof import("node:path");
   const { platform, arch } = require("node:process") as typeof import("node:process");
 
   const os = platform === "darwin" ? "darwin" : platform === "win32" ? "windows" : "linux";

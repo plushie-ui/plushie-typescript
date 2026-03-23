@@ -37,7 +37,7 @@ export type ExtensionPropType =
   | "font"
   | "style"
   | "any"
-  | { list: string };
+  | { readonly list: ExtensionPropType };
 
 /** Configuration for defining an extension widget. */
 export interface ExtensionWidgetConfig {

@@ -35,7 +35,7 @@ Preflight mirrors CI. If it passes locally, CI will pass.
 ## Commands
 
 ```sh
-pnpm preflight          # all checks (lint + check + test + build + docs)
+pnpm preflight          # all checks (lint + check + build + test + docs)
 pnpm lint               # biome check
 pnpm format             # biome format --write (auto-fix)
 pnpm check              # tsc --noEmit
@@ -54,7 +54,7 @@ Run `pnpm format` to auto-fix formatting issues.
 Key style points:
 
 - **2-space indent**, LF line endings, trailing newlines
-- **No semicolons** (Biome default)
+- **Semicolons required**
 - **100-character line width**
 - **Bracket notation** for wire protocol keys (`result["type"]` not
   `result.type`) -- this makes it explicit which keys are wire format
@@ -212,8 +212,8 @@ when there is clear value.
 - Include tests for new functionality
 - Update docs if user-facing behavior changes
 
-CI runs on every PR: lint, type check, build, binary download, test
-(mock + headless), API docs -- across Node.js 20 and 22.
+CI runs on every PR: lint, type check, build, binary download, test,
+API docs -- across Node.js 20 and 22.
 
 ## Binary management
 
