@@ -4,6 +4,15 @@ Guide for building custom widget extensions for plushie. Extensions
 let you render arbitrary Rust-native widgets while keeping your app's
 state and logic in TypeScript.
 
+For complete working examples with Rust extensions, see the
+[plushie-demos](https://github.com/plushie-ui/plushie-demos/tree/main/typescript)
+repository:
+
+- [gauge-demo](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/gauge-demo)
+  -- native gauge widget with extension commands (`set_value`, `animate_to`)
+- [sparkline-dashboard](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/sparkline-dashboard)
+  -- render-only canvas sparkline with timer-driven live data
+
 ## Quick start
 
 An extension has two halves:
@@ -921,15 +930,3 @@ npx plushie build
 # Run the app
 npx plushie run src/app.tsx
 ```
-
-## Working demos
-
-Full working projects with native Rust extensions, tests, and build
-configuration:
-
-- [gauge-demo](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/gauge-demo)
-  -- interactive gauge with extension commands (`set_value`,
-  `animate_to`) and optimistic updates
-- [sparkline-dashboard](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/sparkline-dashboard)
-  -- render-only sparkline with `canvas::Program`, timer
-  subscriptions, and live data
