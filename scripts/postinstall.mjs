@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, chmodSync, createWriteStream, readFileSync, unli
 import { get as httpsGet } from "node:https"
 import { join, resolve } from "node:path"
 
-const BINARY_VERSION = "0.5.0"
+const BINARY_VERSION = "0.5.1"
 const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-renderer/releases/download"
 
 // Skip conditions

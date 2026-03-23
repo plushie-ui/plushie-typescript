@@ -24,7 +24,7 @@ import { arch, platform } from "node:process";
 import { extractBinaryFromSEA, isSEA } from "../sea.js";
 
 /** Binary version matching this SDK release. */
-export const BINARY_VERSION = "0.5.0";
+export const BINARY_VERSION = "0.5.1";
 
 /** GitHub release base URL. */
 export const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-renderer/releases/download";

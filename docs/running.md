@@ -439,7 +439,7 @@ import { generateSEAConfig, isSEA, extractBinaryFromSEA } from 'plushie'
 const config = generateSEAConfig({
   main: 'dist/my-app.js',
   output: 'my-app',
-  binaryPath: 'node_modules/.plushie/bin/plushie-linux-x86_64',
+  binaryPath: 'node_modules/.plushie/bin/plushie-renderer-linux-x86_64',
 })
 ```
 

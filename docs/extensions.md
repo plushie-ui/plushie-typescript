@@ -492,8 +492,8 @@ Create `plushie.extensions.json` at your project root:
 ### Build command
 
 ```sh
-PLUSHIE_SOURCE_PATH=~/plushie npx plushie build
-PLUSHIE_SOURCE_PATH=~/plushie npx plushie build --release
+PLUSHIE_SOURCE_PATH=~/plushie-renderer npx plushie build
+PLUSHIE_SOURCE_PATH=~/plushie-renderer npx plushie build --release
 ```
 
 The build:
@@ -553,7 +553,7 @@ fn handle_command_push_adds_sample() {
 Build a custom binary and test with the headless backend:
 
 ```sh
-PLUSHIE_SOURCE_PATH=~/plushie npx plushie build
+PLUSHIE_SOURCE_PATH=~/plushie-renderer npx plushie build
 PLUSHIE_TEST_BACKEND=headless pnpm test
 ```
 
@@ -874,7 +874,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-plushie-ext = { path = "../../../plushie/plushie-ext" }
+plushie-ext = "0.5"
 iced = { version = "0.7", package = "plushie-iced", features = ["advanced"] }
 serde_json = "1"
 ```
