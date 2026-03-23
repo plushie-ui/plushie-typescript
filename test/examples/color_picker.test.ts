@@ -10,25 +10,26 @@ describe("color_picker example", () => {
 
   test("init produces correct model shape", () => {
     const init = colorPicker.config.init as Record<string, unknown>
-    expect(init).toHaveProperty("r")
-    expect(init).toHaveProperty("g")
-    expect(init).toHaveProperty("b")
-    expect(init["r"]).toBeTypeOf("number")
-    expect(init["g"]).toBeTypeOf("number")
-    expect(init["b"]).toBeTypeOf("number")
+    expect(init).toHaveProperty("hue")
+    expect(init).toHaveProperty("saturation")
+    expect(init).toHaveProperty("value")
+    expect(init).toHaveProperty("drag")
+    expect(init["hue"]).toBeTypeOf("number")
+    expect(init["saturation"]).toBeTypeOf("number")
+    expect(init["value"]).toBeTypeOf("number")
   })
 
-  test("view produces a UINode tree with slider children", () => {
+  test("view produces a UINode tree with canvas", () => {
     const model = colorPicker.config.init
     const tree = colorPicker.config.view(model as any)
     expect(typeof tree === "object" && tree !== null && "type" in tree).toBe(true)
     if (typeof tree === "object" && tree !== null && "type" in tree) {
       expect(tree.type).toBe("window")
-      expect(tree.id).toBe("main")
+      expect(tree.id).toBe("color_picker")
     }
   })
 
-  test("does not define update (uses inline handlers only)", () => {
-    expect(colorPicker.config.update).toBeUndefined()
+  test("has update for canvas event handling", () => {
+    expect(colorPicker.config.update).toBeTypeOf("function")
   })
 })

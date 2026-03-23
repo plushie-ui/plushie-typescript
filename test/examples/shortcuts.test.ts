@@ -10,10 +10,10 @@ describe("shortcuts example", () => {
 
   test("init produces correct model shape", () => {
     const init = shortcuts.config.init as Record<string, unknown>
-    expect(init).toHaveProperty("lastKey")
-    expect(init).toHaveProperty("modifiers")
-    expect(init["lastKey"]).toBe("(none)")
-    expect(init["modifiers"]).toBe("")
+    expect(init).toHaveProperty("log")
+    expect(init).toHaveProperty("count")
+    expect(Array.isArray(init["log"])).toBe(true)
+    expect(init["count"]).toBe(0)
   })
 
   test("view produces a UINode tree", () => {

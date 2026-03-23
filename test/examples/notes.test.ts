@@ -10,8 +10,12 @@ describe("notes example", () => {
 
   test("init produces correct model shape", () => {
     const init = notes.config.init as Record<string, unknown>
-    expect(init).toHaveProperty("content")
-    expect(init["content"]).toBe("")
+    expect(init).toHaveProperty("notes")
+    expect(init).toHaveProperty("nextId")
+    expect(init).toHaveProperty("searchQuery")
+    expect(init).toHaveProperty("selection")
+    expect(init).toHaveProperty("undo")
+    expect(init).toHaveProperty("route")
   })
 
   test("view produces a UINode tree", () => {
@@ -23,7 +27,7 @@ describe("notes example", () => {
     }
   })
 
-  test("does not define update (uses inline handlers only)", () => {
-    expect(notes.config.update).toBeUndefined()
+  test("has update for event handling", () => {
+    expect(notes.config.update).toBeTypeOf("function")
   })
 })

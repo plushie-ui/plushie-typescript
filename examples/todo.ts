@@ -1,7 +1,18 @@
+// To-do list with add, toggle, delete, and filter.
+//
+// Demonstrates:
+// - text_input with onSubmit for keyboard-driven entry
+// - Scoped IDs via named containers for dynamic list items
+// - Scope binding in handlers for item-level events
+// - Command.focus() with scoped paths for refocusing
+// - Filter buttons with conditional list rendering
+// - View helper extraction (todoRow, filtered)
+
 import { app, Command, isInput, isSubmit, isClick } from '../src/index.js'
-import type { Event, WidgetEvent, Handler } from '../src/index.js'
+import type { Event, WidgetEvent, Handler, UINode } from '../src/index.js'
 import { window, column, row, text, button, textInput, container, checkbox } from '../src/ui/index.js'
-import type { UINode } from '../src/index.js'
+
+// -- Types --------------------------------------------------------------------
 
 interface Todo {
   id: string
@@ -18,7 +29,7 @@ interface Model {
   nextId: number
 }
 
-// -- Inline handlers for toggle and delete, using scoped IDs ----------------
+// -- Handlers -----------------------------------------------------------------
 
 const toggleTodo: Handler<Model> = (s, e: WidgetEvent) => ({
   ...s,
@@ -32,7 +43,7 @@ const deleteTodo: Handler<Model> = (s, e: WidgetEvent) => ({
   todos: s.todos.filter((t) => t.id !== e.scope[0]),
 })
 
-// -- View helpers -----------------------------------------------------------
+// -- View helpers -------------------------------------------------------------
 
 function filtered(model: Model): readonly Todo[] {
   switch (model.filter) {
@@ -55,10 +66,14 @@ function todoRow(todo: Todo): UINode {
   ])
 }
 
-// -- App --------------------------------------------------------------------
+// -- App ----------------------------------------------------------------------
 
 export default app<Model>({
+  // -- Init -------------------------------------------------------------------
+
   init: { todos: [], input: "", filter: "all", nextId: 1 },
+
+  // -- Update -----------------------------------------------------------------
 
   update(state, event: Event) {
     if (isInput(event, "new_todo")) {
@@ -82,16 +97,21 @@ export default app<Model>({
     return state
   },
 
+  // -- View -------------------------------------------------------------------
+
   view: (s) =>
     window("main", { title: "Todos" }, [
       column({ id: "app", padding: 20, spacing: 12, width: "fill" }, [
         text("title", "My Todos", { size: 24 }),
+
         textInput("new_todo", s.input, { placeholder: "What needs doing?", onSubmit: true }),
+
         row({ spacing: 8 }, [
           button("filter_all", "All"),
           button("filter_active", "Active"),
           button("filter_done", "Done"),
         ]),
+
         column({ id: "list", spacing: 4 }, filtered(s).map(todoRow)),
       ]),
     ]),

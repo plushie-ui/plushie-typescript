@@ -1,6 +1,16 @@
+// Async command example -- a button that triggers background work.
+//
+// Demonstrates:
+// - Command.async() for off-thread work
+// - isAsync() for narrowing async result events
+// - Loading state management
+// - Extracting view helpers for reuse
+
 import { app, Command, isClick, isAsync } from '../src/index.js'
 import type { Event, UINode } from '../src/index.js'
 import { window, column, text, button } from '../src/ui/index.js'
+
+// -- Types --------------------------------------------------------------------
 
 type Status = "idle" | "loading" | "done" | "error"
 
@@ -10,7 +20,7 @@ interface Model {
   error: string | null
 }
 
-// -- View helpers -----------------------------------------------------------
+// -- View helpers -------------------------------------------------------------
 
 function statusMessage(model: Model): UINode {
   switch (model.status) {
@@ -28,10 +38,14 @@ function statusMessage(model: Model): UINode {
   }
 }
 
-// -- App --------------------------------------------------------------------
+// -- App ----------------------------------------------------------------------
 
 export default app<Model>({
+  // -- Init -------------------------------------------------------------------
+
   init: { status: "idle", result: null, error: null },
+
+  // -- Update -----------------------------------------------------------------
 
   update(state, event: Event) {
     if (isClick(event, "fetch")) {
@@ -50,6 +64,8 @@ export default app<Model>({
     }
     return state
   },
+
+  // -- View -------------------------------------------------------------------
 
   view: (s) =>
     window("main", { title: "Async Fetch" }, [

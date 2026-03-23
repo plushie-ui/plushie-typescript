@@ -1,17 +1,36 @@
+// Clock example showing the current time, updated every second.
+//
+// Demonstrates:
+// - Subscription.every() for timer-based updates
+// - isTimer() for narrowing timer events in update()
+// - Simple model with derived display value
+
 import { app, Subscription, isTimer } from '../src/index.js'
 import type { Event } from '../src/index.js'
 import { window, column, text } from '../src/ui/index.js'
 
+// -- Types --------------------------------------------------------------------
+
 type Model = { time: string }
+
+// -- Helpers ------------------------------------------------------------------
 
 function currentTime(): string {
   return new Date().toLocaleTimeString()
 }
 
+// -- App ----------------------------------------------------------------------
+
 export default app<Model>({
+  // -- Init -------------------------------------------------------------------
+
   init: { time: currentTime() },
 
+  // -- Subscribe --------------------------------------------------------------
+
   subscriptions: () => [Subscription.every(1000, "tick")],
+
+  // -- Update -----------------------------------------------------------------
 
   update(state, event: Event) {
     if (isTimer(event, "tick")) {
@@ -19,6 +38,8 @@ export default app<Model>({
     }
     return state
   },
+
+  // -- View -------------------------------------------------------------------
 
   view: (s) =>
     window("main", { title: "Clock" }, [

@@ -1,15 +1,25 @@
-// Keyboard shortcuts example.
-// Demonstrates Subscription.onKeyPress, isKey() for narrowing key events,
-// and displaying the last key pressed with modifier state.
+// Keyboard shortcuts example showing a scrollable log of key presses.
+//
+// Demonstrates:
+// - Subscription.onKeyPress() for global keyboard events
+// - isKey() for narrowing key events in update()
+// - scrollable for overflow content with dynamic list items
+// - Capped log buffer (MAX_LOG_ENTRIES)
 
 import { app, Subscription, isKey } from '../src/index.js'
 import type { Event, KeyEvent, Modifiers } from '../src/index.js'
-import { window, column, text, rule } from '../src/ui/index.js'
+import { window, column, text, rule, scrollable } from '../src/ui/index.js'
+
+// -- Types --------------------------------------------------------------------
 
 interface Model {
-  lastKey: string
-  modifiers: string
+  log: string[]
+  count: number
 }
+
+const MAX_LOG_ENTRIES = 50
+
+// -- Helpers ------------------------------------------------------------------
 
 function formatModifiers(m: Modifiers): string {
   const parts: string[] = []
@@ -20,33 +30,55 @@ function formatModifiers(m: Modifiers): string {
   return parts.join("+")
 }
 
-function applyKey(state: Model, event: KeyEvent): Model {
+function formatKeyEvent(event: KeyEvent, n: number): string {
   const mods = formatModifiers(event.modifiers)
-  return { lastKey: event.key, modifiers: mods }
+  const key = event.key
+  const prefix = mods ? `${mods}+` : ""
+  return `#${n}: ${prefix}${key}`
 }
 
+// -- App ----------------------------------------------------------------------
+
 export default app<Model>({
-  init: { lastKey: "(none)", modifiers: "" },
+  // -- Init -------------------------------------------------------------------
+
+  init: { log: [], count: 0 },
+
+  // -- Subscribe --------------------------------------------------------------
 
   subscriptions: () => [Subscription.onKeyPress("keys")],
 
+  // -- Update -----------------------------------------------------------------
+
   update(state, event: Event) {
-    if (isKey(event, "press")) return applyKey(state, event)
+    if (isKey(event, "press")) {
+      const entry = formatKeyEvent(event, state.count + 1)
+      return {
+        ...state,
+        log: [entry, ...state.log].slice(0, MAX_LOG_ENTRIES),
+        count: state.count + 1,
+      }
+    }
     return state
   },
 
-  view: (s) => {
-    const display = s.modifiers
-      ? `${s.modifiers}+${s.lastKey}`
-      : s.lastKey
+  // -- View -------------------------------------------------------------------
 
-    return window("main", { title: "Keyboard Shortcuts" }, [
+  view: (s) =>
+    window("main", { title: "Keyboard Shortcuts" }, [
       column({ padding: 16, spacing: 12, width: "fill" }, [
         text("header", "Press any key", { size: 20 }),
+        text("count", `${s.count} key events captured`, { size: 12, color: "#888888" }),
+
         rule(),
-        text("label", "Last key pressed:", { size: 14, color: "#888888" }),
-        text("key_display", display, { size: 24 }),
+
+        scrollable({ id: "log", height: "fill" }, [
+          column({ spacing: 2, width: "fill" },
+            s.log.map((entry, index) =>
+              text(`log_${index}`, entry, { size: 13 }),
+            ),
+          ),
+        ]),
       ]),
-    ])
-  },
+    ]),
 })
