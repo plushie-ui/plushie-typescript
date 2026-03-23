@@ -11,6 +11,18 @@ import type {
 import {
   encodeLength, encodeFont, encodeLineHeight, encodeStyleMap, encodeA11y,
 } from "../types.js"
+
+/**
+ * Custom icon for the check mark.
+ * `codePoint` is a Unicode code point (required), other fields are optional.
+ */
+export interface CheckboxIcon {
+  codePoint: number
+  size?: number
+  lineHeight?: number
+  font?: Font
+  shaping?: Shaping
+}
 import { leafNode, putIf, autoId, extractHandlers } from "../build.js"
 
 const CHECKBOX_HANDLERS = { onToggle: "toggle" } as const
@@ -29,6 +41,8 @@ export interface CheckboxProps {
   shaping?: Shaping
   wrapping?: Wrapping
   style?: StyleMap
+  /** Custom icon for the check mark. */
+  icon?: CheckboxIcon
   disabled?: boolean
   a11y?: A11y
   eventRate?: number
@@ -61,6 +75,14 @@ export function Checkbox(props: CheckboxProps): UINode {
   putIf(p, clean.shaping, "shaping")
   putIf(p, clean.wrapping, "wrapping")
   putIf(p, clean.style, "style", encodeStyleMap)
+  if (clean.icon) {
+    const icon: Record<string, unknown> = { code_point: clean.icon.codePoint }
+    if (clean.icon.size !== undefined) icon["size"] = clean.icon.size
+    if (clean.icon.lineHeight !== undefined) icon["line_height"] = clean.icon.lineHeight
+    if (clean.icon.font !== undefined) icon["font"] = encodeFont(clean.icon.font)
+    if (clean.icon.shaping !== undefined) icon["shaping"] = clean.icon.shaping
+    p["icon"] = icon
+  }
   putIf(p, clean.disabled, "disabled")
   putIf(p, clean.a11y, "a11y", encodeA11y)
   putIf(p, clean.eventRate, "event_rate")
