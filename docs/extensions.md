@@ -53,7 +53,7 @@ impl WidgetExtension for SparklineExtension {
     fn render<'a>(
         &self, node: &'a TreeNode, env: &WidgetEnv<'a>,
     ) -> Element<'a, Message> {
-        let data = prop_f32_array(node, "data").unwrap_or_default();
+        let data = prop_f32_array(node.props(), "data").unwrap_or_default();
         // ... render using iced widgets ...
         text("sparkline placeholder").into()
     }
@@ -285,7 +285,7 @@ impl WidgetExtension for HexViewExtension {
     fn render<'a>(
         &self, node: &'a TreeNode, env: &WidgetEnv<'a>,
     ) -> Element<'a, Message> {
-        let data = prop_str(node, "data").unwrap_or_default();
+        let data = node.prop_str("data").unwrap_or_default();
         container(text(data)).into()
     }
 }
@@ -342,11 +342,12 @@ fn prepare(
     &mut self, node: &TreeNode,
     caches: &mut ExtensionCaches, theme: &Theme,
 ) {
+    let props = node.props();
     let state = caches.get_or_insert::<SparklineState>(
         self.config_key(), &node.id,
-        || SparklineState::new(prop_usize(node, "capacity").unwrap_or(100))
+        || SparklineState::new(prop_usize(props, "capacity").unwrap_or(100))
     );
-    state.color = prop_color(node, "color");
+    state.color = prop_color(props, "color");
 }
 
 fn handle_command(
@@ -389,20 +390,29 @@ fn cleanup(&mut self, node_id: &str, caches: &mut ExtensionCaches) {
 
 ## Prop helpers (Rust)
 
-Read props from `TreeNode` using typed helpers from
-`plushie_core::prelude`:
+Read props from `TreeNode`. Two equivalent styles:
 
-| Helper | Returns |
-|---|---|
-| `prop_str(node, key)` | `Option<String>` |
-| `prop_f32(node, key)` | `Option<f32>` |
-| `prop_f64(node, key)` | `Option<f64>` |
-| `prop_bool(node, key)` | `Option<bool>` |
-| `prop_color(node, key)` | `Option<iced::Color>` |
-| `prop_length(node, key, fallback)` | `Length` |
-| `prop_f32_array(node, key)` | `Option<Vec<f32>>` |
-| `prop_range_f32(node)` | `RangeInclusive<f32>` |
-| `prop_padding(node, key)` | `Padding` |
+```rust
+// Method style (on TreeNode directly):
+let data = node.prop_str("data").unwrap_or_default();
+
+// Free function style (takes node.props()):
+let data = prop_str(node.props(), "data").unwrap_or_default();
+```
+
+Available helpers from `plushie_core::prelude`:
+
+| Method on TreeNode | Free function | Returns |
+|---|---|---|
+| `node.prop_str(key)` | `prop_str(node.props(), key)` | `Option<String>` |
+| `node.prop_f32(key)` | `prop_f32(node.props(), key)` | `Option<f32>` |
+| -- | `prop_f64(node.props(), key)` | `Option<f64>` |
+| `node.prop_bool(key)` | `prop_bool(node.props(), key)` | `Option<bool>` |
+| `node.prop_color(key)` | `prop_color(node.props(), key)` | `Option<iced::Color>` |
+| -- | `prop_length(node.props(), key, fallback)` | `Length` |
+| -- | `prop_f32_array(node.props(), key)` | `Option<Vec<f32>>` |
+| -- | `prop_range_f32(node.props())` | `RangeInclusive<f32>` |
+| `node.prop_padding()` | `prop_padding(node.props())` | `Option<Padding>` |
 
 ## Event rate limiting
 
@@ -731,7 +741,8 @@ impl WidgetExtension for GaugeExtension {
         &mut self, node: &TreeNode,
         caches: &mut ExtensionCaches, _theme: &Theme,
     ) {
-        let value = prop_f32(node, "value").unwrap_or(0.0);
+        let props = node.props();
+        let value = prop_f32(props, "value").unwrap_or(0.0);
         let state = caches.get_or_insert::<GaugeState>(
             self.config_key(), &node.id,
             || GaugeState::new(value),
@@ -741,16 +752,17 @@ impl WidgetExtension for GaugeExtension {
     }
 
     fn render<'a>(
-        &self, node: &'a TreeNode, env: &WidgetEnv<'a>,
+        &self, node: &'a TreeNode, _env: &WidgetEnv<'a>,
     ) -> Element<'a, Message> {
-        let value = prop_f32(node, "value").unwrap_or(0.0);
-        let min = prop_f32(node, "min").unwrap_or(0.0);
-        let max = prop_f32(node, "max").unwrap_or(100.0);
-        let color = prop_color(node, "color")
+        let props = node.props();
+        let value = prop_f32(props, "value").unwrap_or(0.0);
+        let min = prop_f32(props, "min").unwrap_or(0.0);
+        let max = prop_f32(props, "max").unwrap_or(100.0);
+        let color = prop_color(props, "color")
             .unwrap_or(iced::Color::from_rgb(0.2, 0.5, 0.8));
-        let label = prop_str(node, "label").unwrap_or_default();
-        let w = prop_length(node, "width", Length::Fixed(200.0));
-        let h = prop_length(node, "height", Length::Fixed(200.0));
+        let label = prop_str(props, "label").unwrap_or_default();
+        let w = prop_length(props, "width", Length::Fixed(200.0));
+        let h = prop_length(props, "height", Length::Fixed(200.0));
 
         // Build the gauge using iced widgets
         let pct = ((value - min) / (max - min)).clamp(0.0, 1.0);
@@ -824,7 +836,7 @@ edition = "2024"
 
 [dependencies]
 plushie-core = { path = "../../../plushie/plushie-core" }
-iced = { workspace = true }
+iced = { version = "0.7", package = "plushie-iced", features = ["advanced"] }
 serde_json = "1"
 ```
 

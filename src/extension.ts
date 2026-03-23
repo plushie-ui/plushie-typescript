@@ -12,6 +12,7 @@
  * @module
  */
 
+import * as nodePath from "node:path";
 import { autoId } from "./tree/node.js";
 import type { Command, Handler, UINode } from "./types.js";
 import { COMMAND } from "./types.js";
@@ -264,24 +265,27 @@ export function generateCargoToml(config: ExtensionBuildConfig): string {
   const packageName = binName.replace(/-/g, "_");
   const nativeExts = config.extensions.filter((e) => e.rustCrate);
 
-  const { resolve, relative, join, basename } = require("node:path") as typeof import("node:path");
-  const buildDir = resolve("node_modules", ".plushie", "build");
+  const buildDir = nodePath.resolve("node_modules", ".plushie", "build");
 
   // Plushie core/bin dependencies -- use local source if available
-  const plushieCoreRel = relative(buildDir, join(config.sourcePath, "plushie-core"));
-  const plushieBinRel = relative(buildDir, join(config.sourcePath, "plushie"));
+  const plushieCoreRel = nodePath.relative(buildDir, nodePath.join(config.sourcePath, "plushie-core"));
+  const plushieBinRel = nodePath.relative(buildDir, nodePath.join(config.sourcePath, "plushie"));
   const plushieCoreDep = `plushie-core = { path = "${plushieCoreRel}" }`;
   const plushieBinDep = `plushie = { path = "${plushieBinRel}" }`;
 
   // Extension crate dependencies
   const extDeps = nativeExts
     .map((ext) => {
-      const cratePath = resolve(ext.rustCrate!);
-      const relPath = relative(buildDir, cratePath);
-      const crateName = basename(cratePath);
+      const cratePath = nodePath.resolve(ext.rustCrate!);
+      const relPath = nodePath.relative(buildDir, cratePath);
+      const crateName = nodePath.basename(cratePath);
       return `${crateName} = { path = "${relPath}" }`;
     })
     .join("\n");
+
+  // The generated main.rs uses iced::Result, so we need iced as a dependency.
+  // Use the same vendored fork that plushie-core uses.
+  const icedDep = `iced = { version = "0.7", package = "plushie-iced" }`;
 
   return `[package]
 name = "${packageName}"
@@ -295,6 +299,7 @@ path = "src/main.rs"
 [dependencies]
 ${plushieCoreDep}
 ${plushieBinDep}
+${icedDep}
 ${extDeps}
 `;
 }
