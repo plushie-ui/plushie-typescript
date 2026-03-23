@@ -10,6 +10,8 @@ import { encodeA11y } from "../types.js"
 import { containerNode, putIf, autoId, extractHandlers } from "../build.js"
 
 const MOUSE_AREA_HANDLERS = {
+  onPress: "press",
+  onRelease: "release",
   onRightPress: "right_press",
   onRightRelease: "right_release",
   onMiddlePress: "middle_press",
@@ -27,6 +29,8 @@ export interface MouseAreaProps {
   cursor?: string
   a11y?: A11y
   eventRate?: number
+  onPress?: Handler<unknown> | boolean
+  onRelease?: Handler<unknown> | boolean
   onRightPress?: Handler<unknown> | boolean
   onRightRelease?: Handler<unknown> | boolean
   onMiddlePress?: Handler<unknown> | boolean

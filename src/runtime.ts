@@ -52,6 +52,7 @@ interface RuntimeState<M> {
   handlerMap: Map<string, Map<string, Handler<unknown>>>
   subscriptionMap: Map<string, Subscription>
   windowIds: Set<string>
+  windowProps: Map<string, Record<string, unknown>>
   asyncTasks: Map<string, { controller: AbortController; nonce: number }>
   pendingTimers: Map<string, ReturnType<typeof setTimeout>>
   pendingEffects: Map<string, ReturnType<typeof setTimeout>>
@@ -100,6 +101,7 @@ export class Runtime<M> {
       handlerMap: new Map(),
       subscriptionMap: new Map(),
       windowIds: new Set(),
+      windowProps: new Map(),
       asyncTasks: new Map(),
       pendingTimers: new Map(),
       pendingEffects: new Map(),
@@ -523,11 +525,17 @@ export class Runtime<M> {
   private syncWindows(tree: WireNode): void {
     const newWindows = detectWindows(tree)
     const oldWindows = this.state.windowIds
+    const baseConfig = this.config.windowConfig
+      ? this.config.windowConfig(this.state.model as never)
+      : {}
+    const newWindowProps = new Map<string, Record<string, unknown>>()
 
     // Open new windows
     for (const id of newWindows) {
+      const rawProps = this.extractWindowProps(tree, id)
+      const props = { ...baseConfig, ...rawProps }
+      newWindowProps.set(id, props)
       if (!oldWindows.has(id)) {
-        const props = this.extractWindowProps(tree, id)
         this.send(encodeWindowOp(this.sessionId, "open", id, props))
       }
     }
@@ -539,17 +547,19 @@ export class Runtime<M> {
       }
     }
 
-    // Update surviving windows (check for prop changes)
+    // Update surviving windows only if props changed
     for (const id of newWindows) {
       if (oldWindows.has(id)) {
-        const props = this.extractWindowProps(tree, id)
-        if (Object.keys(props).length > 0) {
+        const props = newWindowProps.get(id)!
+        const oldProps = this.state.windowProps.get(id)
+        if (!shallowEqual(props, oldProps)) {
           this.send(encodeWindowOp(this.sessionId, "update", id, props))
         }
       }
     }
 
     this.state.windowIds = newWindows
+    this.state.windowProps = newWindowProps
   }
 
   private extractWindowProps(tree: WireNode, windowId: string): Record<string, unknown> {
@@ -995,4 +1005,20 @@ function deepFreeze(obj: unknown): void {
   for (const value of Object.values(obj as Record<string, unknown>)) {
     deepFreeze(value)
   }
+}
+
+/** Shallow comparison of two records. */
+function shallowEqual(
+  a: Record<string, unknown> | undefined,
+  b: Record<string, unknown> | undefined,
+): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  const keysA = Object.keys(a)
+  const keysB = Object.keys(b)
+  if (keysA.length !== keysB.length) return false
+  for (const key of keysA) {
+    if (a[key] !== b[key]) return false
+  }
+  return true
 }

@@ -132,10 +132,27 @@ function normalizeNode(node: UINode, scope: string): WireNode {
     }
   }
 
+  // Resolve a11y ID references relative to the current scope
+  let props = node.props
+  if (props["a11y"] && scope !== "") {
+    const a11y = { ...(props["a11y"] as Record<string, unknown>) }
+    let changed = false
+    for (const refField of ["labelled_by", "described_by", "error_message"]) {
+      const val = a11y[refField]
+      if (typeof val === "string" && !val.includes("/")) {
+        a11y[refField] = `${scope}/${val}`
+        changed = true
+      }
+    }
+    if (changed) {
+      props = { ...props, a11y }
+    }
+  }
+
   return {
     id: scopedId,
     type,
-    props: node.props,
+    props,
     children,
   }
 }

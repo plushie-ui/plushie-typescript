@@ -65,6 +65,9 @@ export interface AppConfig<M> {
   /** Renderer settings (sent once on startup). */
   settings?: AppSettings
 
+  /** Default window configuration, merged under per-window props. */
+  windowConfig?: (state: DeepReadonly<M>) => Record<string, unknown>
+
   /** Called when the renderer process exits unexpectedly. */
   handleRendererExit?: (state: DeepReadonly<M>, reason: string) => M
 }

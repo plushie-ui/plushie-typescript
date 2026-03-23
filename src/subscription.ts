@@ -153,6 +153,16 @@ export function onEvent(
   return sub("on_event", tag, opts)
 }
 
+/** Set the maxRate on a subscription, returning a new subscription. */
+export function maxRate(s: Subscription, rate: number): Subscription {
+  return { ...s, maxRate: rate }
+}
+
+/** Validate and return a list of subscriptions. TypeScript's type system already validates element types. */
+export function batch(subs: Subscription[]): Subscription[] {
+  return subs
+}
+
 /**
  * Unique key for diffing subscriptions.
  * Two subscriptions with the same key are considered identical.

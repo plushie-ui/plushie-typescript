@@ -142,19 +142,25 @@ export class TestSession<M> {
     await this.interact("paste", { by: "id", value: selector }, { text })
   }
 
-  /** Sort a table column. */
-  async sort(selector: string, column: string): Promise<void> {
-    await this.interact("sort", { by: "id", value: selector }, { column })
+  /** Sort a table column, optionally specifying direction. */
+  async sort(selector: string, column: string, direction?: "asc" | "desc"): Promise<void> {
+    const payload: Record<string, unknown> = { column }
+    if (direction !== undefined) payload["direction"] = direction
+    await this.interact("sort", { by: "id", value: selector }, payload)
   }
 
-  /** Press on a canvas at coordinates. */
-  async canvasPress(selector: string, x: number, y: number): Promise<void> {
-    await this.interact("canvas_press", { by: "id", value: selector }, { x, y })
+  /** Press on a canvas at coordinates, optionally specifying a mouse button. */
+  async canvasPress(selector: string, x: number, y: number, button?: string): Promise<void> {
+    const payload: Record<string, unknown> = { x, y }
+    if (button !== undefined) payload["button"] = button
+    await this.interact("canvas_press", { by: "id", value: selector }, payload)
   }
 
-  /** Release on a canvas at coordinates. */
-  async canvasRelease(selector: string, x: number, y: number): Promise<void> {
-    await this.interact("canvas_release", { by: "id", value: selector }, { x, y })
+  /** Release on a canvas at coordinates, optionally specifying a mouse button. */
+  async canvasRelease(selector: string, x: number, y: number, button?: string): Promise<void> {
+    const payload: Record<string, unknown> = { x, y }
+    if (button !== undefined) payload["button"] = button
+    await this.interact("canvas_release", { by: "id", value: selector }, payload)
   }
 
   /** Move on a canvas to coordinates. */
@@ -448,6 +454,38 @@ export class TestSession<M> {
     const el = await this.find(selector)
     if (el) {
       throw new Error(`assertNotExists: widget "${selector}" unexpectedly found`)
+    }
+  }
+
+  /** Assert that a widget's a11y props match expected values. */
+  async assertA11y(selector: string, expected: Record<string, unknown>): Promise<void> {
+    const el = await this.find(selector)
+    if (!el) throw new Error(`assertA11y: widget "${selector}" not found`)
+    const a11y = (el.props["a11y"] ?? {}) as Record<string, unknown>
+    for (const [key, value] of Object.entries(expected)) {
+      if (a11y[key] !== value) {
+        throw new Error(`assertA11y: expected ${key}="${String(value)}" but got "${String(a11y[key])}" for "${selector}"`)
+      }
+    }
+  }
+
+  /** Assert that a widget has a specific accessibility role. */
+  async assertRole(selector: string, role: string): Promise<void> {
+    const el = await this.find(selector)
+    if (!el) throw new Error(`assertRole: widget "${selector}" not found`)
+    const actualRole = ((el.props["a11y"] as Record<string, unknown> | undefined)?.["role"] as string | undefined) ?? el.type
+    if (actualRole !== role) {
+      throw new Error(`assertRole: expected "${role}" but got "${actualRole}" for "${selector}"`)
+    }
+  }
+
+  /** Assert that the current model matches the expected value (JSON deep equality). */
+  assertModel(expected: unknown): void {
+    const actual = this.model()
+    const actualJson = JSON.stringify(actual)
+    const expectedJson = JSON.stringify(expected)
+    if (actualJson !== expectedJson) {
+      throw new Error(`assertModel: model mismatch\n  expected: ${expectedJson}\n  actual: ${actualJson}`)
     }
   }
 

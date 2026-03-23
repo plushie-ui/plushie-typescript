@@ -13,6 +13,7 @@ import { containerNode, putIf, autoId } from "../build.js"
 export interface GridProps {
   id?: string
   columns?: number
+  columnCount?: number
   spacing?: number
   width?: Length
   height?: Length
@@ -28,6 +29,7 @@ export function Grid(props: GridProps): UINode {
   const children = props.children ?? []
   const p: Record<string, unknown> = {}
   putIf(p, props.columns, "columns")
+  putIf(p, props.columnCount, "column_count")
   putIf(p, props.spacing, "spacing")
   putIf(p, props.width, "width", encodeLength)
   putIf(p, props.height, "height", encodeLength)

@@ -113,6 +113,11 @@ export function selected(sel: Selection): ReadonlySet<string> {
   return sel.selected
 }
 
+/** Select all items in the order list. */
+export function selectAll(sel: Selection): Selection {
+  return { ...sel, selected: new Set(sel.order) }
+}
+
 /** Return true if an item is currently selected. */
 export function isSelected(sel: Selection, id: string): boolean {
   return sel.selected.has(id)

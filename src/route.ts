@@ -47,6 +47,16 @@ export function pop(route: Route): Route {
   return { stack: route.stack.slice(1) }
 }
 
+/** Replace the top entry on the stack with a new path and params (without pushing). */
+export function replaceTop(
+  route: Route,
+  path: string,
+  params: Record<string, unknown> = {},
+): Route {
+  const [, ...rest] = route.stack
+  return { stack: [{ path, params }, ...rest] }
+}
+
 /** Return the current (top) path. */
 export function currentPath(route: Route): string {
   return route.stack[0]!.path
