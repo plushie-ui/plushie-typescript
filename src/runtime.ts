@@ -17,6 +17,7 @@ import type {
   UINode, Command, Event, Handler, UpdateResult, Subscription, WidgetEvent,
   MouseEvent as PlushieMouseEvent, TouchEvent as PlushieTouchEvent,
   CanvasEvent, MouseAreaEvent, PaneEvent, SensorEvent, SystemEvent,
+  EffectEvent,
 } from "./types.js"
 import { COMMAND } from "./types.js"
 import type { AppConfig, AppSettings } from "./app.js"
@@ -49,7 +50,7 @@ interface RuntimeState<M> {
   model: M
   tree: WireNode | null
   handlerMap: Map<string, Map<string, Handler<unknown>>>
-  subscriptionKeys: Set<string>
+  subscriptionMap: Map<string, Subscription>
   windowIds: Set<string>
   asyncTasks: Map<string, { controller: AbortController; nonce: number }>
   pendingTimers: Map<string, ReturnType<typeof setTimeout>>
@@ -81,6 +82,7 @@ export class Runtime<M> {
   private readonly restartMaxMs = 5000
   private started = false
   private stopped = false
+  private nextNonce = 0
 
   constructor(config: AppConfig<M>, transportOrFactory: Transport | TransportFactory, sessionId = "") {
     this.config = config
@@ -96,7 +98,7 @@ export class Runtime<M> {
       model: undefined as unknown as M,
       tree: null,
       handlerMap: new Map(),
-      subscriptionKeys: new Set(),
+      subscriptionMap: new Map(),
       windowIds: new Set(),
       asyncTasks: new Map(),
       pendingTimers: new Map(),
@@ -160,19 +162,24 @@ export class Runtime<M> {
     await this.awaitHello()
 
     // Init model
-    const initResult = this.config.init
-    const [model, commands] = this.unwrapResult(initResult)
-    this.state.model = model
+    try {
+      const initResult = this.config.init
+      const [model, commands] = this.unwrapResult(initResult)
+      this.state.model = model
 
-    // Freeze model in dev mode
-    this.freezeModelIfDev()
+      // Freeze model in dev mode
+      this.freezeModelIfDev()
 
-    // First render (always snapshot, not diff)
-    this.renderAndSync(true)
+      // First render (always snapshot, not diff)
+      this.renderAndSync(true)
 
-    // Execute init commands
-    if (commands.length > 0) {
-      this.executeCommands(commands)
+      // Execute init commands
+      if (commands.length > 0) {
+        this.executeCommands(commands)
+      }
+    } catch (error) {
+      console.error("[plushie] Error in init:", error)
+      throw error
     }
   }
 
@@ -322,16 +329,6 @@ export class Runtime<M> {
   private isCoalescable(event: Event): string | null {
     if (event.kind === "mouse" && (event as PlushieMouseEvent).type === "moved") return "mouse:moved"
     if (event.kind === "sensor" && (event as SensorEvent).type === "resize") return `sensor:${(event as SensorEvent).id}`
-    if (event.kind === "widget" && (event as WidgetEvent).type === "slide") return `widget:slide:${(event as WidgetEvent).id}`
-    if (event.kind === "mouse_area" && (event as MouseAreaEvent).type === "move") return `mouse_area:move:${(event as MouseAreaEvent).id}`
-    if (event.kind === "canvas" && (event as CanvasEvent).type === "move") return `canvas:move:${(event as CanvasEvent).id}`
-    if (event.kind === "pane" && (event as PaneEvent).type === "resized") return `pane:resized:${(event as PaneEvent).id}`
-    if (event.kind === "system") {
-      const sysType = (event as SystemEvent).type
-      if (sysType === "animation_frame" || sysType === "theme_changed") return `system:${sysType}`
-    }
-    if (event.kind === "touch" && (event as PlushieTouchEvent).type === "moved") return `touch:moved:${String((event as PlushieTouchEvent).fingerId)}`
-    if (event.kind === "modifiers") return "modifiers_changed"
     return null
   }
 
@@ -457,7 +454,7 @@ export class Runtime<M> {
     }
 
     // Stop removed subscriptions
-    for (const oldKey of this.state.subscriptionKeys) {
+    for (const oldKey of this.state.subscriptionMap.keys()) {
       if (!newKeys.has(oldKey)) {
         this.stopSubscription(oldKey)
       }
@@ -465,26 +462,37 @@ export class Runtime<M> {
 
     // Start new subscriptions
     for (const [newKey, sub] of newKeys) {
-      if (!this.state.subscriptionKeys.has(newKey)) {
+      if (!this.state.subscriptionMap.has(newKey)) {
         this.startSubscription(newKey, sub)
       }
     }
 
-    this.state.subscriptionKeys = new Set(newKeys.keys())
+    // Check for max_rate changes on surviving renderer subscriptions
+    for (const [key, newSub] of newKeys) {
+      const oldSub = this.state.subscriptionMap.get(key)
+      if (oldSub && oldSub.maxRate !== newSub.maxRate && newSub.type !== "every") {
+        this.send(encodeSubscribe(this.sessionId, newSub.type, newSub.tag, newSub.maxRate))
+      }
+    }
+
+    this.state.subscriptionMap = newKeys
+  }
+
+  private startTimerSubscription(key: string, interval: number, tag: string): void {
+    const tick = () => {
+      const event: Event = { kind: "timer", tag, timestamp: Date.now() }
+      this.handleEvent(event)
+      // Re-arm for next tick (Elixir pattern: interval measured from end of processing)
+      if (this.state.pendingTimers.has(key)) {
+        this.state.pendingTimers.set(key, setTimeout(tick, interval) as unknown as ReturnType<typeof setTimeout>)
+      }
+    }
+    this.state.pendingTimers.set(key, setTimeout(tick, interval) as unknown as ReturnType<typeof setTimeout>)
   }
 
   private startSubscription(key: string, sub: Subscription): void {
     if (sub.type === "every" && sub.interval !== undefined) {
-      // Timer subscription: managed locally via setInterval
-      const timer = setInterval(() => {
-        const timerEvent: Event = {
-          kind: "timer",
-          tag: sub.tag,
-          timestamp: Date.now(),
-        }
-        this.handleEvent(timerEvent)
-      }, sub.interval)
-      this.state.pendingTimers.set(key, timer as unknown as ReturnType<typeof setTimeout>)
+      this.startTimerSubscription(key, sub.interval, sub.tag)
     } else {
       // Renderer subscription: send subscribe message
       this.send(encodeSubscribe(this.sessionId, sub.type, sub.tag, sub.maxRate))
@@ -495,7 +503,7 @@ export class Runtime<M> {
     // Check if it's a timer
     const timer = this.state.pendingTimers.get(key)
     if (timer) {
-      clearInterval(timer)
+      clearTimeout(timer)
       this.state.pendingTimers.delete(key)
       return
     }
@@ -600,10 +608,14 @@ export class Runtime<M> {
       case "send_after": {
         const delay = cmd.payload["delay"] as number
         const event = cmd.payload["event"] as Event
+        const timerKey = `send_after:${JSON.stringify(event)}`
+        const existing = this.state.pendingTimers.get(timerKey)
+        if (existing) clearTimeout(existing)
         const timer = setTimeout(() => {
+          this.state.pendingTimers.delete(timerKey)
           this.handleEvent(event)
         }, delay)
-        this.state.pendingTimers.set(`send_after:${String(delay)}`, timer)
+        this.state.pendingTimers.set(timerKey, timer)
         break
       }
 
@@ -656,20 +668,13 @@ export class Runtime<M> {
         const value = cmd.payload["value"]
         const mapper = cmd.payload["mapper"] as ((v: unknown) => unknown) | undefined
         if (mapper) {
-          try {
-            const mappedValue = mapper(value)
+          const mappedValue = mapper(value)
+          // Defer to match Elixir's mailbox-based dispatch
+          queueMicrotask(() => {
             if (this.config.update) {
-              const result = this.config.update(this.state.model as never, mappedValue as Event)
-              const [newModel, newCommands] = this.unwrapResult(result as UpdateResult<M>)
-              this.state.model = newModel
-              this.state.consecutiveErrors = 0
-              this.freezeModelIfDev()
-              if (newCommands.length > 0) this.executeCommands(newCommands)
-              this.renderAndSync(false)
+              this.runUpdate(mappedValue as Event)
             }
-          } catch (error) {
-            this.handleUpdateError(error)
-          }
+          })
         }
         break
       }
@@ -718,7 +723,7 @@ export class Runtime<M> {
     this.cancelAsync(tag)
 
     const controller = new AbortController()
-    const nonce = Date.now()
+    const nonce = ++this.nextNonce
     this.state.asyncTasks.set(tag, { controller, nonce })
 
     fn(controller.signal)
@@ -751,7 +756,7 @@ export class Runtime<M> {
     this.cancelAsync(tag)
 
     const controller = new AbortController()
-    const nonce = Date.now()
+    const nonce = ++this.nextNonce
     this.state.asyncTasks.set(tag, { controller, nonce })
 
     const run = async () => {
@@ -870,6 +875,20 @@ export class Runtime<M> {
 
   private handleRendererClose(reason: string): void {
     console.warn(`[plushie] Renderer closed: ${reason}`)
+
+    // Flush pending effects with error events
+    for (const [id, timer] of this.state.pendingEffects) {
+      clearTimeout(timer)
+      this.dispatchEvent({
+        kind: "effect",
+        requestId: id,
+        status: "error",
+        result: null,
+        error: "renderer_restarted",
+      } as EffectEvent)
+    }
+    this.state.pendingEffects.clear()
+
     if (this.config.handleRendererExit) {
       try {
         this.state.model = this.config.handleRendererExit(
@@ -918,7 +937,7 @@ export class Runtime<M> {
           this.renderAndSync(true)
 
           // Re-sync subscriptions by resetting tracked keys so all are re-sent
-          this.state.subscriptionKeys = new Set()
+          this.state.subscriptionMap = new Map()
           this.syncSubscriptions()
 
           // Reset restart counter on success

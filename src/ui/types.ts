@@ -233,6 +233,11 @@ export type Font =
   | string
   | { family: string; weight?: FontWeight; style?: FontStyle; stretch?: FontStretch }
 
+/** Convert a snake_case string to PascalCase (e.g. "semi_bold" -> "SemiBold"). */
+function toPascalCase(snakeCase: string): string {
+  return snakeCase.split("_").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("")
+}
+
 /** Encode a Font to its wire representation. */
 export function encodeFont(value: Font): unknown {
   if (typeof value === "string") {
@@ -240,9 +245,9 @@ export function encodeFont(value: Font): unknown {
     return { family: value }
   }
   const result: Record<string, unknown> = { family: value.family }
-  if (value.weight !== undefined) result["weight"] = value.weight
-  if (value.style !== undefined) result["style"] = value.style
-  if (value.stretch !== undefined) result["stretch"] = value.stretch
+  if (value.weight !== undefined) result["weight"] = toPascalCase(value.weight)
+  if (value.style !== undefined) result["style"] = toPascalCase(value.style)
+  if (value.stretch !== undefined) result["stretch"] = toPascalCase(value.stretch)
   return result
 }
 

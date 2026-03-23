@@ -116,8 +116,12 @@ export interface KeyEvent extends EventBase {
   readonly kind: "key"
   readonly type: "press" | "release"
   readonly key: string
+  readonly modifiedKey: string | null
+  readonly physicalKey: string | null
   readonly modifiers: Readonly<Modifiers>
   readonly location: "left" | "right" | "standard"
+  readonly text: string | null
+  readonly repeat: boolean
   readonly tag: string
   readonly captured: boolean
 }

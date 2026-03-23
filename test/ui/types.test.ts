@@ -95,9 +95,9 @@ describe("encodeFont", () => {
     expect(encodeFont("Helvetica")).toEqual({ family: "Helvetica" })
   })
 
-  test("object with all fields", () => {
-    expect(encodeFont({ family: "Arial", weight: "bold", style: "italic" }))
-      .toEqual({ family: "Arial", weight: "bold", style: "italic" })
+  test("object with all fields uses PascalCase", () => {
+    expect(encodeFont({ family: "Arial", weight: "semi_bold", style: "italic" }))
+      .toEqual({ family: "Arial", weight: "SemiBold", style: "Italic" })
   })
 
   test("object omits undefined fields", () => {

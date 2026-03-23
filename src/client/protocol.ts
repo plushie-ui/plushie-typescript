@@ -673,7 +673,7 @@ function decodeCanvasEvent(
     scope,
     x: data ? num(data, "x") : 0,
     y: data ? num(data, "y") : 0,
-    button: data ? (typeof data["button"] === "string" ? data["button"] : null) : null,
+    button: data ? (typeof data["button"] === "string" ? data["button"] : "left") : "left",
     data: data as CanvasEvent["data"],
   }
 }
@@ -738,8 +738,12 @@ function decodeKeyEvent(
     kind: "key",
     type,
     key: data ? str(data, "key") : "",
+    modifiedKey: data ? (typeof data["modified_key"] === "string" ? data["modified_key"] : null) : null,
+    physicalKey: data ? (typeof data["physical_key"] === "string" ? data["physical_key"] : null) : null,
     modifiers: parseModifiers(raw["modifiers"]),
     location: (data ? str(data, "location", "standard") : "standard") as KeyEvent["location"],
+    text: data ? (typeof data["text"] === "string" ? data["text"] : null) : null,
+    repeat: data ? (data["repeat"] === true) : false,
     tag: str(raw, "tag"),
     captured: bool(raw, "captured"),
   }

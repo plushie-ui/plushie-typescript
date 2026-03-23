@@ -62,6 +62,8 @@ export interface SpawnTransportOptions {
  * environment whitelisting, and process lifecycle.
  */
 export class SpawnTransport implements Transport {
+  private static readonly MAX_JSON_BUFFER = 64 * 1024 * 1024
+
   readonly format: WireFormat
   private child: ChildProcess | null = null
   private messageHandler: ((msg: Record<string, unknown>) => void) | null = null
@@ -139,6 +141,11 @@ export class SpawnTransport implements Transport {
 
   private handleJsonData(data: Buffer): void {
     this.jsonBuffer += data.toString("utf-8")
+    if (this.jsonBuffer.length > SpawnTransport.MAX_JSON_BUFFER) {
+      console.error("[plushie] JSON buffer exceeded 64 MiB, dropping data")
+      this.jsonBuffer = ""
+      return
+    }
     const { lines, remaining } = decodeLines(this.jsonBuffer)
     this.jsonBuffer = remaining
 
@@ -198,6 +205,8 @@ export interface StdioTransportOptions {
  * streams instead of a child process.
  */
 export class StdioTransport implements Transport {
+  private static readonly MAX_JSON_BUFFER = 64 * 1024 * 1024
+
   readonly format: WireFormat
   private messageHandler: ((msg: Record<string, unknown>) => void) | null = null
   private closeHandler: ((reason: string) => void) | null = null
@@ -252,6 +261,11 @@ export class StdioTransport implements Transport {
 
   private handleJsonData(data: Buffer): void {
     this.jsonBuffer += data.toString("utf-8")
+    if (this.jsonBuffer.length > StdioTransport.MAX_JSON_BUFFER) {
+      console.error("[plushie] JSON buffer exceeded 64 MiB, dropping data")
+      this.jsonBuffer = ""
+      return
+    }
     const { lines, remaining } = decodeLines(this.jsonBuffer)
     this.jsonBuffer = remaining
 
