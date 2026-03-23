@@ -141,3 +141,18 @@ export { Keys }
 // Script parser/runner.
 export { parseScript, parseScriptFile, runScript } from "./script.js"
 export type { Script, ScriptHeader, Instruction } from "./script.js"
+
+// Extension widget system.
+export { defineExtensionWidget, extensionCommands } from "./extension.js"
+export type { ExtensionWidgetConfig, ExtensionPropType } from "./extension.js"
+
+// Dev server.
+export { DevServer } from "./dev-server.js"
+
+// WASM renderer support.
+export { resolveWasm, DEFAULT_WASM_DIR, WASM_JS_FILE, WASM_BG_FILE } from "./wasm.js"
+export type { WasmPaths } from "./wasm.js"
+
+// Node.js SEA support.
+export { isSEA, extractBinaryFromSEA, generateSEAConfig } from "./sea.js"
+export type { SEAConfig } from "./sea.js"
