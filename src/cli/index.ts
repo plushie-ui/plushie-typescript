@@ -209,8 +209,8 @@ async function handleDownloadBinary(force: boolean): Promise<void> {
 
 async function downloadWasm(force: boolean): Promise<void> {
   const destDir = resolve(DEFAULT_WASM_DIR);
-  const tarUrl = `${BASE_URL}/v${BINARY_VERSION}/plushie-wasm.tar.gz`;
-  const tarPath = join(destDir, "plushie-wasm.tar.gz");
+  const tarUrl = `${BASE_URL}/v${BINARY_VERSION}/plushie-renderer-wasm.tar.gz`;
+  const tarPath = join(destDir, "plushie-renderer-wasm.tar.gz");
 
   if (
     !force &&
@@ -226,7 +226,7 @@ async function downloadWasm(force: boolean): Promise<void> {
   console.log(`  From: ${tarUrl}`);
   console.log();
 
-  await downloadWithChecksum(tarUrl, tarPath, "plushie-wasm.tar.gz");
+  await downloadWithChecksum(tarUrl, tarPath, "plushie-renderer-wasm.tar.gz");
 
   // Extract tar.gz
   console.log("  Extracting...");
