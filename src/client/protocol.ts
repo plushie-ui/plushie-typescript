@@ -168,8 +168,11 @@ export function encodeSettings(session: string, settings: Record<string, unknown
 }
 
 /** Encode a Snapshot message (full tree replacement). */
-export function encodeSnapshot(session: string, tree: WireMessage): WireMessage {
-  return { type: "snapshot", session, tree: stringifyTree(tree) };
+export function encodeSnapshot(
+  session: string,
+  tree: WireMessage | Record<string, unknown>,
+): WireMessage {
+  return { type: "snapshot", session, tree: stringifyTree(tree as WireMessage) };
 }
 
 /** Encode a Patch message (incremental tree update). */
