@@ -13,7 +13,7 @@
  * run `npx plushie download` manually.
  */
 
-import { existsSync, mkdirSync, chmodSync, createWriteStream } from "node:fs"
+import { existsSync, mkdirSync, chmodSync, createWriteStream, unlinkSync } from "node:fs"
 import { get as httpsGet } from "node:https"
 import { dirname, join, resolve } from "node:path"
 
@@ -95,11 +95,13 @@ function download(currentUrl, depth = 0) {
       console.log("plushie: binary downloaded successfully")
     })
     file.on("error", () => {
+      try { unlinkSync(destPath) } catch {}
       console.warn("plushie: download failed (write error)")
       console.warn("plushie: run 'npx plushie download' to download manually")
       process.exit(0)
     })
   }).on("error", () => {
+    try { unlinkSync(destPath) } catch {}
     console.warn("plushie: download failed (network error)")
     console.warn("plushie: run 'npx plushie download' to download manually")
     process.exit(0)

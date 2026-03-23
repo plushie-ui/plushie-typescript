@@ -359,9 +359,9 @@ function handleBuild(flags: string[]): void {
 /** Returns true if the extension build was initiated, false if no native extensions found. */
 function handleExtensionBuild(sourcePath: string, configPath: string, release: boolean): boolean {
   const { validateExtensions, generateCargoToml, generateMainRs } =
-    require("../extension.js") as typeof import("../extension.js");
+    require("../extension-build.js") as typeof import("../extension-build.js");
 
-  let config: import("../extension.js").ExtensionBuildConfig;
+  let config: import("../extension-build.js").ExtensionBuildConfig;
   try {
     const raw = JSON.parse(readFileSync(configPath, "utf-8")) as {
       extensions?: Array<import("../extension.js").ExtensionWidgetConfig>;
@@ -374,7 +374,7 @@ function handleExtensionBuild(sourcePath: string, configPath: string, release: b
     }
     const buildConfig: Record<string, unknown> = { extensions, sourcePath, release };
     if (raw.binaryName !== undefined) buildConfig["binaryName"] = raw.binaryName;
-    config = buildConfig as unknown as import("../extension.js").ExtensionBuildConfig;
+    config = buildConfig as unknown as import("../extension-build.js").ExtensionBuildConfig;
     validateExtensions(extensions);
   } catch (err) {
     console.error(`Failed to read ${configPath}: ${String(err)}`);

@@ -144,19 +144,12 @@ import * as Keys from "./keys.js";
 // Dev server.
 export type { DevServerOptions } from "./dev-server.js";
 export { DevServer } from "./dev-server.js";
-export type {
-  ExtensionBuildConfig,
-  ExtensionPropType,
-  ExtensionWidgetConfig,
-} from "./extension.js";
+export type { ExtensionPropType, ExtensionWidgetConfig } from "./extension.js";
 // Extension widget system.
-export {
-  defineExtensionWidget,
-  extensionCommands,
-  generateCargoToml,
-  generateMainRs,
-  validateExtensions,
-} from "./extension.js";
+export { defineExtensionWidget, extensionCommands } from "./extension.js";
+// Extension build-time functions (Node.js only).
+export type { ExtensionBuildConfig } from "./extension-build.js";
+export { generateCargoToml, generateMainRs, validateExtensions } from "./extension-build.js";
 export type { Instruction, RunResult, Script, ScriptHeader } from "./script.js";
 // Script parser/runner.
 export { parseScript, parseScriptFile, runScript } from "./script.js";
