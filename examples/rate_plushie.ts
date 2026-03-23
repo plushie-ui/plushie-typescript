@@ -24,7 +24,6 @@ import {
   text,
   textEditor,
   textInput,
-  themer,
   window,
 } from "../src/ui/index.js"
 import { starRating } from "./widgets/star_rating.js"
@@ -294,33 +293,31 @@ export default app<Model>({
     const t = buildTheme(p)
 
     return window("main", { title: "Rate Plushie" }, [
-      themer("page-theme", { theme: "light" }, [
-        container(
-          "page",
-          {
-            padding: { top: 32, bottom: 32, left: 24, right: 24 },
-            background: t.pageBg,
-            width: "fill",
-            height: "fill",
-          },
-          [
-            column({ spacing: 24, width: "fill" }, [
-              text("heading", "Rate Plushie", {
-                size: 28,
-                color: t.text,
-                a11y: { role: "heading", level: 1 },
-              }),
-              ratingCard(s, p, t),
-              text("reviews-heading", "Reviews", {
-                size: 20,
-                color: t.text,
-                a11y: { role: "heading", level: 2 },
-              }),
-              reviewsList(s.reviews, p, t),
-            ]),
-          ],
-        ),
-      ]),
+      container(
+        "page",
+        {
+          padding: { top: 32, bottom: 32, left: 24, right: 24 },
+          background: t.pageBg,
+          width: "fill",
+          height: "fill",
+        },
+        [
+          column({ spacing: 24, width: "fill" }, [
+            text("heading", "Rate Plushie", {
+              size: 28,
+              color: t.text,
+              a11y: { role: "heading", level: 1 },
+            }),
+            ratingCard(s, p, t),
+            text("reviews-heading", "Reviews", {
+              size: 20,
+              color: t.text,
+              a11y: { role: "heading", level: 2 },
+            }),
+            reviewsList(s.reviews, p, t),
+          ]),
+        ],
+      ),
     ])
   },
 })
