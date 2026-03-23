@@ -381,12 +381,29 @@ fn cleanup(&mut self, node_id: &str, caches: &mut ExtensionCaches) {
 |---|---|---|
 | `type_names` | yes | Widget type names this extension handles |
 | `config_key` | yes | Key for extension_config lookup |
+| `new_instance` | for testing | Creates a fresh instance for multiplexed sessions |
 | `init` | no | Called once at startup with config |
 | `prepare` | no | Called before each render pass (mutable state sync) |
 | `render` | yes | Returns iced Element for the widget |
 | `handle_event` | no | Intercepts events before they reach TypeScript |
 | `handle_command` | no | Handles extension_command messages |
 | `cleanup` | no | Called when a node is removed from the tree |
+
+### new_instance for testing
+
+The test framework uses `plushie --mock --max-sessions N` to run
+multiple test sessions in a single process. Each session needs its
+own extension instance. Implement `new_instance` to enable this:
+
+```rust
+fn new_instance(&self) -> Box<dyn WidgetExtension> {
+    Box::new(GaugeExtension::new())
+}
+```
+
+Without this, tests using `testWith` or `createSession` will fail
+with "does not support multiplexed sessions". Single-session modes
+(`plushie run`, `plushie dev`) do not require `new_instance`.
 
 ## Prop helpers (Rust)
 
@@ -729,6 +746,10 @@ impl GaugeState {
 impl WidgetExtension for GaugeExtension {
     fn type_names(&self) -> &[&str] { &["gauge"] }
     fn config_key(&self) -> &str { "gauge" }
+
+    fn new_instance(&self) -> Box<dyn WidgetExtension> {
+        Box::new(GaugeExtension::new())
+    }
 
     fn init(&mut self, ctx: &InitCtx<'_>) {
         // Read extension_config if needed
