@@ -69,6 +69,8 @@ Options:
   --version         Show version number
   --json            Use JSON wire format (default: msgpack)
   --binary <path>   Override binary path
+  --bin-file <path> Override binary destination (download/build)
+  --wasm-dir <dir>  Override WASM output directory (download --wasm / build --wasm)
   --no-watch        Disable file watching in dev mode
   --release         Build with optimizations (build command)`;
 
@@ -150,21 +152,25 @@ async function downloadWithChecksum(url: string, destPath: string, label: string
   }
 }
 
-async function handleDownload(flags: string[]): Promise<void> {
+async function handleDownload(
+  flags: string[],
+  binFile?: string,
+  wasmDir?: string,
+): Promise<void> {
   const isWasm = flags.includes("--wasm");
   const force = flags.includes("--force");
 
   if (isWasm) {
-    await downloadWasm(force);
+    await downloadWasm(force, wasmDir);
   } else {
-    await handleDownloadBinary(force);
+    await handleDownloadBinary(force, binFile);
   }
 }
 
-async function handleDownloadBinary(force: boolean): Promise<void> {
+async function handleDownloadBinary(force: boolean, binFile?: string): Promise<void> {
   const binaryName = platformBinaryName();
-  const destDir = resolve("node_modules", ".plushie", "bin");
-  const destPath = join(destDir, binaryName);
+  const destDir = binFile ? dirname(resolve(binFile)) : resolve("node_modules", ".plushie", "bin");
+  const destPath = binFile ? resolve(binFile) : join(destDir, binaryName);
   const url = `${BASE_URL}/v${BINARY_VERSION}/${binaryName}`;
 
   if (!force && existsSync(destPath)) {
@@ -207,8 +213,8 @@ async function handleDownloadBinary(force: boolean): Promise<void> {
   console.log(`Binary installed to ${resultPath}`);
 }
 
-async function downloadWasm(force: boolean): Promise<void> {
-  const destDir = resolve(DEFAULT_WASM_DIR);
+async function downloadWasm(force: boolean, wasmDir?: string): Promise<void> {
+  const destDir = wasmDir ? resolve(wasmDir) : resolve(DEFAULT_WASM_DIR);
   const tarUrl = `${BASE_URL}/v${BINARY_VERSION}/plushie-renderer-wasm.tar.gz`;
   const tarPath = join(destDir, "plushie-renderer-wasm.tar.gz");
 
@@ -252,7 +258,7 @@ async function downloadWasm(force: boolean): Promise<void> {
 // Build
 // =========================================================================
 
-function handleBuild(flags: string[]): void {
+function handleBuild(flags: string[], wasmDestDir?: string): void {
   const sourcePath = process.env["PLUSHIE_SOURCE_PATH"];
   if (!sourcePath) {
     console.error("PLUSHIE_SOURCE_PATH must be set to the plushie Rust source directory.");
@@ -295,7 +301,7 @@ function handleBuild(flags: string[]): void {
       if (code === 0) {
         // Install WASM output to the project's wasm directory
         const pkgDir = resolve(wasmDir, "pkg");
-        const destDir = resolve(DEFAULT_WASM_DIR);
+        const destDir = wasmDestDir ? resolve(wasmDestDir) : resolve(DEFAULT_WASM_DIR);
         mkdirSync(destDir, { recursive: true });
         for (const name of [WASM_JS_FILE, WASM_BG_FILE]) {
           const src = join(pkgDir, name);
@@ -663,14 +669,31 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
-  // Parse flags from the remaining args (after the command)
+  // Parse flags from the remaining args (after the command).
+  // Value flags (--binary <path>, --bin-file <path>, --wasm-dir <dir>)
+  // consume the next arg. Other --flags are boolean.
   const rest = args.slice(1);
-  const flags = rest.filter((a) => a.startsWith("--"));
-  const positional = rest.filter((a) => !a.startsWith("--"));
+  const VALUE_FLAGS = new Set(["--binary", "--bin-file", "--wasm-dir"]);
+  const flags: string[] = [];
+  const positional: string[] = [];
+  const valueFlags = new Map<string, string>();
+  for (let i = 0; i < rest.length; i++) {
+    const arg = rest[i]!;
+    if (VALUE_FLAGS.has(arg) && i + 1 < rest.length) {
+      valueFlags.set(arg, rest[i + 1]!);
+      flags.push(arg);
+      i++; // skip the value
+    } else if (arg.startsWith("--")) {
+      flags.push(arg);
+    } else {
+      positional.push(arg);
+    }
+  }
   const jsonFlag = flags.includes("--json");
   const noWatch = flags.includes("--no-watch");
-  const binaryIdx = rest.indexOf("--binary");
-  const binaryOverride = binaryIdx !== -1 ? rest[binaryIdx + 1] : undefined;
+  const binaryOverride = valueFlags.get("--binary");
+  const binFileOverride = valueFlags.get("--bin-file");
+  const wasmDirOverride = valueFlags.get("--wasm-dir");
 
   // Build extra env vars from flags
   const extraEnv: Record<string, string> = {};
@@ -679,10 +702,10 @@ async function main(argv: string[]): Promise<void> {
 
   switch (command) {
     case "download":
-      await handleDownload(rest);
+      await handleDownload(flags, binFileOverride, wasmDirOverride);
       break;
     case "build":
-      handleBuild(flags);
+      handleBuild(flags, wasmDirOverride);
       break;
     case "connect":
       await handleConnect(positional, flags, binaryOverride);
