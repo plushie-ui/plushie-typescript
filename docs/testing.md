@@ -234,7 +234,7 @@ session.stop()   // close the session
 ```
 
 
-## Three backends
+## Backend modes
 
 All tests work on all backends. Write tests once, swap backends without
 changing assertions.
@@ -315,8 +315,8 @@ encoding, and real diffing -- the same code paths as production.
 ### Structural tree hashes (`assertTreeHash`)
 
 `assertTreeHash()` captures a SHA-256 hash of the serialized UI tree
-and compares it against a golden file. It works on all three backends
-because every backend can produce a tree.
+and compares it against a golden file. It works on all backend modes
+because every mode can produce a tree.
 
 ```typescript
 test('counter initial state', async ({ session }) => {
@@ -585,6 +585,30 @@ Run mock tests fast, then promote to higher-fidelity backends:
     export DISPLAY=:99
     PLUSHIE_TEST_BACKEND=windowed pnpm test -- --grep @windowed
 ```
+
+
+## Key name validation
+
+`press()`, `typeKey()`, and `release()` validate key names at call
+time. Input is case-insensitive. Named keys use PascalCase matching
+the renderer's wire format (same strings that appear in event data):
+
+```typescript
+press('Tab')
+press('ArrowRight')
+press('Shift+PageUp')
+press('a')
+```
+
+Unrecognized key names throw immediately:
+
+```
+Error: unknown key "tabb". Examples: Tab, ArrowRight, PageUp, Escape, Enter.
+```
+
+Single characters are also accepted and lowercased (`"a"`, `"Z"`,
+`"1"`). Modifier combos use `+`: `"Ctrl+s"`, `"Shift+ArrowUp"`.
+Modifiers: `shift`, `ctrl`, `alt`, `logo`, `command`.
 
 
 ## Known limitations

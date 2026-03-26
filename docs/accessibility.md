@@ -45,7 +45,7 @@ Every widget accepts an `a11y` prop for explicit overrides:
 | `required` | boolean | Required field indicator |
 | `level` | number | Heading level (1-6) |
 | `live` | `'off' \| 'polite' \| 'assertive'` | Live region mode |
-| `busy` | boolean | Content is loading |
+| `busy` | boolean | Suppresses AT announcements until cleared (auto-managed by sliders during drag; set explicitly for custom continuous interactions) |
 | `invalid` | boolean | Validation failed |
 | `modal` | boolean | Modal container |
 | `readOnly` | boolean | Read-only field |
@@ -90,6 +90,31 @@ Command.announce('File saved successfully')
 
 In headless and mock modes, announcements produce a synthetic
 `announce` event for testing.
+
+## Busy state and continuous interactions
+
+When a value changes rapidly (e.g. during a slider drag or canvas
+interaction), setting `busy: true` on the node suppresses AT
+announcements until `busy` clears. AT then announces the final
+value once, avoiding a flood of intermediate announcements. This
+maps to WAI-ARIA `aria-busy`.
+
+**Built-in widgets handle this automatically.** Sliders set
+`busy: true` during drag and clear it on release. No SDK code
+needed.
+
+**For app-managed live regions** that reflect values from a
+continuous interaction (e.g. a text display showing a hex color
+while the user drags a canvas), set `busy` explicitly:
+
+```tsx
+<Text id="hex" a11y={{ live: 'polite', busy: state.drag !== null }}>
+  {hexValue}
+</Text>
+```
+
+When the drag ends, `busy` clears and the screen reader announces
+the final hex value.
 
 ## Widget-specific props
 

@@ -91,6 +91,36 @@ target(event)
 Subscription events (Key, Mouse, Touch, IME, Modifiers) are global
 and do not carry scope.
 
+## Canvas element scoped IDs
+
+Canvas elements participate in the same scoping mechanism as regular
+widgets. When a canvas element emits an event, the renderer uses
+`canvas_id/element_id` as the wire ID. The SDK splits this into
+`id: elementId, scope: [canvasId, ...]`, making canvas elements
+look like regular widgets inside a container from the event
+perspective.
+
+```
+Canvas id="drawing"                ->  id: "drawing"
+  rect id="bg"                     ->  id: "drawing/bg"
+  interactive id="handle"          ->  id: "drawing/handle"
+```
+
+Events from interactive canvas elements follow the same pattern:
+
+```typescript
+// Canvas element click arrives as:
+// { type: 'canvas_element_click', id: 'handle', scope: ['drawing'], ... }
+
+// Check scope in update:
+if (isCanvasElementClick(event) && event.id === 'handle' && event.scope[0] === 'drawing') {
+  // handle in drawing canvas
+}
+```
+
+This means canvas elements, canvas widgets, and regular widgets all
+use the same scoping and event dispatch model.
+
 ## Dynamic lists
 
 When rendering a list of items, wrap each item in a named container
