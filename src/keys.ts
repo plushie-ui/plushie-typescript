@@ -740,9 +740,9 @@ export function resolveKey(key: string): string {
     return prefix + resolveKey(keyPart);
   }
 
-  // Single character: return as-is (iced uses the character directly)
+  // Single character: lowercased for iced's logical key representation
   if (key.length === 1) {
-    return key;
+    return key.toLowerCase();
   }
 
   // Exact match first (fast path)

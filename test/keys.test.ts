@@ -17,9 +17,9 @@ describe("resolveKey", () => {
     expect(resolveKey("ARROWLEFT")).toBe("ArrowLeft");
   });
 
-  test("single characters pass through unchanged", () => {
+  test("single characters are lowercased", () => {
     expect(resolveKey("a")).toBe("a");
-    expect(resolveKey("Z")).toBe("Z");
+    expect(resolveKey("Z")).toBe("z");
     expect(resolveKey("1")).toBe("1");
     expect(resolveKey("/")).toBe("/");
   });

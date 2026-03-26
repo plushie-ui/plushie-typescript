@@ -1144,17 +1144,51 @@ export class Runtime<M> {
 
   private handleInteractStep(response: DecodedResponse): void {
     if (response.type !== "interact_step") return;
-    // Process step events through the runtime
+    // Process events through update+commands WITHOUT rendering after each.
+    // Matches Elixir's apply_event which defers view/render.
     for (const eventRaw of response.events) {
       const eventDecoded = decodeMessage(eventRaw);
       if (eventDecoded?.type === "event") {
-        this.handleEvent(eventDecoded.data);
+        this.applyEvent(eventDecoded.data);
       }
     }
-    // Send current tree back as snapshot (headless mode step protocol)
-    const tree = this.state.tree;
-    if (tree) {
-      this.send(encodeSnapshot(this.sessionId, tree as unknown as WireMessage));
+    // Render once and send a single snapshot (headless step protocol).
+    this.renderAndSync(true);
+  }
+
+  /** Process an event through update+commands without rendering.
+   * Used by interact_step to batch events before a single render. */
+  private applyEvent(event: Event): void {
+    // Route through canvas widget handlers
+    if (this.state.canvasWidgetRegistry.size > 0) {
+      const result = dispatchThroughWidgets(this.state.canvasWidgetRegistry, event);
+      this.state.canvasWidgetRegistry = result.registry;
+      if (result.event === null) return; // consumed
+      event = result.event;
+    }
+
+    try {
+      // Check inline handler first
+      if ("id" in event && "type" in event) {
+        const widgetEvent = event as WidgetEvent;
+        const handler = this.lookupHandler(widgetEvent.id, widgetEvent.type);
+        if (handler) {
+          const result = handler(this.state.model, widgetEvent) as UpdateResult<M>;
+          const [newModel, commands] = this.unwrapResult(result);
+          this.state.model = newModel;
+          this.executeCommands(commands);
+          return;
+        }
+      }
+      // Fall through to update
+      if (this.config.update) {
+        const result = this.config.update(this.state.model as never, event) as UpdateResult<M>;
+        const [newModel, commands] = this.unwrapResult(result);
+        this.state.model = newModel;
+        this.executeCommands(commands);
+      }
+    } catch (error) {
+      this.handleUpdateError(error);
     }
   }
 
