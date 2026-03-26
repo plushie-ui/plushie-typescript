@@ -306,6 +306,20 @@ export function encodeReset(session: string, id: string): WireMessage {
   return { type: "reset", session, id };
 }
 
+/** Encode a RegisterEffectStub message. */
+export function encodeRegisterEffectStub(
+  session: string,
+  kind: string,
+  response: unknown,
+): WireMessage {
+  return { type: "register_effect_stub", session, kind, response };
+}
+
+/** Encode an UnregisterEffectStub message. */
+export function encodeUnregisterEffectStub(session: string, kind: string): WireMessage {
+  return { type: "unregister_effect_stub", session, kind };
+}
+
 /** Encode an AdvanceFrame message. */
 export function encodeAdvanceFrame(session: string, timestamp: number): WireMessage {
   return { type: "advance_frame", session, timestamp };
@@ -359,6 +373,8 @@ export type DecodedResponse =
       rgba: unknown;
     }
   | { type: "reset_response"; id: string; status: string }
+  | { type: "effect_stub_registered"; kind: string }
+  | { type: "effect_stub_unregistered"; kind: string }
   | { type: "session_error"; session: string; error: string }
   | { type: "session_closed"; session: string; reason: string };
 
@@ -442,6 +458,12 @@ export function decodeMessage(raw: WireMessage): DecodedResponse | null {
         id: str(raw, "id"),
         status: str(raw, "status"),
       };
+
+    case "effect_stub_registered":
+      return { type: "effect_stub_registered", kind: str(raw, "kind") };
+
+    case "effect_stub_unregistered":
+      return { type: "effect_stub_unregistered", kind: str(raw, "kind") };
 
     default:
       return null;
@@ -583,6 +605,8 @@ const WIDGET_FAMILIES = new Set([
   "canvas_element_drag_end",
   "canvas_element_focused",
   "canvas_element_blurred",
+  "canvas_element_key_press",
+  "canvas_element_key_release",
   "canvas_focused",
   "canvas_blurred",
   "canvas_group_focused",

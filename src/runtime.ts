@@ -22,10 +22,13 @@ import {
   encodeExtensionCommand,
   encodeExtensionCommands,
   encodeImageOp,
+  encodeInteract,
   encodePatch,
+  encodeRegisterEffectStub,
   encodeSettings,
   encodeSnapshot,
   encodeSubscribe,
+  encodeUnregisterEffectStub,
   encodeUnsubscribe,
   encodeWidgetOp,
   encodeWindowOp,
@@ -58,6 +61,16 @@ import { clearHandlers, drainHandlers } from "./ui/handlers.js";
 /** A factory function that creates new Transport instances. */
 export type TransportFactory = () => Transport;
 
+/** Diagnostic event captured from the renderer. */
+export interface Diagnostic {
+  readonly kind: "widget";
+  readonly type: "diagnostic";
+  readonly id: string;
+  readonly scope: readonly string[];
+  readonly value: string | number | boolean | null;
+  readonly data: Readonly<Record<string, unknown>> | null;
+}
+
 /** Internal state for the runtime. */
 interface RuntimeState<M> {
   model: M;
@@ -69,6 +82,17 @@ interface RuntimeState<M> {
   asyncTasks: Map<string, { controller: AbortController; nonce: number }>;
   pendingTimers: Map<string, ReturnType<typeof setTimeout>>;
   pendingEffects: Map<string, ReturnType<typeof setTimeout>>;
+  pendingStubAcks: Map<string, { resolve: () => void; reject: (err: Error) => void }>;
+  pendingAwaitAsync: Map<string, { resolve: () => void; timer: ReturnType<typeof setTimeout> }>;
+  pendingInteract: Map<
+    string,
+    {
+      resolve: () => void;
+      reject: (err: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >;
+  diagnostics: Diagnostic[];
   consecutiveErrors: number;
   restartCount: number;
   coalescePending: boolean;
@@ -97,6 +121,7 @@ export class Runtime<M> {
   private started = false;
   private stopped = false;
   private nextNonce = 0;
+  private nextInteractId = 0;
 
   constructor(
     config: AppConfig<M>,
@@ -122,6 +147,10 @@ export class Runtime<M> {
       asyncTasks: new Map(),
       pendingTimers: new Map(),
       pendingEffects: new Map(),
+      pendingStubAcks: new Map(),
+      pendingAwaitAsync: new Map(),
+      pendingInteract: new Map(),
+      diagnostics: [],
       consecutiveErrors: 0,
       restartCount: 0,
       coalescePending: false,
@@ -142,6 +171,112 @@ export class Runtime<M> {
   /** Inject an external event into the update cycle. */
   injectEvent(event: Event): void {
     this.handleEvent(event);
+  }
+
+  /**
+   * Returns and clears accumulated prop validation diagnostics.
+   * The renderer emits diagnostic events when validate_props is enabled.
+   */
+  getDiagnostics(): Diagnostic[] {
+    const result = this.state.diagnostics;
+    this.state.diagnostics = [];
+    return result;
+  }
+
+  /**
+   * Register an effect stub with the renderer.
+   * Sends the registration and waits for the ack round-trip.
+   */
+  async registerEffectStub(kind: string, response: unknown, timeout = 5000): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.state.pendingStubAcks.delete(kind);
+        reject(new Error(`registerEffectStub: timed out waiting for ack for "${kind}"`));
+      }, timeout);
+
+      this.state.pendingStubAcks.set(kind, {
+        resolve: () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        reject: (err: Error) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+      });
+
+      this.send(encodeRegisterEffectStub(this.sessionId, kind, response));
+    });
+  }
+
+  /**
+   * Unregister an effect stub from the renderer.
+   * Sends the unregistration and waits for the ack round-trip.
+   */
+  async unregisterEffectStub(kind: string, timeout = 5000): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.state.pendingStubAcks.delete(kind);
+        reject(new Error(`unregisterEffectStub: timed out waiting for ack for "${kind}"`));
+      }, timeout);
+
+      this.state.pendingStubAcks.set(kind, {
+        resolve: () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        reject: (err: Error) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+      });
+
+      this.send(encodeUnregisterEffectStub(this.sessionId, kind));
+    });
+  }
+
+  /**
+   * Wait for an async task with the given tag to complete.
+   * Resolves when the async event arrives, rejects on timeout.
+   */
+  awaitAsync(tag: string, timeout = 5000): Promise<void> {
+    // If the task is not running, resolve immediately
+    if (!this.state.asyncTasks.has(tag)) {
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.state.pendingAwaitAsync.delete(tag);
+        reject(new Error(`awaitAsync: timed out waiting for async task "${tag}"`));
+      }, timeout);
+
+      this.state.pendingAwaitAsync.set(tag, { resolve, timer });
+    });
+  }
+
+  /**
+   * Send an interact message to the renderer and process the resulting events.
+   * This is the production equivalent of TestSession.interact().
+   */
+  async interact(
+    action: string,
+    selector: { by: "id" | "text" | "role" | "label" | "focused"; value?: string },
+    payload: Record<string, unknown> = {},
+    timeout = 5000,
+  ): Promise<void> {
+    const id = `interact_${String(++this.nextInteractId)}`;
+    const msg = encodeInteract(this.sessionId, id, action, selector, payload);
+
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.state.pendingInteract.delete(id);
+        reject(new Error(`interact: timed out waiting for response to "${action}"`));
+      }, timeout);
+
+      this.state.pendingInteract.set(id, { resolve, reject, timer });
+      this.send(msg);
+    });
   }
 
   /** Re-initialize the app: reset model from init, re-render as snapshot. */
@@ -295,7 +430,16 @@ export class Runtime<M> {
       case "op_query_response":
         this.handleOpQueryResponse(decoded);
         break;
-      // interact_step and interact_response handled by test framework
+      case "effect_stub_registered":
+      case "effect_stub_unregistered":
+        this.handleStubAck(decoded);
+        break;
+      case "interact_step":
+        this.handleInteractStep(decoded);
+        break;
+      case "interact_response":
+        this.handleInteractResponse(decoded);
+        break;
       default:
         break;
     }
@@ -332,6 +476,22 @@ export class Runtime<M> {
   }
 
   private dispatchEvent(event: Event): void {
+    // Capture diagnostic events before dispatching
+    if (event.kind === "widget" && (event as WidgetEvent).type === "diagnostic") {
+      this.state.diagnostics.push(event as Diagnostic);
+    }
+
+    // Notify any pending awaitAsync watchers
+    if (event.kind === "async") {
+      const asyncTag = (event as import("./types.js").AsyncEvent).tag;
+      const pending = this.state.pendingAwaitAsync.get(asyncTag);
+      if (pending) {
+        clearTimeout(pending.timer);
+        this.state.pendingAwaitAsync.delete(asyncTag);
+        pending.resolve();
+      }
+    }
+
     // Widget events: check handler map first
     if (event.kind === "widget") {
       const widgetEvent = event as WidgetEvent;
@@ -904,6 +1064,51 @@ export class Runtime<M> {
       tag: response.tag,
       data: response.data,
     });
+  }
+
+  private handleStubAck(response: DecodedResponse): void {
+    if (response.type !== "effect_stub_registered" && response.type !== "effect_stub_unregistered")
+      return;
+    const pending = this.state.pendingStubAcks.get(response.kind);
+    if (pending) {
+      this.state.pendingStubAcks.delete(response.kind);
+      pending.resolve();
+    }
+  }
+
+  private handleInteractStep(response: DecodedResponse): void {
+    if (response.type !== "interact_step") return;
+    // Process step events through the runtime
+    for (const eventRaw of response.events) {
+      const eventDecoded = decodeMessage(eventRaw);
+      if (eventDecoded?.type === "event") {
+        this.handleEvent(eventDecoded.data);
+      }
+    }
+    // Send current tree back as snapshot (headless mode step protocol)
+    const tree = this.state.tree;
+    if (tree) {
+      this.send(encodeSnapshot(this.sessionId, tree as unknown as WireMessage));
+    }
+  }
+
+  private handleInteractResponse(response: DecodedResponse): void {
+    if (response.type !== "interact_response") return;
+    // Process events from the response
+    for (const eventRaw of response.events) {
+      const eventDecoded = decodeMessage(eventRaw);
+      if (eventDecoded?.type === "event") {
+        this.handleEvent(eventDecoded.data);
+      }
+    }
+    // Resolve the pending interact promise
+    const id = response.id;
+    const pending = this.state.pendingInteract.get(id);
+    if (pending) {
+      clearTimeout(pending.timer);
+      this.state.pendingInteract.delete(id);
+      pending.resolve();
+    }
   }
 
   // =======================================================================

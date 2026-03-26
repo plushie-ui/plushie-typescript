@@ -10,12 +10,14 @@ import {
   encodeInteract,
   encodePatch,
   encodeQuery,
+  encodeRegisterEffectStub,
   encodeReset,
   encodeScreenshot,
   encodeSettings,
   encodeSnapshot,
   encodeSubscribe,
   encodeTreeHash,
+  encodeUnregisterEffectStub,
   encodeUnsubscribe,
   encodeWidgetOp,
   encodeWindowOp,
@@ -666,6 +668,38 @@ describe("decodeEvent", () => {
     }
   });
 
+  // -- Canvas element key events --
+
+  test("decodes canvas_element_key_press event", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "canvas_element_key_press",
+      id: "canvas_1/element_1",
+      data: { key: "ArrowRight", modifiers: { ctrl: false, shift: false, alt: false } },
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("canvas_element_key_press");
+      expect(event.id).toBe("element_1");
+      expect(event.scope).toEqual(["canvas_1"]);
+    }
+  });
+
+  test("decodes canvas_element_key_release event", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "canvas_element_key_release",
+      id: "canvas_1",
+      data: { key: "Escape" },
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("canvas_element_key_release");
+    }
+  });
+
   // -- Fallback --
 
   test("unrecognized family falls through to widget event", () => {
@@ -679,6 +713,64 @@ describe("decodeEvent", () => {
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
       expect(event.type).toBe("custom_extension_event");
+    }
+  });
+});
+
+// =========================================================================
+// Effect stub encoders
+// =========================================================================
+
+describe("encodeRegisterEffectStub", () => {
+  test("encodes registration with kind and response", () => {
+    const msg = encodeRegisterEffectStub("s1", "clipboard_read", "test data");
+    expect(msg["type"]).toBe("register_effect_stub");
+    expect(msg["session"]).toBe("s1");
+    expect(msg["kind"]).toBe("clipboard_read");
+    expect(msg["response"]).toBe("test data");
+  });
+
+  test("supports object response", () => {
+    const msg = encodeRegisterEffectStub("", "save_file", { path: "/tmp/out.txt" });
+    expect(msg["response"]).toEqual({ path: "/tmp/out.txt" });
+  });
+});
+
+describe("encodeUnregisterEffectStub", () => {
+  test("encodes unregistration with kind", () => {
+    const msg = encodeUnregisterEffectStub("s1", "clipboard_read");
+    expect(msg["type"]).toBe("unregister_effect_stub");
+    expect(msg["session"]).toBe("s1");
+    expect(msg["kind"]).toBe("clipboard_read");
+  });
+});
+
+// =========================================================================
+// Effect stub ack decoding
+// =========================================================================
+
+describe("decodeMessage effect stub acks", () => {
+  test("decodes effect_stub_registered", () => {
+    const result = decodeMessage({
+      type: "effect_stub_registered",
+      session: "",
+      kind: "clipboard_read",
+    });
+    expect(result?.type).toBe("effect_stub_registered");
+    if (result?.type === "effect_stub_registered") {
+      expect(result.kind).toBe("clipboard_read");
+    }
+  });
+
+  test("decodes effect_stub_unregistered", () => {
+    const result = decodeMessage({
+      type: "effect_stub_unregistered",
+      session: "",
+      kind: "save_file",
+    });
+    expect(result?.type).toBe("effect_stub_unregistered");
+    if (result?.type === "effect_stub_unregistered") {
+      expect(result.kind).toBe("save_file");
     }
   });
 });

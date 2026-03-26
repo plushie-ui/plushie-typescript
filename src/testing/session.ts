@@ -21,6 +21,7 @@ import {
   type WireSelector,
 } from "../client/protocol.js";
 import type { WireFormat } from "../client/transport.js";
+import { resolveKey } from "../keys.js";
 import { Runtime } from "../runtime.js";
 import type { WireNode } from "../tree/normalize.js";
 import type { AsyncEvent, DeepReadonly, TimerEvent } from "../types.js";
@@ -107,19 +108,19 @@ export class TestSession<M> {
     await this.interact("slide", { by: "id", value: selector }, { value });
   }
 
-  /** Press a key (key down only). Supports "ctrl+s" format. */
+  /** Press a key (key down only). Supports "ctrl+s" format. Case-insensitive. */
   async press(key: string): Promise<void> {
-    await this.interact("press", {}, { key });
+    await this.interact("press", {}, { key: resolveKey(key) });
   }
 
-  /** Release a key (key up only). */
+  /** Release a key (key up only). Case-insensitive. */
   async release(key: string): Promise<void> {
-    await this.interact("release", {}, { key });
+    await this.interact("release", {}, { key: resolveKey(key) });
   }
 
-  /** Press and release a key. */
+  /** Press and release a key. Case-insensitive. */
   async typeKey(key: string): Promise<void> {
-    await this.interact("type_key", {}, { key });
+    await this.interact("type_key", {}, { key: resolveKey(key) });
   }
 
   /** Move cursor to position. */
@@ -214,6 +215,30 @@ export class TestSession<M> {
         originalHandler?.(raw);
       });
     });
+  }
+
+  /**
+   * Register an effect stub with the renderer. The renderer will
+   * return the given response for any effect of the specified kind
+   * instead of performing the real operation.
+   */
+  async registerEffectStub(kind: string, response: unknown): Promise<void> {
+    await this.runtime.registerEffectStub(kind, response);
+  }
+
+  /**
+   * Unregister an effect stub from the renderer, restoring normal
+   * effect handling for the specified kind.
+   */
+  async unregisterEffectStub(kind: string): Promise<void> {
+    await this.runtime.unregisterEffectStub(kind);
+  }
+
+  /**
+   * Returns and clears accumulated prop validation diagnostics.
+   */
+  getDiagnostics(): import("../runtime.js").Diagnostic[] {
+    return this.runtime.getDiagnostics();
   }
 
   /** Re-initialize the app (call init again, re-render with snapshot). */

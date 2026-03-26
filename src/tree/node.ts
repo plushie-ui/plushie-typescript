@@ -9,13 +9,16 @@ export function createNode(
   type: string,
   props: Record<string, unknown>,
   children: UINode[],
+  meta?: Record<string, unknown>,
 ): UINode {
-  return Object.freeze({
+  const node: UINode = {
     id,
     type,
     props: Object.freeze(props),
     children: Object.freeze(children),
-  });
+    ...(meta !== undefined ? { meta: Object.freeze(meta) } : {}),
+  };
+  return Object.freeze(node);
 }
 
 /** Auto-generate an ID from a content string and type. */

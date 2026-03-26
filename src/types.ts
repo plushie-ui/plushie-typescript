@@ -7,6 +7,12 @@ export interface UINode {
   readonly type: string;
   readonly props: Readonly<Record<string, unknown>>;
   readonly children: readonly UINode[];
+  /**
+   * Optional metadata attached to the node. Never sent over the wire
+   * or included in tree diffing. Use for framework-level annotations
+   * (routing data, debug info, etc.) that stay on the TypeScript side.
+   */
+  readonly meta?: Readonly<Record<string, unknown>> | undefined;
 }
 
 /**
@@ -107,6 +113,8 @@ export interface WidgetEvent extends EventBase {
     | "canvas_blurred"
     | "canvas_group_focused"
     | "canvas_group_blurred"
+    | "canvas_element_key_press"
+    | "canvas_element_key_release"
     | "diagnostic"
     | string; // Allow unrecognized families to pass through
   readonly id: string;

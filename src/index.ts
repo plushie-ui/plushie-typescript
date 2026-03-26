@@ -136,6 +136,8 @@ export { Route };
 import * as Data from "./data.js";
 
 export type { QueryOptions, QueryResult, SortSpec } from "./data.js";
+export type { Diagnostic } from "./runtime.js";
+export { Runtime } from "./runtime.js";
 export { Data };
 
 // Keyboard key constants.
@@ -150,6 +152,7 @@ export { defineExtensionWidget, extensionCommands } from "./extension.js";
 // Extension build-time types (values are in extension-build.ts,
 // imported only by the CLI to avoid pulling node:path into browser builds).
 export type { ExtensionBuildConfig } from "./extension-build.js";
+export { resolveKey } from "./keys.js";
 export type { Instruction, RunResult, Script, ScriptHeader } from "./script.js";
 // Script parser/runner.
 export { parseScript, parseScriptFile, runScript } from "./script.js";

@@ -132,4 +132,19 @@ describe("normalize", () => {
     expect(spy).toHaveBeenCalledWith(expect.stringContaining("Duplicate sibling ID"));
     spy.mockRestore();
   });
+
+  test("meta field is excluded from wire node", () => {
+    const tree: UINode = {
+      id: "root",
+      type: "container",
+      props: { spacing: 8 },
+      children: [],
+      meta: { route: "/dashboard", debug: true },
+    };
+    const wire = normalize(tree);
+    // Wire node should have id, type, props, children -- no meta
+    expect(wire.id).toBe("root");
+    expect(wire.props).toEqual({ spacing: 8 });
+    expect("meta" in wire).toBe(false);
+  });
 });
