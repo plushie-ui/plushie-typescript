@@ -144,6 +144,86 @@ they're just functions that return UINodes. Use
 `defineExtensionWidget` only when you need handler registration,
 command generation, or Rust build integration.
 
+### Canvas widgets -- canvas-based widgets with internal state
+
+Use `CanvasWidgetDef` for widgets that render via canvas shapes,
+manage their own internal state, and transform raw canvas events into
+semantic events. No Rust code needed. This sits between composite
+widgets (pure functions, no state) and native widgets (Rust-backed).
+
+Canvas widgets have three capabilities that composite widgets do not:
+
+- **Internal state** -- initialized by `init`, managed by the runtime.
+  The widget tree is the source of truth; state is keyed by scoped
+  widget ID.
+- **Event transformation** -- `handleEvent` intercepts events at the
+  widget's scope boundary before they reach `update`. Raw canvas
+  events become semantic events that are indistinguishable from built-in
+  widget events.
+- **Widget-scoped subscriptions** -- `subscriptions` returns subscriptions
+  scoped to this widget instance. Timer events route to `handleEvent`,
+  not the app's `update`.
+
+```typescript
+import { type CanvasWidgetDef, buildCanvasWidget } from 'plushie'
+import { canvas } from 'plushie/ui'
+
+interface StarState { hover: string | null }
+interface StarProps { rating: number; max: number }
+
+const starRating: CanvasWidgetDef<StarState, StarProps> = {
+  init: () => ({ hover: null }),
+
+  handleEvent(event, state) {
+    if (event.type === 'canvas_element_enter') {
+      return [{ type: 'update_state' }, { ...state, hover: event.id }]
+    }
+    if (event.type === 'canvas_element_leave') {
+      return [{ type: 'update_state' }, { ...state, hover: null }]
+    }
+    if (event.type === 'canvas_element_click') {
+      return [{ type: 'emit', kind: 'select', data: event.id }, state]
+    }
+    return [{ type: 'ignored' }, state]
+  },
+
+  render(id, props, state) {
+    return canvas(id, {}, /* star shapes based on props + state */)
+  },
+}
+
+// In your view:
+const view = (state: Model) => buildCanvasWidget(starRating, 'stars', { rating: 3, max: 5 })
+```
+
+#### `handleEvent` return values
+
+| Action | Effect |
+|---|---|
+| `{ type: 'ignored' }` | Event passes through to `update` unchanged |
+| `{ type: 'consumed' }` | Event is suppressed -- neither the app nor other widgets see it |
+| `{ type: 'update_state' }` | Internal state updated, no output event -- triggers re-render |
+| `{ type: 'emit', kind, data }` | Emit a WidgetEvent; id/scope filled in by the runtime |
+
+#### Subscriptions
+
+Optional. Returns subscriptions scoped to this widget instance. Timer
+events route to `handleEvent`, not the app's `update`.
+
+```typescript
+subscriptions(props, state) {
+  return state.animating
+    ? [Subscription.every(16, 'tick')]
+    : []
+}
+```
+
+#### Lifecycle
+
+Internal state is initialized by `init` when the widget first appears
+in the tree. When the widget is removed, its state is cleaned up.
+Multiple instances get independent state, keyed by scoped widget ID.
+
 ## Using extensions in your app
 
 Extension widgets produce the same UINode structure as built-in

@@ -14,6 +14,13 @@
  */
 
 import type { AppConfig } from "./app.js";
+import {
+  collectSubscriptions as collectWidgetSubscriptions,
+  dispatchThroughWidgets,
+  handleWidgetTimer,
+  isWidgetTag,
+  type RegistryEntry,
+} from "./canvas-widget.js";
 import type { DecodedResponse, WireMessage, WirePatchOp } from "./client/protocol.js";
 import {
   decodeMessage,
@@ -37,7 +44,7 @@ import {
 import type { Transport } from "./client/transport.js";
 import * as SubscriptionMod from "./subscription.js";
 import { diff } from "./tree/diff.js";
-import { normalize, type WireNode } from "./tree/normalize.js";
+import { type NormalizeContext, normalize, type WireNode } from "./tree/normalize.js";
 import { detectWindows } from "./tree/search.js";
 import type {
   Command,
@@ -92,6 +99,7 @@ interface RuntimeState<M> {
       timer: ReturnType<typeof setTimeout>;
     }
   >;
+  canvasWidgetRegistry: Map<string, RegistryEntry>;
   diagnostics: Diagnostic[];
   consecutiveErrors: number;
   restartCount: number;
@@ -150,6 +158,7 @@ export class Runtime<M> {
       pendingStubAcks: new Map(),
       pendingAwaitAsync: new Map(),
       pendingInteract: new Map(),
+      canvasWidgetRegistry: new Map(),
       diagnostics: [],
       consecutiveErrors: 0,
       restartCount: 0,
@@ -492,6 +501,44 @@ export class Runtime<M> {
       }
     }
 
+    // Route timer events for canvas widget subscriptions
+    if (event.kind === "timer") {
+      const timerTag = (event as import("./types.js").TimerEvent).tag;
+      if (isWidgetTag(timerTag)) {
+        const timerResult = handleWidgetTimer(
+          this.state.canvasWidgetRegistry,
+          timerTag,
+          (event as import("./types.js").TimerEvent).timestamp,
+        );
+        if (timerResult) {
+          this.state.canvasWidgetRegistry = timerResult.registry;
+          if (timerResult.event) {
+            // Re-dispatch the emitted event
+            this.dispatchEvent(timerResult.event);
+          } else {
+            // Widget handled internally -- re-render for state changes
+            this.renderAndSync(false);
+          }
+          return;
+        }
+      }
+    }
+
+    // Route through canvas widget handlers before inline handlers / update
+    if (this.state.canvasWidgetRegistry.size > 0) {
+      const dispatchResult = dispatchThroughWidgets(this.state.canvasWidgetRegistry, event);
+      this.state.canvasWidgetRegistry = dispatchResult.registry;
+
+      if (dispatchResult.event === null) {
+        // Consumed by canvas widget -- re-render for state changes
+        this.renderAndSync(false);
+        return;
+      }
+
+      // Use the (possibly transformed) event
+      event = dispatchResult.event;
+    }
+
     // Widget events: check handler map first
     if (event.kind === "widget") {
       const widgetEvent = event as WidgetEvent;
@@ -576,7 +623,22 @@ export class Runtime<M> {
     try {
       clearHandlers();
       const viewResult = this.config.view(this.state.model as never);
-      const tree = normalize(viewResult);
+
+      // Build normalization context with canvas widget registry
+      const newEntries = new Map<string, RegistryEntry>();
+      const normalizeCtx: NormalizeContext = {
+        registry: this.state.canvasWidgetRegistry,
+        newEntries,
+      };
+      const tree = normalize(viewResult, normalizeCtx);
+
+      // Update canvas widget registry from normalization results
+      if (newEntries.size > 0) {
+        this.state.canvasWidgetRegistry = newEntries;
+      } else {
+        // No canvas widgets in this tree -- clear registry
+        this.state.canvasWidgetRegistry = new Map();
+      }
 
       // Extract handlers registered during view()
       const entries = drainHandlers();
@@ -627,11 +689,15 @@ export class Runtime<M> {
   // =======================================================================
 
   private syncSubscriptions(): void {
-    const subs = this.config.subscriptions
+    const appSubs = this.config.subscriptions
       ? this.config
           .subscriptions(this.state.model as never)
           .filter((s): s is Subscription => s !== false && s !== null && s !== undefined)
       : [];
+
+    // Merge canvas widget subscriptions
+    const widgetSubs = collectWidgetSubscriptions(this.state.canvasWidgetRegistry);
+    const subs = widgetSubs.length > 0 ? [...appSubs, ...widgetSubs] : appSubs;
 
     const newKeys = new Map<string, Subscription>();
     for (const sub of subs) {

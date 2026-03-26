@@ -14,6 +14,12 @@
  * @module
  */
 
+import {
+  isPlaceholder,
+  type Registry,
+  type RegistryEntry,
+  renderPlaceholder,
+} from "../canvas-widget.js";
 import type { UINode } from "../types.js";
 
 /**
@@ -55,7 +61,22 @@ export function isAutoId(id: string): boolean {
  * normalize(null)
  * ```
  */
-export function normalize(tree: UINode | readonly UINode[] | null): WireNode {
+/**
+ * Context passed through normalization to support canvas widget expansion.
+ * When a registry is provided, canvas widget placeholders are expanded
+ * inline during normalization.
+ */
+export interface NormalizeContext {
+  /** Existing canvas widget registry for state continuity. */
+  readonly registry?: Registry | undefined;
+  /** Accumulator for new registry entries discovered during expansion. */
+  readonly newEntries?: Map<string, RegistryEntry> | undefined;
+}
+
+export function normalize(
+  tree: UINode | readonly UINode[] | null,
+  ctx?: NormalizeContext,
+): WireNode {
   if (tree === null) {
     return { id: "auto:root", type: "container", props: {}, children: [] };
   }
@@ -65,7 +86,7 @@ export function normalize(tree: UINode | readonly UINode[] | null): WireNode {
       return { id: "auto:root", type: "container", props: {}, children: [] };
     }
     if (tree.length === 1) {
-      return normalizeNode(tree[0]!, "");
+      return normalizeNode(tree[0]!, "", ctx);
     }
     // Wrap multiple nodes in a synthetic root. Synthetic root doesn't
     // create scope (it uses an auto-ID).
@@ -73,11 +94,11 @@ export function normalize(tree: UINode | readonly UINode[] | null): WireNode {
       id: "auto:root",
       type: "container",
       props: {},
-      children: tree.map((child) => normalizeNode(child, "")),
+      children: tree.map((child) => normalizeNode(child, "", ctx)),
     };
   }
 
-  return normalizeNode(tree as UINode, "");
+  return normalizeNode(tree as UINode, "", ctx);
 }
 
 /**
@@ -87,7 +108,7 @@ export function normalize(tree: UINode | readonly UINode[] | null): WireNode {
  * @param scope - The current scope prefix (empty string for root).
  * @returns Normalized WireNode.
  */
-function normalizeNode(node: UINode, scope: string): WireNode {
+function normalizeNode(node: UINode, scope: string, ctx?: NormalizeContext): WireNode {
   const id = node.id;
   const type = node.type;
 
@@ -102,13 +123,30 @@ function normalizeNode(node: UINode, scope: string): WireNode {
   // Apply scope prefix to this node's ID
   const scopedId = scope !== "" && !isAutoId(id) ? `${scope}/${id}` : id;
 
+  // Canvas widget placeholder expansion: if this node is a canvas widget
+  // placeholder and we have a registry context, render the placeholder
+  // and normalize the rendered output in place.
+  if (ctx?.registry && isPlaceholder(node)) {
+    const result = renderPlaceholder(node, scopedId, id, ctx.registry);
+    if (result) {
+      // Record the new entry for registry derivation
+      if (ctx.newEntries) {
+        ctx.newEntries.set(scopedId, result.entry);
+      }
+      // Normalize the rendered output (which may itself contain children)
+      // The rendered node's ID is already set to scopedId by renderPlaceholder,
+      // so we normalize it as a root (no additional scoping).
+      return normalizeRenderedWidget(result.node, scopedId, ctx);
+    }
+  }
+
   // Determine the scope for children:
   // Named (non-auto) non-window nodes propagate their scoped ID as the child scope.
   // Auto-ID nodes and window nodes don't create scope boundaries.
   const childScope = isAutoId(id) || type === "window" ? scope : scopedId;
 
   // Normalize children recursively
-  const children = node.children.map((child) => normalizeNode(child, childScope));
+  const children = node.children.map((child) => normalizeNode(child, childScope, ctx));
 
   // Check for duplicate sibling IDs (warning, not error)
   if (children.length > 1) {
@@ -145,6 +183,24 @@ function normalizeNode(node: UINode, scope: string): WireNode {
     id: scopedId,
     type,
     props,
+    children,
+  };
+}
+
+/**
+ * Normalize a rendered canvas widget node. The node's ID is already
+ * the scoped ID. Children are normalized with the scoped ID as their
+ * scope prefix.
+ */
+function normalizeRenderedWidget(node: UINode, scopedId: string, ctx?: NormalizeContext): WireNode {
+  const childScope = scopedId;
+
+  const children = node.children.map((child) => normalizeNode(child, childScope, ctx));
+
+  return {
+    id: scopedId,
+    type: node.type,
+    props: node.props,
     children,
   };
 }

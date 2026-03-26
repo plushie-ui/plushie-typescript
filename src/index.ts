@@ -26,6 +26,10 @@
 export type { AppConfig, AppDefinition, AppHandle, AppSettings, RunOptions } from "./app.js";
 export { app } from "./app.js";
 
+// Canvas widget system.
+export type { CanvasWidgetDef, EventAction, Registry, RegistryEntry } from "./canvas-widget.js";
+export { buildCanvasWidget } from "./canvas-widget.js";
+
 // Command constructors as a namespace-style object.
 import * as Command from "./command.js";
 

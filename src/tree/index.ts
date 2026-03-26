@@ -7,5 +7,5 @@ export {
   type UpdateProps,
 } from "./diff.js";
 export { autoId, createNode, resetAutoId } from "./node.js";
-export { isAutoId, normalize, type WireNode } from "./normalize.js";
+export { isAutoId, type NormalizeContext, normalize, type WireNode } from "./normalize.js";
 export { detectWindows, findById, findNode } from "./search.js";
