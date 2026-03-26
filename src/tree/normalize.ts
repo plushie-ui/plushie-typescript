@@ -136,7 +136,7 @@ function normalizeNode(node: UINode, scope: string, ctx?: NormalizeContext): Wir
       // Normalize the rendered output (which may itself contain children)
       // The rendered node's ID is already set to scopedId by renderPlaceholder,
       // so we normalize it as a root (no additional scoping).
-      return normalizeRenderedWidget(result.node, scopedId, ctx);
+      return normalizeRenderedWidget(result.node, scopedId, scope, ctx);
     }
   }
 
@@ -163,21 +163,7 @@ function normalizeNode(node: UINode, scope: string, ctx?: NormalizeContext): Wir
   }
 
   // Resolve a11y ID references relative to the current scope
-  let props = node.props;
-  if (props["a11y"] && scope !== "") {
-    const a11y = { ...(props["a11y"] as Record<string, unknown>) };
-    let changed = false;
-    for (const refField of ["labelled_by", "described_by", "error_message"]) {
-      const val = a11y[refField];
-      if (typeof val === "string" && !val.includes("/")) {
-        a11y[refField] = `${scope}/${val}`;
-        changed = true;
-      }
-    }
-    if (changed) {
-      props = { ...props, a11y };
-    }
-  }
+  const props = resolveA11yRefs(node.props, scope);
 
   return {
     id: scopedId,
@@ -192,15 +178,39 @@ function normalizeNode(node: UINode, scope: string, ctx?: NormalizeContext): Wir
  * the scoped ID. Children are normalized with the scoped ID as their
  * scope prefix.
  */
-function normalizeRenderedWidget(node: UINode, scopedId: string, ctx?: NormalizeContext): WireNode {
-  const childScope = scopedId;
+function normalizeRenderedWidget(
+  node: UINode,
+  scopedId: string,
+  parentScope: string,
+  ctx?: NormalizeContext,
+): WireNode {
+  // Windows reset scope; otherwise children are scoped under this node.
+  const childScope = node.type === "window" ? "" : scopedId;
 
   const children = node.children.map((child) => normalizeNode(child, childScope, ctx));
 
   return {
     id: scopedId,
     type: node.type,
-    props: node.props,
+    // Resolve a11y refs relative to parent scope (where siblings live),
+    // not this node's own scope. Matches Gleam/Elixir behavior.
+    props: resolveA11yRefs(node.props, parentScope),
     children,
   };
+}
+
+/** Resolve a11y ID references (labelled_by, described_by, error_message) relative to scope. */
+function resolveA11yRefs(props: Record<string, unknown>, scope: string): Record<string, unknown> {
+  if (!props["a11y"] || scope === "") return props;
+
+  const a11y = { ...(props["a11y"] as Record<string, unknown>) };
+  let changed = false;
+  for (const refField of ["labelled_by", "described_by", "error_message"]) {
+    const val = a11y[refField];
+    if (typeof val === "string" && !val.includes("/")) {
+      a11y[refField] = `${scope}/${val}`;
+      changed = true;
+    }
+  }
+  return changed ? { ...props, a11y } : props;
 }
