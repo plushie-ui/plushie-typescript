@@ -36,6 +36,7 @@ import type {
   CanvasEvent,
   EffectEvent,
   Event,
+  ExtensionCommandErrorEvent,
   ImeEvent,
   KeyEvent,
   ModifiersEvent,
@@ -174,6 +175,11 @@ export function isEffect(event: Event, requestId?: string): event is EffectEvent
 /** Narrows to a system event (animation frame, theme change, etc.), optionally matching a type. */
 export function isSystem(event: Event, type?: string): event is SystemEvent {
   return event.kind === "system" && (type === undefined || event.type === type);
+}
+
+/** Narrows to a native extension command error event. */
+export function isExtensionCommandError(event: Event): event is ExtensionCommandErrorEvent {
+  return event.kind === "extension_command_error";
 }
 
 /** Narrows to a timer event, optionally matching a subscription tag. */

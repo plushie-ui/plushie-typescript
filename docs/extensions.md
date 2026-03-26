@@ -270,8 +270,8 @@ app({
 ```
 
 The renderer forwards `extension_config` to each registered extension
-via the `init()` trait method. The config key must match the Rust
-extension's `config_key()` return value.
+via the `init()` trait method. On the SDK side, this map is keyed by
+extension widget type, for example `"sparkline"`.
 
 ## Extension commands
 

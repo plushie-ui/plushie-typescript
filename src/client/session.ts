@@ -13,6 +13,7 @@
 import type { DecodedResponse, HelloInfo, WireMessage } from "./protocol.js";
 import { decodeMessage, PROTOCOL_VERSION } from "./protocol.js";
 import type { Transport } from "./transport.js";
+import { extensionConfigKey, type ExtensionWidgetConfig } from "../extension.js";
 
 /** Options for connecting a session. */
 export interface ConnectOptions {
@@ -22,6 +23,8 @@ export interface ConnectOptions {
   sessionId?: string;
   /** Connection timeout in milliseconds (defaults to 10000). */
   timeout?: number;
+  /** Native extensions this session expects the renderer to have loaded. */
+  expectedExtensions?: readonly (string | ExtensionWidgetConfig)[];
 }
 
 /** Pending request awaiting a response. */
@@ -66,6 +69,9 @@ export class Session {
   async connect(opts: ConnectOptions = {}): Promise<HelloInfo> {
     const timeout = opts.timeout ?? 10_000;
     const settings = opts.settings ?? {};
+    const expectedExtensions = (opts.expectedExtensions ?? []).map((ext) =>
+      typeof ext === "string" ? ext : extensionConfigKey(ext),
+    );
 
     return new Promise<HelloInfo>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -91,6 +97,17 @@ export class Session {
                 `Protocol version mismatch: renderer reports ${String(info.protocol)}, ` +
                   `SDK expects ${String(PROTOCOL_VERSION)}. ` +
                   `Update the plushie binary or SDK to matching versions.`,
+              ),
+            );
+            return;
+          }
+
+          const missing = expectedExtensions.filter((ext) => !info.extensions.includes(ext));
+          if (missing.length > 0) {
+            reject(
+              new Error(
+                `Renderer is missing required extensions ${JSON.stringify(missing)}. ` +
+                  `Renderer reported ${JSON.stringify(info.extensions)}.`,
               ),
             );
             return;

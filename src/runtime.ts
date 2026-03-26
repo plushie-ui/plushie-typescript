@@ -60,6 +60,7 @@ import type {
 import { COMMAND } from "./types.js";
 import type { HandlerEntry } from "./ui/handlers.js";
 import { clearHandlers, drainHandlers } from "./ui/handlers.js";
+import { extensionConfigKey } from "./extension.js";
 
 // =========================================================================
 // Types
@@ -413,6 +414,23 @@ export class Runtime<M> {
             );
             return;
           }
+
+          const expectedExtensions = (this.config.expectedExtensions ?? []).map((ext) =>
+            typeof ext === "string" ? ext : extensionConfigKey(ext),
+          );
+          const missing = expectedExtensions.filter(
+            (ext) => !decoded.data.extensions.includes(ext),
+          );
+          if (missing.length > 0) {
+            reject(
+              new Error(
+                `Renderer is missing required extensions ${JSON.stringify(missing)}. ` +
+                  `Renderer reported ${JSON.stringify(decoded.data.extensions)}.`,
+              ),
+            );
+            return;
+          }
+
           // Restore normal message handler
           this.transport.onMessage((msg) => this.handleRawMessage(msg));
           resolve();

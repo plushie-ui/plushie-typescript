@@ -23,6 +23,7 @@ import type {
   MouseEvent as PlushieMouseEvent,
   TouchEvent as PlushieTouchEvent,
   SensorEvent,
+  ExtensionCommandErrorEvent,
   SystemEvent,
   WidgetEvent,
   WindowEvent,
@@ -959,7 +960,7 @@ function decodeSystemEvent(
   raw: WireMessage,
   family: string,
   data: WireMessage | null,
-): SystemEvent {
+): SystemEvent | ExtensionCommandErrorEvent {
   let eventData: unknown = data;
 
   // Flatten specific system event data
@@ -969,6 +970,18 @@ function decodeSystemEvent(
     eventData = raw["value"] ?? null;
   } else if (family === "announce" && data) {
     eventData = data["text"] ?? null;
+  } else if (family === "error") {
+    if (str(raw, "id") === "extension_command") {
+      return {
+        kind: "extension_command_error",
+        reason: typeof data?.["reason"] === "string" ? (data["reason"] as string) : "",
+        nodeId: typeof data?.["node_id"] === "string" ? (data["node_id"] as string) : null,
+        op: typeof data?.["op"] === "string" ? (data["op"] as string) : null,
+        extension: typeof data?.["extension"] === "string" ? (data["extension"] as string) : null,
+        message: typeof data?.["message"] === "string" ? (data["message"] as string) : null,
+      } as ExtensionCommandErrorEvent;
+    }
+    eventData = data ? { id: str(raw, "id"), ...data } : { id: str(raw, "id") };
   }
 
   return {

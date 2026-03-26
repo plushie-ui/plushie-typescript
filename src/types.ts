@@ -75,6 +75,7 @@ export type EventKind =
   | "pane"
   | "sensor"
   | "effect"
+  | "extension_command_error"
   | "system"
   | "timer"
   | "async"
@@ -255,6 +256,15 @@ export interface EffectEvent extends EventBase {
   readonly error: string | null;
 }
 
+export interface ExtensionCommandErrorEvent extends EventBase {
+  readonly kind: "extension_command_error";
+  readonly reason: string;
+  readonly nodeId: string | null;
+  readonly op: string | null;
+  readonly extension: string | null;
+  readonly message: string | null;
+}
+
 export interface SystemEvent extends EventBase {
   readonly kind: "system";
   readonly type: string;
@@ -296,6 +306,7 @@ export type Event =
   | PaneEvent
   | SensorEvent
   | EffectEvent
+  | ExtensionCommandErrorEvent
   | SystemEvent
   | TimerEvent
   | AsyncEvent

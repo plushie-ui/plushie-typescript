@@ -150,6 +150,10 @@ export function defineExtensionWidget(
   };
 }
 
+export function extensionConfigKey(config: Pick<ExtensionWidgetConfig, "type">): string {
+  return config.type;
+}
+
 /**
  * Generate Command constructor functions for an extension's declared commands.
  *
