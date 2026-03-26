@@ -24,12 +24,12 @@ The examples deliberately use different API patterns so you can compare:
   `(state, event) => newState` defined outside the view.
 - **update() fallback** -- a single update function handling all events
   via type guards (`isClick`, `isTimer`, `isAsync`, etc.).
-  Used by: Catalog, RatePlushie, Shortcuts, AsyncFetch.
+  Used by: RatePlushie, Shortcuts, AsyncFetch.
 - **Hybrid** -- inline handlers for widget events, update() for
   subscriptions and async results.
   Used by: Todo, Notes, Clock.
-- **Canvas widget helpers** -- reusable canvas components in `widgets/`.
-  Used by: RatePlushie (StarRating, ThemeToggle).
+- **Canvas widgets** -- reusable `CanvasWidgetDef` components in `widgets/`.
+  Used by: RatePlushie (StarRating, ThemeToggle), ColorPicker (ColorPickerWidget).
 
 All styles are interchangeable. Pick whichever reads best for your
 use case.
@@ -115,49 +115,28 @@ npx plushie run examples/async_fetch.ts
 
 **File:** `color_picker.ts`
 
-HSV color picker using canvas widgets. A hue ring surrounds a
-saturation/value square with drag interaction. Demonstrates canvas
-layers, path commands, linear gradients, and coordinate-based canvas
-events (press/move/release for continuous drag).
+HSV color picker using a canvas_widget. The color picker widget
+handles all interaction internally (mouse drag, keyboard adjustment,
+focus tracking). The app receives semantic `:change` events with
+the current HSV values.
 
 ```sh
 npx plushie run examples/color_picker.ts
-```
-
-### Catalog
-
-**File:** `catalog.ts`
-
-Comprehensive widget catalog exercising every widget type across four
-tabbed sections:
-
-- **Layout:** column, row, container, scrollable, stack, grid, pin,
-  floating, responsive, keyed_column, themer, space
-- **Input:** button, text_input, checkbox, toggler, radio, slider,
-  vertical_slider, pick_list, combo_box, text_editor
-- **Display:** text, rule, progress_bar, tooltip, image, svg,
-  markdown, rich_text, canvas
-- **Composite:** mouse_area, sensor, pane_grid, table, simulated tabs,
-  modal, collapsible panel
-
-Use this as a reference for widget props and event patterns.
-
-```sh
-npx plushie run examples/catalog.ts
 ```
 
 ### RatePlushie
 
 **Files:** `rate_plushie.ts`, `widgets/star_rating.ts`, `widgets/theme_toggle.ts`
 
-App rating page with custom canvas-drawn widgets composed into a styled
+App rating page with canvas_widget components composed into a styled
 UI. Features a 5-star rating built from path-drawn star geometry and an
 animated theme toggle that slides and rotates when "Dark humor" is
 enabled. The entire page theme interpolates smoothly.
 
-Demonstrates: custom canvas widgets as reusable modules, interactive
-shapes, canvas transforms for rotation, timer-based animation via
-subscriptions, theme-aware rendering, keyboard interaction.
+Demonstrates: canvas_widget extension system, semantic event emission,
+form validation with per-field error state, accessible error wiring
+(required, invalid, error_message), timer-based animation via
+widget-scoped subscriptions, theme-aware rendering.
 
 ```sh
 npx plushie run examples/rate_plushie.ts

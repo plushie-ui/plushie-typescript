@@ -4,16 +4,22 @@
 // with styled containers using the full function API. The "Dark humor"
 // toggle animates the emoji and flips the entire page theme.
 //
+// The review form showcases form validation with:
+// - Per-field error state tracked in the model
+// - Visual error styling via StyleMap (border + background tint)
+// - Accessible error wiring via a11y (required, invalid, errorMessage)
+// - Validate-on-submit with clear-on-change for responsive UX
+//
 // Demonstrates:
 // - Canvas-based star rating (interactive radio group)
-// - Theme toggle with transform-based animation
+// - Theme toggle with internal animation
 // - Review list with star ratings
-// - Review submission form
+// - Review submission form with validation
 // - Theme interpolation (light to dark)
 // - Accessibility (heading roles, form labels, radio group)
 
 import type { Event, UINode } from "../src/index.js";
-import { app, isClick, isInput, isSubmit, isTimer, isWidget, Subscription } from "../src/index.js";
+import { app, isClick, isInput, isSubmit, isWidget } from "../src/index.js";
 import {
   button,
   column,
@@ -26,6 +32,7 @@ import {
   textInput,
   window,
 } from "../src/ui/index.js";
+import type { StyleMap } from "../src/ui/types.js";
 import { starRating } from "./widgets/star_rating.js";
 import { themeToggle } from "./widgets/theme_toggle.js";
 
@@ -38,14 +45,19 @@ interface Review {
   text: string;
 }
 
+interface Errors {
+  name?: string;
+  comment?: string;
+  rating?: string;
+}
+
 interface Model {
   rating: number;
-  hoverStar: number | null;
-  toggleProgress: number;
-  toggleTarget: number;
+  darkMode: boolean;
   reviews: Review[];
   reviewName: string;
   reviewComment: string;
+  errors: Errors;
 }
 
 interface Theme {
@@ -55,6 +67,9 @@ interface Theme {
   text: string;
   textSecondary: string;
   textMuted: string;
+  errorText: string;
+  errorBorder: string;
+  errorBg: string;
 }
 
 // -- Constants ----------------------------------------------------------------
@@ -116,18 +131,6 @@ function fade(
   return `#${hexByte(r)}${hexByte(g)}${hexByte(b)}`;
 }
 
-function smoothstep(t: number): number {
-  if (t <= 0.0) return 0.0;
-  if (t >= 1.0) return 1.0;
-  return t * t * (3 - 2 * t);
-}
-
-function approach(current: number, target: number, step: number): number {
-  if (current < target) return Math.min(current + step, target);
-  if (current > target) return Math.max(current - step, target);
-  return current;
-}
-
 function buildTheme(p: number): Theme {
   return {
     pageBg: fade(248, 248, 250, 19, 19, 31, p),
@@ -136,16 +139,41 @@ function buildTheme(p: number): Theme {
     text: fade(26, 26, 26, 240, 240, 245, p),
     textSecondary: fade(102, 102, 102, 153, 153, 187, p),
     textMuted: fade(170, 170, 170, 85, 85, 119, p),
+    errorText: fade(185, 28, 28, 255, 100, 100, p),
+    errorBorder: fade(220, 38, 38, 255, 80, 80, p),
+    errorBg: fade(254, 242, 242, 50, 20, 20, p),
+  };
+}
+
+// -- Validation ---------------------------------------------------------------
+
+function validateReview(model: Model): Errors {
+  const errors: Errors = {};
+  if (model.reviewName.trim() === "") errors.name = "Name is required";
+  if (model.reviewComment.trim() === "") errors.comment = "Review text is required";
+  if (model.rating <= 0) errors.rating = "Please select a rating";
+  return errors;
+}
+
+function inputStyle(error: string | undefined, t: Theme): StyleMap | undefined {
+  if (!error) return undefined;
+  return {
+    border: { width: 2, color: t.errorBorder, radius: 4 },
+    background: t.errorBg,
+    focused: {
+      border: { width: 2, color: t.errorBorder, radius: 4 },
+    },
   };
 }
 
 // -- Helpers ------------------------------------------------------------------
 
 function submitReview(model: Model): Model {
-  const name = model.reviewName.trim();
-  const comment = model.reviewComment.trim();
+  const errors = validateReview(model);
 
-  if (name !== "" && comment !== "" && model.rating > 0) {
+  if (Object.keys(errors).length === 0) {
+    const name = model.reviewName.trim();
+    const comment = model.reviewComment.trim();
     const review: Review = { stars: model.rating, user: name, time: "just now", text: comment };
     return {
       ...model,
@@ -153,34 +181,70 @@ function submitReview(model: Model): Model {
       reviewName: "",
       reviewComment: "",
       rating: 0,
+      errors: {},
     };
   }
-  return model;
+  return { ...model, errors };
 }
 
 // -- View helpers -------------------------------------------------------------
 
-function reviewForm(model: Model): UINode {
+function reviewForm(model: Model, t: Theme): UINode {
   return column({ id: "review-form", spacing: 12, width: "fill" }, [
-    textInput("review-name", model.reviewName, {
-      placeholder: "Your name",
-      a11y: { label: "Your name" },
-    }),
-    textEditor("review-comment", {
-      content: model.reviewComment,
-      placeholder: "Write your review...",
-      height: 80,
-      a11y: { label: "Review text" },
-    }),
+    column({ id: "name-field", spacing: 4, width: "fill" }, [
+      textInput("review-name", model.reviewName, {
+        placeholder: "Your name",
+        onSubmit: true,
+        style: inputStyle(model.errors.name, t),
+        a11y: {
+          label: "Your name",
+          required: true,
+          invalid: model.errors.name !== undefined,
+          errorMessage: model.errors.name ? "review-name-error" : undefined,
+        },
+      }),
+      ...(model.errors.name
+        ? [
+            text("review-name-error", model.errors.name, {
+              size: 12,
+              color: t.errorText,
+              a11y: { role: "alert", live: "polite" },
+            }),
+          ]
+        : []),
+    ]),
+    column({ id: "comment-field", spacing: 4, width: "fill" }, [
+      textEditor("review-comment", {
+        content: model.reviewComment,
+        placeholder: "Write your review...",
+        height: 80,
+        style: inputStyle(model.errors.comment, t),
+        a11y: {
+          label: "Review text",
+          required: true,
+          invalid: model.errors.comment !== undefined,
+          errorMessage: model.errors.comment ? "review-comment-error" : undefined,
+        },
+      }),
+      ...(model.errors.comment
+        ? [
+            text("review-comment-error", model.errors.comment, {
+              size: 12,
+              color: t.errorText,
+              a11y: { role: "alert", live: "polite" },
+            }),
+          ]
+        : []),
+    ]),
     button("submit-review", "Submit Review"),
   ]);
 }
 
-function themeRow(model: Model, t: Theme): UINode {
+function themeRow(t: Theme): UINode {
   return row({ id: "theme-row", alignY: "center" }, [
     space({ id: "theme-spacer", width: "fill" }),
     text("toggle-label", "Dark humor", { color: t.textSecondary }),
-    themeToggle("theme-toggle", model.toggleProgress),
+    themeToggle("theme-toggle"),
   ]);
 }
 
@@ -197,14 +261,22 @@ function ratingCard(model: Model, p: number, t: Theme): UINode {
       column({ spacing: 20 }, [
         text("prompt", "How would you rate Plushie?", { size: 14, color: t.textSecondary }),
 
-        starRating("stars", model.rating, {
-          hover: model.hoverStar,
-          themeProgress: p,
-        }),
+        column({ id: "stars-group", spacing: 4 }, [
+          starRating("stars", { rating: model.rating, themeProgress: p }),
+          ...(model.errors.rating
+            ? [
+                text("stars-error", model.errors.rating, {
+                  size: 12,
+                  color: t.errorText,
+                  a11y: { role: "alert", live: "polite" },
+                }),
+              ]
+            : []),
+        ]),
 
         rule(),
-        reviewForm(model),
-        themeRow(model, t),
+        reviewForm(model, t),
+        themeRow(t),
       ]),
     ],
   );
@@ -213,7 +285,12 @@ function ratingCard(model: Model, p: number, t: Theme): UINode {
 function reviewCard(review: Review, i: number, p: number, t: Theme): UINode {
   return column({ id: `review-${i}`, spacing: 4, padding: 12, width: "fill" }, [
     row({ id: `rhdr-${i}`, spacing: 8, alignY: "center" }, [
-      starRating(`rstars-${i}`, review.stars, { readonly: true, scale: 0.4, themeProgress: p }),
+      starRating(`rstars-${i}`, {
+        rating: review.stars,
+        readonly: true,
+        scale: 0.4,
+        themeProgress: p,
+      }),
       text(`rname-${i}`, review.user, { size: 12, color: t.textSecondary }),
       space({ id: `rsp-${i}`, width: "fill" }),
       text(`rtime-${i}`, review.time, { size: 12, color: t.textMuted }),
@@ -237,59 +314,48 @@ function reviewsList(reviews: Review[], p: number, t: Theme): UINode {
 export default app<Model>({
   init: {
     rating: 0,
-    hoverStar: null,
-    toggleProgress: 0.0,
-    toggleTarget: 0.0,
+    darkMode: false,
     reviews: INITIAL_REVIEWS,
     reviewName: "",
     reviewComment: "",
-  },
-
-  subscriptions: (s) => {
-    if (s.toggleProgress !== s.toggleTarget) {
-      return [Subscription.every(16, "animate")];
-    }
-    return [];
+    errors: {},
   },
 
   update(state, event: Event) {
-    // Star rating interactions
-    if (isWidget(event) && event.id === "stars") {
-      if (event.type === "canvas_element_click" && event.data?.["element_id"]) {
-        const match = String(event.data["element_id"]).match(/^star-(\d+)$/);
-        if (match) return { ...state, rating: Number(match[1]) + 1 };
-      }
-      if (event.type === "canvas_element_enter" && event.data?.["element_id"]) {
-        const match = String(event.data["element_id"]).match(/^star-(\d+)$/);
-        if (match) return { ...state, hoverStar: Number(match[1]) + 1 };
-      }
-      if (event.type === "canvas_element_leave") {
-        return { ...state, hoverStar: null };
-      }
+    // StarRating emits "select" with { value: n } (the number of stars).
+    if (isWidget(event) && event.type === "select" && event.id === "stars") {
+      const stars = event.data?.["value"] as number;
+      const errors = { ...state.errors };
+      delete errors.rating;
+      return { ...state, rating: stars, errors };
     }
 
-    // Theme toggle
-    if (isWidget(event) && event.id === "theme-toggle" && event.type === "canvas_element_click") {
-      const target = state.toggleTarget === 0.0 ? 1.0 : 0.0;
-      return { ...state, toggleTarget: target };
+    // ThemeToggle emits "toggle" with { value: boolean }.
+    // Animation is managed internally by the canvas_widget.
+    if (isWidget(event) && event.type === "toggle" && event.id === "theme-toggle") {
+      return { ...state, darkMode: Boolean(event.data?.["value"]) };
     }
 
-    // Review form
-    if (isInput(event, "review-name")) return { ...state, reviewName: String(event.value) };
-    if (isInput(event, "review-comment")) return { ...state, reviewComment: String(event.value) };
+    // Review form inputs -- clear errors on change
+    if (isInput(event, "review-name")) {
+      const errors = { ...state.errors };
+      delete errors.name;
+      return { ...state, reviewName: String(event.value), errors };
+    }
+    if (isInput(event, "review-comment")) {
+      const errors = { ...state.errors };
+      delete errors.comment;
+      return { ...state, reviewComment: String(event.value), errors };
+    }
+
     if (isClick(event, "submit-review")) return submitReview(state);
     if (isSubmit(event, "review-name")) return submitReview(state);
-
-    // Animation
-    if (isTimer(event, "animate")) {
-      return { ...state, toggleProgress: approach(state.toggleProgress, state.toggleTarget, 0.06) };
-    }
 
     return state;
   },
 
   view: (s) => {
-    const p = smoothstep(s.toggleProgress);
+    const p = s.darkMode ? 1.0 : 0.0;
     const t = buildTheme(p);
 
     return window("main", { title: "Rate Plushie" }, [

@@ -13,7 +13,6 @@ describe("color_picker example", () => {
     expect(init).toHaveProperty("hue");
     expect(init).toHaveProperty("saturation");
     expect(init).toHaveProperty("value");
-    expect(init).toHaveProperty("drag");
     expect(init["hue"]).toBeTypeOf("number");
     expect(init["saturation"]).toBeTypeOf("number");
     expect(init["value"]).toBeTypeOf("number");
@@ -29,7 +28,7 @@ describe("color_picker example", () => {
     }
   });
 
-  test("has update for canvas event handling", () => {
+  test("has update for widget event handling", () => {
     expect(colorPicker.config.update).toBeTypeOf("function");
   });
 });

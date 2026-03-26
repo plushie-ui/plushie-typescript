@@ -5,22 +5,25 @@
 // Pass readonly: true for a display-only version.
 //
 // Events:
-// - canvas_element_click with element_id "star-0" through "star-4"
-// - canvas_element_enter/canvas_element_leave for hover
-// - canvas_element_focused with element_id for keyboard focus
+// - "select" with { value: n } when the user clicks a star
 
 import type { CanvasShape, PathCommand } from "../../src/canvas/index.js";
 import { close, group, lineTo, moveTo, path } from "../../src/canvas/index.js";
-import type { UINode } from "../../src/index.js";
+import type { CanvasWidgetDef, Event, EventAction, UINode } from "../../src/index.js";
+import { buildCanvasWidget } from "../../src/index.js";
 import { Canvas } from "../../src/ui/widgets/canvas.js";
 
 // -- Types --------------------------------------------------------------------
 
-export interface StarRatingOpts {
-  hover?: number | null;
-  themeProgress?: number;
+export interface StarRatingProps {
+  rating: number;
   readonly?: boolean;
   scale?: number;
+  themeProgress?: number;
+}
+
+interface StarState {
+  hover: number | null;
 }
 
 // -- Helpers ------------------------------------------------------------------
@@ -32,37 +35,81 @@ function hexByte(n: number): string {
 }
 
 function starColor(filled: boolean, preview: boolean, progress: number): string {
-  if (filled && !preview) return "#f59e0b";
-  if (preview) return "#fcd34d";
-  const r = Math.round(209 + (74 - 209) * progress);
-  const g = Math.round(213 + (74 - 213) * progress);
-  const b = Math.round(219 + (94 - 219) * progress);
+  if (preview) return fade(255, 200, 50, 200, 160, 80, progress);
+  if (filled) return fade(255, 180, 0, 255, 200, 50, progress);
+  return fade(224, 224, 224, 60, 60, 80, progress);
+}
+
+function fade(
+  r1: number,
+  g1: number,
+  b1: number,
+  r2: number,
+  g2: number,
+  b2: number,
+  t: number,
+): string {
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
   return `#${hexByte(r)}${hexByte(g)}${hexByte(b)}`;
 }
 
 function starCommands(outerR: number, innerR: number): PathCommand[] {
   const points: [number, number][] = [];
   for (let i = 0; i < 10; i++) {
-    const angle = (i * Math.PI) / 5 - Math.PI / 2;
+    const angle = Math.PI / 2 + (i * Math.PI) / 5;
     const r = i % 2 === 0 ? outerR : innerR;
-    points.push([r * Math.cos(angle), r * Math.sin(angle)]);
+    points.push([r * Math.cos(angle), -r * Math.sin(angle)]);
   }
   const [first, ...rest] = points;
   return [moveTo(first![0], first![1]), ...rest.map(([x, y]) => lineTo(x, y)), close()];
 }
 
+// -- Event handler ------------------------------------------------------------
+
+function handleEvent(event: Event, state: StarState): readonly [EventAction, StarState] {
+  if (event.kind === "widget") {
+    // Click on a star -> emit :select with the 1-based star number.
+    if (event.type === "canvas_element_click" && event.data?.["element_id"]) {
+      const match = String(event.data["element_id"]).match(/^star-(\d+)$/);
+      if (match) {
+        const n = Number(match[1]) + 1;
+        return [{ type: "emit", kind: "select", data: n }, state];
+      }
+    }
+
+    // Hover enter on a star -> update internal hover state for preview highlight.
+    if (event.type === "canvas_element_enter" && event.data?.["element_id"]) {
+      const match = String(event.data["element_id"]).match(/^star-(\d+)$/);
+      if (match) {
+        return [{ type: "update_state" }, { ...state, hover: Number(match[1]) + 1 }];
+      }
+    }
+
+    // Hover leave -> clear preview highlight.
+    if (event.type === "canvas_element_leave") {
+      return [{ type: "update_state" }, { ...state, hover: null }];
+    }
+  }
+
+  // All other events consumed -- StarRating only surfaces "select".
+  return [{ type: "consumed" }, state];
+}
+
 // -- Render -------------------------------------------------------------------
 
-export function starRating(id: string, rating: number, opts: StarRatingOpts = {}): UINode {
-  const hover = opts.hover ?? null;
-  const themeProgress = opts.themeProgress ?? 0.0;
-  const isReadonly = opts.readonly ?? false;
-  const scale = opts.scale ?? 1.0;
+function render(id: string, props: StarRatingProps, state: StarState): UINode {
+  const rating = props.rating ?? 0;
+  const isReadonly = props.readonly ?? false;
+  const scale = props.scale ?? 1.0;
+  const themeProgress = props.themeProgress ?? 0.0;
 
   const outerR = 13 * scale;
   const innerR = 5 * scale;
   const size = Math.round(30 * scale);
   const gap = Math.round(2 * scale);
+  const hover = state.hover;
   const display = hover ?? rating;
   const width = 5 * size + 4 * gap;
 
@@ -76,7 +123,6 @@ export function starRating(id: string, rating: number, opts: StarRatingOpts = {}
     const preview = !isReadonly && hover !== null && i < hover && i >= rating;
 
     if (isReadonly) {
-      // Structural group (no id, no interaction)
       shapes.push(
         group([path(commands, { fill: starColor(filled, false, themeProgress) })], {
           x: cx,
@@ -84,7 +130,6 @@ export function starRating(id: string, rating: number, opts: StarRatingOpts = {}
         }),
       );
     } else {
-      // Interactive group with id -- renderer handles focus_style
       shapes.push(
         group(`star-${i}`, [path(commands, { fill: starColor(filled, preview, themeProgress) })], {
           x: cx,
@@ -124,4 +169,17 @@ export function starRating(id: string, rating: number, opts: StarRatingOpts = {}
     role: "radiogroup",
     children: shapes as unknown as UINode[],
   });
+}
+
+// -- Canvas widget definition -------------------------------------------------
+
+const starRatingDef: CanvasWidgetDef<StarState, StarRatingProps> = {
+  init: () => ({ hover: null }),
+  render,
+  handleEvent,
+};
+
+/** Build a star rating canvas widget. */
+export function starRating(id: string, props: StarRatingProps): UINode {
+  return buildCanvasWidget(starRatingDef, id, props);
 }
