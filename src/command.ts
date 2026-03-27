@@ -276,7 +276,7 @@ export function setResizeIncrements(
 
 /** Sets whether the system can automatically organize windows into tabs (macOS). */
 export function allowAutomaticTabbing(enabled: boolean): Command {
-  return cmd("window_op", { op: "allow_automatic_tabbing", window_id: "_global", enabled });
+  return cmd("system_op", { op: "allow_automatic_tabbing", enabled });
 }
 
 /** Sets the window icon from raw RGBA pixel data. */
@@ -346,12 +346,12 @@ export function monitorSize(windowId: string, tag: string): Command {
 
 /** Query the current system theme (light/dark mode). */
 export function getSystemTheme(tag: string): Command {
-  return cmd("window_query", { op: "get_system_theme", window_id: "_system", tag });
+  return cmd("system_query", { op: "get_system_theme", tag });
 }
 
 /** Query system information (OS, CPU, memory, graphics). */
 export function getSystemInfo(tag: string): Command {
-  return cmd("window_query", { op: "get_system_info", window_id: "_system", tag });
+  return cmd("system_query", { op: "get_system_info", tag });
 }
 
 // -- Image operations -------------------------------------------------------

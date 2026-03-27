@@ -80,32 +80,32 @@ export class TestSession<M> {
 
   /** Click a widget by ID. */
   async click(selector: string): Promise<void> {
-    await this.interact("click", { by: "id", value: selector }, {});
+    await this.interact("click", this.idSelector(selector), {});
   }
 
   /** Type text into a widget. */
   async typeText(selector: string, text: string): Promise<void> {
-    await this.interact("type_text", { by: "id", value: selector }, { text });
+    await this.interact("type_text", this.idSelector(selector), { text });
   }
 
   /** Submit a text input (press Enter). */
   async submit(selector: string): Promise<void> {
-    await this.interact("submit", { by: "id", value: selector }, {});
+    await this.interact("submit", this.idSelector(selector), {});
   }
 
   /** Toggle a checkbox. */
   async toggle(selector: string): Promise<void> {
-    await this.interact("toggle", { by: "id", value: selector }, {});
+    await this.interact("toggle", this.idSelector(selector), {});
   }
 
   /** Select a value from a pick list, combo box, or radio group. */
   async select(selector: string, value: string): Promise<void> {
-    await this.interact("select", { by: "id", value: selector }, { value });
+    await this.interact("select", this.idSelector(selector), { value });
   }
 
   /** Set a slider value. */
   async slide(selector: string, value: number): Promise<void> {
-    await this.interact("slide", { by: "id", value: selector }, { value });
+    await this.interact("slide", this.idSelector(selector), { value });
   }
 
   /** Press a key (key down only). Supports "ctrl+s" format. Case-insensitive. */
@@ -130,47 +130,43 @@ export class TestSession<M> {
 
   /** Scroll a widget by delta amounts. */
   async scroll(selector: string, deltaX: number, deltaY: number): Promise<void> {
-    await this.interact(
-      "scroll",
-      { by: "id", value: selector },
-      { delta_x: deltaX, delta_y: deltaY },
-    );
+    await this.interact("scroll", this.idSelector(selector), { delta_x: deltaX, delta_y: deltaY });
   }
 
   /** Paste text into a widget. */
   async paste(selector: string, text: string): Promise<void> {
-    await this.interact("paste", { by: "id", value: selector }, { text });
+    await this.interact("paste", this.idSelector(selector), { text });
   }
 
   /** Sort a table column, optionally specifying direction. */
   async sort(selector: string, column: string, direction?: "asc" | "desc"): Promise<void> {
     const payload: Record<string, unknown> = { column };
     if (direction !== undefined) payload["direction"] = direction;
-    await this.interact("sort", { by: "id", value: selector }, payload);
+    await this.interact("sort", this.idSelector(selector), payload);
   }
 
   /** Press on a canvas at coordinates, optionally specifying a mouse button. */
   async canvasPress(selector: string, x: number, y: number, button?: string): Promise<void> {
     const payload: Record<string, unknown> = { x, y };
     if (button !== undefined) payload["button"] = button;
-    await this.interact("canvas_press", { by: "id", value: selector }, payload);
+    await this.interact("canvas_press", this.idSelector(selector), payload);
   }
 
   /** Release on a canvas at coordinates, optionally specifying a mouse button. */
   async canvasRelease(selector: string, x: number, y: number, button?: string): Promise<void> {
     const payload: Record<string, unknown> = { x, y };
     if (button !== undefined) payload["button"] = button;
-    await this.interact("canvas_release", { by: "id", value: selector }, payload);
+    await this.interact("canvas_release", this.idSelector(selector), payload);
   }
 
   /** Move on a canvas to coordinates. */
   async canvasMove(selector: string, x: number, y: number): Promise<void> {
-    await this.interact("canvas_move", { by: "id", value: selector }, { x, y });
+    await this.interact("canvas_move", this.idSelector(selector), { x, y });
   }
 
   /** Cycle focus within a pane grid. */
   async paneFocusCycle(selector: string): Promise<void> {
-    await this.interact("pane_focus_cycle", { by: "id", value: selector }, {});
+    await this.interact("pane_focus_cycle", this.idSelector(selector), {});
   }
 
   // =======================================================================
@@ -432,7 +428,7 @@ export class TestSession<M> {
 
   /** Find a widget by ID. Returns null if not found. */
   async find(selector: string): Promise<Element | null> {
-    return this.query({ by: "id", value: selector });
+    return this.query(this.idSelector(selector));
   }
 
   /**
@@ -637,6 +633,115 @@ export class TestSession<M> {
   private nextId(): string {
     return `test_${String(++this.requestCounter)}`;
   }
+
+  private idSelector(selector: string): WireSelector {
+    const { windowId, id } = parseWindowSelector(selector);
+    const tree = this.runtime.tree();
+
+    if (tree === null) {
+      return windowId === undefined
+        ? { by: "id", value: id }
+        : { by: "id", value: id, window_id: windowId };
+    }
+
+    const exactMatches = findExactIdTargets(tree, id, null, []);
+    const scopedMatches =
+      windowId === undefined
+        ? exactMatches
+        : exactMatches.filter((match) => match.windowId === windowId);
+
+    if (scopedMatches.length === 1) {
+      const match = scopedMatches[0]!;
+      return { by: "id", value: match.id, window_id: match.windowId };
+    }
+
+    if (id.includes("/")) {
+      if (scopedMatches.length > 1) {
+        throw new Error(
+          `selector "${selector}" matches multiple windows; prefix it with "<window_id>::"`,
+        );
+      }
+
+      return windowId === undefined
+        ? { by: "id", value: id }
+        : { by: "id", value: id, window_id: windowId };
+    }
+
+    const localMatches = findLocalIdTargets(tree, id, null, []);
+    const localScopedMatches =
+      windowId === undefined
+        ? localMatches
+        : localMatches.filter((match) => match.windowId === windowId);
+
+    if (localScopedMatches.length === 1) {
+      const match = localScopedMatches[0]!;
+      return { by: "id", value: match.id, window_id: match.windowId };
+    }
+
+    if (localScopedMatches.length > 1) {
+      throw new Error(
+        `selector "${selector}" is ambiguous across windows; prefix it with "<window_id>::" or use the full scoped id`,
+      );
+    }
+
+    return windowId === undefined
+      ? { by: "id", value: id }
+      : { by: "id", value: id, window_id: windowId };
+  }
+}
+
+function parseWindowSelector(selector: string): {
+  readonly windowId: string | undefined;
+  readonly id: string;
+} {
+  const separator = selector.indexOf("::");
+  if (separator === -1) {
+    return { windowId: undefined, id: selector };
+  }
+
+  return {
+    windowId: selector.slice(0, separator),
+    id: selector.slice(separator + 2),
+  };
+}
+
+function findExactIdTargets(
+  node: WireNode,
+  targetId: string,
+  windowId: string | null,
+  matches: Array<{ id: string; windowId: string }>,
+): Array<{ id: string; windowId: string }> {
+  const currentWindowId = node.type === "window" ? node.id : windowId;
+
+  if (currentWindowId !== null && node.id === targetId) {
+    matches.push({ id: node.id, windowId: currentWindowId });
+  }
+
+  for (const child of node.children) {
+    findExactIdTargets(child, targetId, currentWindowId, matches);
+  }
+
+  return matches;
+}
+
+function findLocalIdTargets(
+  node: WireNode,
+  localId: string,
+  windowId: string | null,
+  matches: Array<{ id: string; windowId: string }>,
+): Array<{ id: string; windowId: string }> {
+  const currentWindowId = node.type === "window" ? node.id : windowId;
+  const nodeLocalId = node.id.includes("/") ? node.id.slice(node.id.lastIndexOf("/") + 1) : node.id;
+
+  if (currentWindowId !== null && nodeLocalId === localId) {
+    matches.push({ id: node.id, windowId: currentWindowId });
+  }
+
+  for (const child of node.children) {
+    findLocalIdTargets(child, localId, currentWindowId, matches);
+  }
+
+  return matches;
 }
 
 function wireNodeToElement(raw: Record<string, unknown>): Element {

@@ -95,10 +95,10 @@ describe("Command", () => {
     expect(cmd.payload).toEqual({ op: "screenshot", window_id: "main", tag: "snap" });
   });
 
-  test("allowAutomaticTabbing() uses _global window_id", () => {
+  test("allowAutomaticTabbing() creates a system_op command", () => {
     const cmd = Command.allowAutomaticTabbing(true);
-    expect(cmd.payload["window_id"]).toBe("_global");
-    expect(cmd.payload["enabled"]).toBe(true);
+    expect(cmd.type).toBe("system_op");
+    expect(cmd.payload).toEqual({ op: "allow_automatic_tabbing", enabled: true });
   });
 
   // -- Window queries -------------------------------------------------------
@@ -122,16 +122,16 @@ describe("Command", () => {
 
   // -- System queries -------------------------------------------------------
 
-  test("getSystemTheme() uses _system window_id", () => {
+  test("getSystemTheme() creates a system_query command", () => {
     const cmd = Command.getSystemTheme("theme");
-    expect(cmd.type).toBe("window_query");
-    expect(cmd.payload).toEqual({ op: "get_system_theme", window_id: "_system", tag: "theme" });
+    expect(cmd.type).toBe("system_query");
+    expect(cmd.payload).toEqual({ op: "get_system_theme", tag: "theme" });
   });
 
-  test("getSystemInfo() uses _system window_id", () => {
+  test("getSystemInfo() creates a system_query command", () => {
     const cmd = Command.getSystemInfo("info");
-    expect(cmd.payload["op"]).toBe("get_system_info");
-    expect(cmd.payload["window_id"]).toBe("_system");
+    expect(cmd.type).toBe("system_query");
+    expect(cmd.payload).toEqual({ op: "get_system_info", tag: "info" });
   });
 
   // -- Text editing ---------------------------------------------------------

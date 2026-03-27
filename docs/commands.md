@@ -552,8 +552,9 @@ runtime interprets them:
 - **Window commands** are encoded as wire messages to the renderer.
 - **Window property queries** are sent as window_op wire messages.
   The renderer responds with an `effect_response` keyed by window_id.
-  **System queries** use a separate `query_response` wire message keyed
-  by tag.
+- **System ops** are sent as `system_op` wire messages.
+- **System queries** use `system_query` wire messages. The renderer
+  responds with an `op_query_response` keyed by tag.
 - **Image operations** are encoded as wire messages to the renderer.
 - **PaneGrid operations** are encoded as widget ops sent to the renderer.
 - **Timers** use `setTimeout` under the hood.

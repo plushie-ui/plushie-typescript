@@ -58,6 +58,7 @@ export interface HelloInfo {
 export interface WireSelector {
   readonly by: "id" | "text" | "role" | "label" | "focused";
   readonly value?: string;
+  readonly window_id?: string;
 }
 
 /** Result of splitting a scoped wire ID. */
@@ -215,6 +216,24 @@ export function encodeWindowOp(
   settings: Record<string, unknown>,
 ): WireMessage {
   return { type: "window_op", session, op, window_id: windowId, settings };
+}
+
+/** Encode a SystemOp message. */
+export function encodeSystemOp(
+  session: string,
+  op: string,
+  settings: Record<string, unknown>,
+): WireMessage {
+  return { type: "system_op", session, op, settings };
+}
+
+/** Encode a SystemQuery message. */
+export function encodeSystemQuery(
+  session: string,
+  op: string,
+  settings: Record<string, unknown>,
+): WireMessage {
+  return { type: "system_query", session, op, settings };
 }
 
 /** Encode an Effect message. */

@@ -35,6 +35,8 @@ import {
   encodeSettings,
   encodeSnapshot,
   encodeSubscribe,
+  encodeSystemOp,
+  encodeSystemQuery,
   encodeUnregisterEffectStub,
   encodeUnsubscribe,
   encodeWidgetOp,
@@ -993,7 +995,7 @@ export class Runtime<M> {
             this.sessionId,
             cmd.payload["op"] as string,
             cmd.payload["window_id"] as string,
-            cmd.payload as Record<string, unknown>,
+            omitPayloadKeys(cmd.payload as Record<string, unknown>, ["op", "window_id"]),
           ),
         );
         break;
@@ -1004,7 +1006,27 @@ export class Runtime<M> {
             this.sessionId,
             cmd.payload["op"] as string,
             cmd.payload["window_id"] as string,
-            cmd.payload as Record<string, unknown>,
+            omitPayloadKeys(cmd.payload as Record<string, unknown>, ["op", "window_id"]),
+          ),
+        );
+        break;
+
+      case "system_op":
+        this.send(
+          encodeSystemOp(
+            this.sessionId,
+            cmd.payload["op"] as string,
+            omitPayloadKeys(cmd.payload as Record<string, unknown>, ["op"]),
+          ),
+        );
+        break;
+
+      case "system_query":
+        this.send(
+          encodeSystemQuery(
+            this.sessionId,
+            cmd.payload["op"] as string,
+            omitPayloadKeys(cmd.payload as Record<string, unknown>, ["op"]),
           ),
         );
         break;
@@ -1033,7 +1055,7 @@ export class Runtime<M> {
           encodeImageOp(
             this.sessionId,
             cmd.payload["op"] as string,
-            cmd.payload as Record<string, unknown>,
+            omitPayloadKeys(cmd.payload as Record<string, unknown>, ["op"]),
           ),
         );
         break;
@@ -1421,6 +1443,17 @@ export class Runtime<M> {
       this.transport.send(msg as Record<string, unknown>);
     }
   }
+}
+
+function omitPayloadKeys(
+  payload: Record<string, unknown>,
+  keys: readonly string[],
+): Record<string, unknown> {
+  const result = { ...payload };
+  for (const key of keys) {
+    delete result[key];
+  }
+  return result;
 }
 
 /** Recursively freeze an object (dev mode only). */

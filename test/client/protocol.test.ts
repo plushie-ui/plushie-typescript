@@ -16,6 +16,8 @@ import {
   encodeSettings,
   encodeSnapshot,
   encodeSubscribe,
+  encodeSystemOp,
+  encodeSystemQuery,
   encodeTreeHash,
   encodeUnregisterEffectStub,
   encodeUnsubscribe,
@@ -149,6 +151,24 @@ describe("encodeWindowOp", () => {
     expect(msg["window_id"]).toBe("win-1");
     const settings = msg["settings"] as Record<string, unknown>;
     expect(settings["width"]).toBe(800);
+  });
+});
+
+describe("encodeSystemOp", () => {
+  test("encodes allow_automatic_tabbing", () => {
+    const msg = encodeSystemOp("", "allow_automatic_tabbing", { enabled: true });
+    expect(msg["type"]).toBe("system_op");
+    expect(msg["op"]).toBe("allow_automatic_tabbing");
+    expect((msg["settings"] as Record<string, unknown>)["enabled"]).toBe(true);
+  });
+});
+
+describe("encodeSystemQuery", () => {
+  test("encodes get_system_theme", () => {
+    const msg = encodeSystemQuery("", "get_system_theme", { tag: "theme-check" });
+    expect(msg["type"]).toBe("system_query");
+    expect(msg["op"]).toBe("get_system_theme");
+    expect((msg["settings"] as Record<string, unknown>)["tag"]).toBe("theme-check");
   });
 });
 

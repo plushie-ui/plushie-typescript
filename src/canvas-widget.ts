@@ -156,8 +156,8 @@ function splitWidgetKey(key: string): { readonly windowId: string; readonly widg
   };
 }
 
-function requiredWindowId(event: Event, fallbackKey?: string): string {
-  const windowId = extractWindowId(event, fallbackKey);
+function requiredWindowId(event: Event): string {
+  const windowId = extractWindowId(event);
   if (windowId === null) {
     throw new Error("Canvas widget events must include windowId.");
   }
@@ -389,13 +389,13 @@ function resolveEmitIdentity(
     return {
       id: scope[0]!,
       scope: scope.slice(1),
-      windowId: requiredWindowId(event, widgetKeyValue),
+      windowId: requiredWindowId(event),
     };
   }
 
   const id = extractId(event);
   if (id !== "") {
-    return { id, scope: [], windowId: requiredWindowId(event, widgetKeyValue) };
+    return { id, scope: [], windowId: requiredWindowId(event) };
   }
 
   // Timer or other non-widget event -- split the registered widget ID.
@@ -648,15 +648,10 @@ export function handleWidgetTimer(
   }
 }
 
-function extractWindowId(event: Event, fallbackKey?: string): string | null {
+function extractWindowId(event: Event): string | null {
   const ev = event as unknown as Record<string, unknown>;
   if (typeof ev["windowId"] === "string") {
     return ev["windowId"] as string;
   }
-
-  if (fallbackKey) {
-    return splitWidgetKey(fallbackKey).windowId;
-  }
-
   return null;
 }
