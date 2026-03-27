@@ -82,7 +82,7 @@ Run it:
 npx plushie run counter.tsx
 ```
 
-This is one of [9 examples](examples/) included in the repo, from a
+This is one of [9 examples](examples/README.md) included in the repo, from a
 minimal counter to a full widget catalog. Edit them while the GUI is
 running and see changes instantly. For complete project demos,
 including native Rust extensions, see the
