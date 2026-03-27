@@ -8,7 +8,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { extractHandlers, leafNode, putIf } from "../build.js";
+import { extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type {
   A11y,
   Alignment,
@@ -116,7 +116,7 @@ export function TextInput(props: TextInputProps): UINode {
   if (typeof props.onInput === "function") handlerProps["onInput"] = "input";
   if (typeof props.onSubmit === "function") handlerProps["onSubmit"] = "submit";
   if (typeof props.onPaste === "function") handlerProps["onPaste"] = "paste";
-  const clean = extractHandlers(id, props, handlerProps);
+  const { clean, meta } = extractHandlers(id, props, handlerProps);
 
   const p: Record<string, unknown> = { value: clean.value };
   putIf(p, clean.placeholder, "placeholder");
@@ -140,7 +140,7 @@ export function TextInput(props: TextInputProps): UINode {
   putIf(p, clean.disabled, "disabled");
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  return leafNode(id, "text_input", p);
+  return leafNodeWithMeta(id, "text_input", p, meta);
 }
 
 /**

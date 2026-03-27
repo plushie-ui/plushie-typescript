@@ -23,7 +23,15 @@
 
 // Core framework exports.
 
-export type { AppConfig, AppDefinition, AppHandle, AppSettings, RunOptions } from "./app.js";
+export type {
+  AppConfig,
+  AppDefinition,
+  AppHandle,
+  AppSettings,
+  AppView,
+  RunOptions,
+  WindowNode,
+} from "./app.js";
 export { app } from "./app.js";
 
 // Canvas widget system.
@@ -142,7 +150,7 @@ export { Route };
 import * as Data from "./data.js";
 
 export type { QueryOptions, QueryResult, SortSpec } from "./data.js";
-export type { Diagnostic } from "./runtime.js";
+export type { Diagnostic, TransportFactory } from "./runtime.js";
 export { Runtime } from "./runtime.js";
 export { Data };
 

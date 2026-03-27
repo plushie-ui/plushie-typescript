@@ -26,7 +26,7 @@ export interface CheckboxIcon {
   shaping?: Shaping;
 }
 
-import { autoId, extractHandlers, leafNode, putIf } from "../build.js";
+import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 
 const CHECKBOX_HANDLERS = { onToggle: "toggle" } as const;
 
@@ -82,7 +82,7 @@ export interface CheckboxProps {
 export function Checkbox(props: CheckboxProps): UINode {
   const id = props.id ?? autoId("checkbox");
   const label = props.children ?? props.label ?? "";
-  const clean = extractHandlers(id, props, CHECKBOX_HANDLERS);
+  const { clean, meta } = extractHandlers(id, props, CHECKBOX_HANDLERS);
   const p: Record<string, unknown> = { label, checked: props.value };
   putIf(p, clean.spacing, "spacing");
   putIf(p, clean.width, "width", encodeLength);
@@ -104,7 +104,7 @@ export function Checkbox(props: CheckboxProps): UINode {
   putIf(p, clean.disabled, "disabled");
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  return leafNode(id, "checkbox", p);
+  return leafNodeWithMeta(id, "checkbox", p, meta);
 }
 
 /**

@@ -7,7 +7,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { extractHandlers, leafNode, putIf } from "../build.js";
+import { extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Color, Font, Length, LineHeight, StyleMap, Wrapping } from "../types.js";
 import {
   encodeA11y,
@@ -75,7 +75,7 @@ export interface TextEditorProps {
 
 export function TextEditor(props: TextEditorProps): UINode {
   const { id } = props;
-  const clean = extractHandlers(id, props, TEXT_EDITOR_HANDLERS);
+  const { clean, meta } = extractHandlers(id, props, TEXT_EDITOR_HANDLERS);
   const p: Record<string, unknown> = {};
   putIf(p, clean.content, "content");
   putIf(p, clean.placeholder, "placeholder");
@@ -97,7 +97,7 @@ export function TextEditor(props: TextEditorProps): UINode {
   putIf(p, clean.imePurpose, "ime_purpose");
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  return leafNode(id, "text_editor", p);
+  return leafNodeWithMeta(id, "text_editor", p, meta);
 }
 
 export function textEditor(id: string, opts?: Omit<TextEditorProps, "id">): UINode {

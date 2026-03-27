@@ -92,11 +92,17 @@ function updateStateDef(): CanvasWidgetDef<{ hover: boolean }, object> {
   };
 }
 
-function widgetEvent(id: string, type: string, scope: string[] = []): WidgetEvent {
+function widgetEvent(
+  id: string,
+  type: string,
+  scope: string[] = [],
+  windowId = "main",
+): WidgetEvent {
   return {
     kind: "widget",
     type,
     id,
+    windowId,
     scope,
     value: null,
     data: null,
@@ -186,7 +192,7 @@ describe("dispatchThroughWidgets", () => {
 
   test("consumed event returns null", () => {
     const entry = makeEntry(consumingDef(), {}, {});
-    const registry = registryWith([["form", entry]]);
+    const registry = registryWith([["main\u0000form", entry]]);
     const ev = widgetEvent("btn", "click", ["form"]);
     const result = dispatchThroughWidgets(registry, ev);
     expect(result.event).toBeNull();
@@ -194,17 +200,17 @@ describe("dispatchThroughWidgets", () => {
 
   test("update_state event returns null", () => {
     const entry = makeEntry(updateStateDef(), {}, { hover: false });
-    const registry = registryWith([["form", entry]]);
+    const registry = registryWith([["main\u0000form", entry]]);
     const ev = widgetEvent("btn", "click", ["form"]);
     const result = dispatchThroughWidgets(registry, ev);
     expect(result.event).toBeNull();
     // State should be updated
-    expect(result.registry.get("form")!.state).toEqual({ hover: true });
+    expect(result.registry.get("main\u0000form")!.state).toEqual({ hover: true });
   });
 
   test("ignored event passes through to app", () => {
     const entry = makeEntry(ignoringDef(), {}, {});
-    const registry = registryWith([["form", entry]]);
+    const registry = registryWith([["main\u0000form", entry]]);
     const ev = widgetEvent("btn", "click", ["form"]);
     const result = dispatchThroughWidgets(registry, ev);
     expect(result.event).toEqual(ev);
@@ -212,7 +218,7 @@ describe("dispatchThroughWidgets", () => {
 
   test("emit replaces event with WidgetEvent", () => {
     const entry = makeEntry(counterDef(), { max: 5 }, { count: 0 });
-    const registry = registryWith([["stars", entry]]);
+    const registry = registryWith([["main\u0000stars", entry]]);
     const ev = widgetEvent("star-3", "click", ["stars"]);
     const result = dispatchThroughWidgets(registry, ev);
 
@@ -221,6 +227,7 @@ describe("dispatchThroughWidgets", () => {
     expect(emitted.kind).toBe("widget");
     expect(emitted.type).toBe("select");
     expect(emitted.id).toBe("stars");
+    expect(emitted.windowId).toBe("main");
     expect(emitted.scope).toEqual([]);
     expect(emitted.data).toEqual({ value: 1 });
   });
@@ -228,24 +235,26 @@ describe("dispatchThroughWidgets", () => {
   test("emit resolves id and scope from interception context", () => {
     const entry = makeEntry(counterDef(), { max: 5 }, { count: 0 });
     // Widget at form/stars, event from an inner element
-    const registry = registryWith([["form/stars", entry]]);
+    const registry = registryWith([["main\u0000form/stars", entry]]);
     const ev = widgetEvent("star-3", "click", ["stars", "form"]);
     const result = dispatchThroughWidgets(registry, ev);
 
     expect(result.event).not.toBeNull();
     const emitted = result.event as WidgetEvent;
     expect(emitted.id).toBe("stars");
+    expect(emitted.windowId).toBe("main");
     expect(emitted.scope).toEqual(["form"]);
   });
 
   test("direct-target fallback for events targeting a canvas widget", () => {
     const entry = makeEntry(counterDef(), { max: 5 }, { count: 0 });
     // Canvas press event where the canvas widget IS the target
-    const registry = registryWith([["picker", entry]]);
+    const registry = registryWith([["main\u0000picker", entry]]);
     const ev: Event = {
       kind: "canvas",
       type: "press",
       id: "picker",
+      windowId: "main",
       scope: [],
       x: 10,
       y: 20,
@@ -291,8 +300,8 @@ describe("dispatchThroughWidgets", () => {
     };
 
     const registry = registryWith([
-      ["outer/inner", makeEntry(innerDef, {}, {})],
-      ["outer", makeEntry(outerDef, {}, {})],
+      ["main\u0000outer/inner", makeEntry(innerDef, {}, {})],
+      ["main\u0000outer", makeEntry(outerDef, {}, {})],
     ]);
 
     const ev = widgetEvent("btn", "click", ["inner", "outer"]);
@@ -300,6 +309,26 @@ describe("dispatchThroughWidgets", () => {
 
     expect(calls).toEqual(["inner", "outer"]);
     expect(result.event).toBeNull();
+  });
+
+  test("same canvas widget ids in different windows stay separate", () => {
+    const left = makeEntry(counterDef(), { max: 5 }, { count: 0 });
+    const right = makeEntry(counterDef(), { max: 5 }, { count: 4 });
+    const registry = registryWith([
+      ["left\u0000stars", left],
+      ["right\u0000stars", right],
+    ]);
+
+    const result = dispatchThroughWidgets(
+      registry,
+      widgetEvent("star-3", "click", ["stars"], "right"),
+    );
+    const emitted = result.event as WidgetEvent;
+
+    expect(emitted.id).toBe("stars");
+    expect(emitted.windowId).toBe("right");
+    expect(result.registry.get("left\u0000stars")!.state).toEqual({ count: 0 });
+    expect(result.registry.get("right\u0000stars")!.state).toEqual({ count: 5 });
   });
 
   test("handler error is caught and treated as ignored", () => {
@@ -319,7 +348,7 @@ describe("dispatchThroughWidgets", () => {
       },
     };
 
-    const registry = registryWith([["widget", makeEntry(crashDef, {}, {})]]);
+    const registry = registryWith([["main\u0000widget", makeEntry(crashDef, {}, {})]]);
     const ev = widgetEvent("btn", "click", ["widget"]);
     const result = dispatchThroughWidgets(registry, ev);
 
@@ -354,17 +383,17 @@ describe("widget subscriptions", () => {
 
     const subs = collectSubscriptions(registry);
     expect(subs).toHaveLength(2);
-    expect(subs[0]!.tag).toBe("__cw:widget-a:tick");
-    expect(subs[1]!.tag).toBe("__cw:widget-b:tick");
+    expect(parseWidgetTag(subs[0]!.tag)).toEqual({ widgetId: "widget-a", innerTag: "tick" });
+    expect(parseWidgetTag(subs[1]!.tag)).toEqual({ widgetId: "widget-b", innerTag: "tick" });
   });
 
   test("isWidgetTag detects namespaced tags", () => {
-    expect(isWidgetTag("__cw:widget-a:tick")).toBe(true);
+    expect(isWidgetTag('__cw:{"key":"widget-a","tag":"tick"}')).toBe(true);
     expect(isWidgetTag("my-timer")).toBe(false);
   });
 
   test("parseWidgetTag extracts widget ID and inner tag", () => {
-    const result = parseWidgetTag("__cw:form/stars:tick");
+    const result = parseWidgetTag('__cw:{"key":"form/stars","tag":"tick"}');
     expect(result).toEqual({ widgetId: "form/stars", innerTag: "tick" });
   });
 
@@ -400,12 +429,16 @@ describe("handleWidgetTimer", () => {
       },
     };
 
-    const registry = registryWith([["widget-a", makeEntry(timerDef, {}, { ticks: 0 })]]);
-    const result = handleWidgetTimer(registry, "__cw:widget-a:tick", 1000);
+    const registry = registryWith([["main\u0000widget-a", makeEntry(timerDef, {}, { ticks: 0 })]]);
+    const result = handleWidgetTimer(
+      registry,
+      '__cw:{"key":"main\\u0000widget-a","tag":"tick"}',
+      1000,
+    );
 
     expect(result).not.toBeNull();
     expect(result!.event).toBeNull();
-    expect(result!.registry.get("widget-a")!.state).toEqual({ ticks: 1 });
+    expect(result!.registry.get("main\u0000widget-a")!.state).toEqual({ ticks: 1 });
   });
 
   test("timer emit dispatches through scope chain", () => {
@@ -426,13 +459,18 @@ describe("handleWidgetTimer", () => {
       },
     };
 
-    const registry = registryWith([["my-widget", makeEntry(emittingDef, {}, {})]]);
-    const result = handleWidgetTimer(registry, "__cw:my-widget:tick", 1000);
+    const registry = registryWith([["main\u0000my-widget", makeEntry(emittingDef, {}, {})]]);
+    const result = handleWidgetTimer(
+      registry,
+      '__cw:{"key":"main\\u0000my-widget","tag":"tick"}',
+      1000,
+    );
 
     expect(result).not.toBeNull();
     expect(result!.event).not.toBeNull();
     const ev = result!.event as WidgetEvent;
     expect(ev.type).toBe("tick_event");
+    expect(ev.windowId).toBe("main");
     expect(ev.data).toEqual({ ts: 42 });
   });
 });
@@ -447,7 +485,7 @@ describe("deriveRegistry", () => {
 
   test("extracts entries from nodes with canvas widget meta", () => {
     const def = counterDef();
-    const node: UINode = Object.freeze({
+    const child: UINode = Object.freeze({
       id: "stars",
       type: "canvas",
       props: Object.freeze({}),
@@ -458,11 +496,17 @@ describe("deriveRegistry", () => {
         __canvas_widget_state__: { count: 3 },
       }),
     });
+    const node: UINode = Object.freeze({
+      id: "main",
+      type: "window",
+      props: Object.freeze({}),
+      children: Object.freeze([child]),
+    });
 
     const registry = deriveRegistry(node);
     expect(registry.size).toBe(1);
-    expect(registry.has("stars")).toBe(true);
-    expect(registry.get("stars")!.state).toEqual({ count: 3 });
+    expect(registry.has("main\u0000stars")).toBe(true);
+    expect(registry.get("main\u0000stars")!.state).toEqual({ count: 3 });
   });
 
   test("walks children to find nested widgets", () => {
@@ -480,14 +524,14 @@ describe("deriveRegistry", () => {
     });
 
     const root: UINode = Object.freeze({
-      id: "form",
-      type: "column",
+      id: "main",
+      type: "window",
       props: Object.freeze({}),
       children: Object.freeze([child]),
     });
 
     const registry = deriveRegistry(root);
     expect(registry.size).toBe(1);
-    expect(registry.has("form/stars")).toBe(true);
+    expect(registry.has("main\u0000form/stars")).toBe(true);
   });
 });

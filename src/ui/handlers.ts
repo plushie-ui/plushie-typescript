@@ -13,6 +13,9 @@
 
 import type { Handler } from "../types.js";
 
+export const HANDLERS_META_KEY = "__handlers__";
+export type HandlerMeta = Readonly<Record<string, Handler<unknown>>>;
+
 /** A registered handler entry. */
 export interface HandlerEntry {
   /** The widget ID (will be scoped during normalization). */
@@ -21,6 +24,24 @@ export interface HandlerEntry {
   readonly eventType: string;
   /** The handler function. */
   readonly handler: Handler<unknown>;
+}
+
+export function withHandlersMeta(
+  meta: Readonly<Record<string, unknown>> | undefined,
+  handlers: HandlerMeta | undefined,
+): Readonly<Record<string, unknown>> | undefined {
+  if (handlers === undefined || Object.keys(handlers).length === 0) return meta;
+  return Object.freeze({ ...(meta ?? {}), [HANDLERS_META_KEY]: handlers });
+}
+
+export function handlersMeta(
+  meta: Readonly<Record<string, unknown>> | undefined,
+): HandlerMeta | undefined {
+  const value = meta?.[HANDLERS_META_KEY];
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as HandlerMeta;
+  }
+  return undefined;
 }
 
 /** Module-level handler collector. Reset between view() calls. */

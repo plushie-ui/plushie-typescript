@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, extractHandlers, leafNode, putIf } from "../build.js";
+import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Font, Length, LineHeight, Shaping, StyleMap, Wrapping } from "../types.js";
 import {
   encodeA11y,
@@ -60,7 +60,7 @@ export interface RadioProps {
 export function Radio(props: RadioProps): UINode {
   const id = props.id ?? autoId("radio");
   const label = props.children ?? props.label ?? props.value;
-  const clean = extractHandlers(id, props, RADIO_HANDLERS);
+  const { clean, meta } = extractHandlers(id, props, RADIO_HANDLERS);
   const p: Record<string, unknown> = { value: clean.value, selected: clean.selected ?? null };
   putIf(p, label, "label");
   putIf(p, clean.group, "group");
@@ -75,7 +75,7 @@ export function Radio(props: RadioProps): UINode {
   putIf(p, clean.style, "style", encodeStyleMap);
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  return leafNode(id, "radio", p);
+  return leafNodeWithMeta(id, "radio", p, meta);
 }
 
 export function radio(

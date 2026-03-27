@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, extractHandlers, leafNode, putIf } from "../build.js";
+import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Length, Padding, StyleMap } from "../types.js";
 import { encodeA11y, encodeLength, encodePadding, encodeStyleMap } from "../types.js";
 
@@ -49,7 +49,7 @@ export interface ButtonProps {
 export function Button(props: ButtonProps): UINode {
   const label = props.children ?? "";
   const id = props.id ?? autoId("button");
-  const clean = extractHandlers(id, props, BUTTON_HANDLERS);
+  const { clean, meta } = extractHandlers(id, props, BUTTON_HANDLERS);
   const p: Record<string, unknown> = { label };
   putIf(p, clean.width, "width", encodeLength);
   putIf(p, clean.height, "height", encodeLength);
@@ -59,7 +59,7 @@ export function Button(props: ButtonProps): UINode {
   putIf(p, clean.disabled, "disabled");
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  return leafNode(id, "button", p);
+  return leafNodeWithMeta(id, "button", p, meta);
 }
 
 /**

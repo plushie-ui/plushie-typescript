@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, containerNode, extractHandlers, putIf } from "../build.js";
+import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.js";
 import type { A11y } from "../types.js";
 import { encodeA11y } from "../types.js";
 
@@ -34,7 +34,7 @@ export function Sensor(props: SensorProps): UINode {
   const children = props.children ?? [];
   const handlerProps: Record<string, string> = {};
   if (typeof props.onResize === "function") handlerProps["onResize"] = "resize";
-  const clean = extractHandlers(id, props, handlerProps);
+  const { clean, meta } = extractHandlers(id, props, handlerProps);
 
   const p: Record<string, unknown> = {};
   putIf(p, clean.delay, "delay");
@@ -43,7 +43,13 @@ export function Sensor(props: SensorProps): UINode {
   putIf(p, clean.eventRate, "event_rate");
   if (typeof props.onResize === "boolean") putIf(p, props.onResize, "on_resize");
   else if (typeof props.onResize === "function") p["on_resize"] = true;
-  return containerNode(id, "sensor", p, Array.isArray(children) ? children : [children]);
+  return containerNodeWithMeta(
+    id,
+    "sensor",
+    p,
+    Array.isArray(children) ? children : [children],
+    meta,
+  );
 }
 
 export function sensor(opts: Omit<SensorProps, "children">, children: UINode[]): UINode {

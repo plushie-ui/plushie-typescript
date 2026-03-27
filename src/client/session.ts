@@ -10,10 +10,10 @@
  * @module
  */
 
+import { type ExtensionWidgetConfig, extensionConfigKey } from "../extension.js";
 import type { DecodedResponse, HelloInfo, WireMessage } from "./protocol.js";
 import { decodeMessage, PROTOCOL_VERSION } from "./protocol.js";
 import type { Transport } from "./transport.js";
-import { extensionConfigKey, type ExtensionWidgetConfig } from "../extension.js";
 
 /** Options for connecting a session. */
 export interface ConnectOptions {

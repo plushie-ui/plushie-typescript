@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, containerNode, extractHandlers, putIf } from "../build.js";
+import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.js";
 import type { A11y, Color, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
@@ -61,7 +61,7 @@ export function Canvas(props: CanvasProps): UINode {
       handlerProps[key] = wire;
     }
   }
-  const clean = extractHandlers(id, props, handlerProps);
+  const { clean, meta } = extractHandlers(id, props, handlerProps);
 
   const p: Record<string, unknown> = {};
   putIf(p, clean.width, "width", encodeLength);
@@ -79,7 +79,13 @@ export function Canvas(props: CanvasProps): UINode {
     if (typeof val === "boolean") putIf(p, val, `on_${wire}`);
     else if (typeof val === "function") p[`on_${wire}`] = true;
   }
-  return containerNode(id, "canvas", p, Array.isArray(children) ? children : [children]);
+  return containerNodeWithMeta(
+    id,
+    "canvas",
+    p,
+    Array.isArray(children) ? children : [children],
+    meta,
+  );
 }
 
 export function canvas(opts: Omit<CanvasProps, "children">, children: UINode[]): UINode {

@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { extractHandlers, leafNode, putIf } from "../build.js";
+import { extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Font, Length, LineHeight, Padding, Shaping, StyleMap } from "../types.js";
 import {
   encodeA11y,
@@ -81,7 +81,7 @@ export function ComboBox(props: ComboBoxProps): UINode {
     handlerProps["onOptionHovered"] = "option_hovered";
   if (typeof props.onOpen === "function") handlerProps["onOpen"] = "open";
   if (typeof props.onClose === "function") handlerProps["onClose"] = "close";
-  const clean = extractHandlers(id, props, handlerProps);
+  const { clean, meta } = extractHandlers(id, props, handlerProps);
 
   const p: Record<string, unknown> = { options: clean.options };
   putIf(p, clean.selected, "selected");
@@ -106,7 +106,7 @@ export function ComboBox(props: ComboBoxProps): UINode {
   else if (typeof props.onOpen === "function") p["on_open"] = true;
   if (typeof props.onClose === "boolean") putIf(p, props.onClose, "on_close");
   else if (typeof props.onClose === "function") p["on_close"] = true;
-  return leafNode(id, "combo_box", p);
+  return leafNodeWithMeta(id, "combo_box", p, meta);
 }
 
 export function comboBox(

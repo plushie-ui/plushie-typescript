@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, extractHandlers, leafNode, putIf } from "../build.js";
+import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type {
   A11y,
   Alignment,
@@ -70,7 +70,7 @@ export interface TogglerProps {
 export function Toggler(props: TogglerProps): UINode {
   const id = props.id ?? autoId("toggler");
   const label = props.children ?? props.label;
-  const clean = extractHandlers(id, props, TOGGLER_HANDLERS);
+  const { clean, meta } = extractHandlers(id, props, TOGGLER_HANDLERS);
   const p: Record<string, unknown> = { is_toggled: clean.value };
   putIf(p, label, "label");
   putIf(p, clean.spacing, "spacing");
@@ -86,7 +86,7 @@ export function Toggler(props: TogglerProps): UINode {
   putIf(p, clean.disabled, "disabled");
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  return leafNode(id, "toggler", p);
+  return leafNodeWithMeta(id, "toggler", p, meta);
 }
 
 export function toggler(

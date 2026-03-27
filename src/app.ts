@@ -14,6 +14,9 @@ import type { ExtensionWidgetConfig } from "./extension.js";
 import { Runtime } from "./runtime.js";
 import type { Command, DeepReadonly, Event, Subscription, UINode, UpdateResult } from "./types.js";
 
+export type WindowNode = UINode & { readonly type: "window" };
+export type AppView = WindowNode | readonly WindowNode[] | null;
+
 /**
  * Application settings passed to the renderer on startup.
  */
@@ -45,8 +48,12 @@ export interface AppConfig<M> {
   /** Initial state, optionally with startup commands. */
   init: M | readonly [M, Command | Command[]];
 
-  /** Declarative view tree. Called after every state change. */
-  view: (state: DeepReadonly<M>) => UINode | readonly UINode[];
+  /**
+   * Declarative view tree. Called after every state change.
+   *
+   * The top level must be a window node or a list of window nodes.
+   */
+  view: (state: DeepReadonly<M>) => AppView;
 
   /**
    * Fallback event handler for events without inline handlers

@@ -15,7 +15,7 @@
 import { autoId } from "./tree/node.js";
 import type { Command, Handler, UINode } from "./types.js";
 import { COMMAND } from "./types.js";
-import { registerHandler } from "./ui/handlers.js";
+import { withHandlersMeta } from "./ui/handlers.js";
 
 /**
  * Supported property types for extension widget props.
@@ -121,6 +121,7 @@ export function defineExtensionWidget(
   return (id: string, opts?: Record<string, unknown>, children?: UINode[]): UINode => {
     const resolvedId = id === "" ? autoId(widgetType) : id;
     const props: Record<string, unknown> = {};
+    const handlers: Record<string, Handler<unknown>> = {};
     const allOpts = opts ?? {};
 
     for (const [key, value] of Object.entries(allOpts)) {
@@ -130,7 +131,7 @@ export function defineExtensionWidget(
       const eventType = handlerMap.get(key);
       if (eventType !== undefined) {
         if (typeof value === "function") {
-          registerHandler(resolvedId, eventType, value as Handler<unknown>);
+          handlers[eventType] = value as Handler<unknown>;
         }
         continue;
       }
@@ -146,6 +147,9 @@ export function defineExtensionWidget(
       type: widgetType,
       props: Object.freeze(props),
       children: Object.freeze(resolvedChildren) as readonly UINode[],
+      ...((Object.keys(handlers).length > 0
+        ? { meta: withHandlersMeta(undefined, Object.freeze(handlers)) }
+        : {}) as { meta?: Readonly<Record<string, unknown>> }),
     });
   };
 }

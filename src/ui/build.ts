@@ -9,7 +9,7 @@
 
 import { autoId } from "../tree/node.js";
 import type { Handler, UINode } from "../types.js";
-import { registerHandler } from "./handlers.js";
+import { type HandlerMeta, registerHandler, withHandlersMeta } from "./handlers.js";
 
 /**
  * Add a prop to the accumulator only if the value is not undefined.
@@ -37,11 +37,21 @@ export function putIf(
  * @returns Frozen UINode.
  */
 export function leafNode(id: string, type: string, props: Record<string, unknown>): UINode {
+  return leafNodeWithMeta(id, type, props);
+}
+
+export function leafNodeWithMeta(
+  id: string,
+  type: string,
+  props: Record<string, unknown>,
+  meta?: Readonly<Record<string, unknown>>,
+): UINode {
   return Object.freeze({
     id,
     type,
     props: Object.freeze(props),
     children: Object.freeze([]) as readonly UINode[],
+    ...(meta ? { meta } : {}),
   });
 }
 
@@ -60,11 +70,22 @@ export function containerNode(
   props: Record<string, unknown>,
   children: UINode[],
 ): UINode {
+  return containerNodeWithMeta(id, type, props, children);
+}
+
+export function containerNodeWithMeta(
+  id: string,
+  type: string,
+  props: Record<string, unknown>,
+  children: UINode[],
+  meta?: Readonly<Record<string, unknown>>,
+): UINode {
   return Object.freeze({
     id,
     type,
     props: Object.freeze(props),
     children: Object.freeze(children),
+    ...(meta ? { meta } : {}),
   });
 }
 
@@ -83,16 +104,22 @@ export function extractHandlers<T>(
   widgetId: string,
   opts: T,
   handlerMap: Record<string, string>,
-): T {
+): { clean: T; meta?: Readonly<Record<string, unknown>> } {
   const clean = { ...opts } as Record<string, unknown>;
+  const handlers: Record<string, Handler<unknown>> = {};
   for (const [propName, eventType] of Object.entries(handlerMap)) {
     const handler = clean[propName];
     if (typeof handler === "function") {
       registerHandler(widgetId, eventType, handler as Handler<unknown>);
+      handlers[eventType] = handler as Handler<unknown>;
     }
     delete clean[propName];
   }
-  return clean as T;
+  const meta = withHandlersMeta(
+    undefined,
+    Object.keys(handlers).length > 0 ? (handlers as HandlerMeta) : undefined,
+  );
+  return meta === undefined ? { clean: clean as T } : { clean: clean as T, meta };
 }
 
 /**

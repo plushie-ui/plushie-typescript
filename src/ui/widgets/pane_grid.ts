@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, containerNode, extractHandlers, putIf } from "../build.js";
+import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.js";
 import type { A11y, Color, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
@@ -52,7 +52,7 @@ export interface PaneGridProps {
 export function PaneGrid(props: PaneGridProps): UINode {
   const id = props.id ?? autoId("pane_grid");
   const children = props.children ?? [];
-  const clean = extractHandlers(id, props, PANE_GRID_HANDLERS);
+  const { clean, meta } = extractHandlers(id, props, PANE_GRID_HANDLERS);
   const p: Record<string, unknown> = {};
   putIf(p, clean.spacing, "spacing");
   putIf(p, clean.width, "width", encodeLength);
@@ -64,7 +64,13 @@ export function PaneGrid(props: PaneGridProps): UINode {
   putIf(p, clean.splitAxis, "split_axis");
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  return containerNode(id, "pane_grid", p, Array.isArray(children) ? children : [children]);
+  return containerNodeWithMeta(
+    id,
+    "pane_grid",
+    p,
+    Array.isArray(children) ? children : [children],
+    meta,
+  );
 }
 
 export function paneGrid(opts: Omit<PaneGridProps, "children">, children: UINode[]): UINode {

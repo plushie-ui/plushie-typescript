@@ -86,7 +86,7 @@ export function normalize(
       return { id: "auto:root", type: "container", props: {}, children: [] };
     }
     if (tree.length === 1) {
-      return normalizeNode(tree[0]!, "", ctx);
+      return normalizeNode(tree[0]!, "", undefined, ctx);
     }
     // Wrap multiple nodes in a synthetic root. Synthetic root doesn't
     // create scope (it uses an auto-ID).
@@ -94,11 +94,11 @@ export function normalize(
       id: "auto:root",
       type: "container",
       props: {},
-      children: tree.map((child) => normalizeNode(child, "", ctx)),
+      children: tree.map((child) => normalizeNode(child, "", undefined, ctx)),
     };
   }
 
-  return normalizeNode(tree as UINode, "", ctx);
+  return normalizeNode(tree as UINode, "", undefined, ctx);
 }
 
 /**
@@ -108,9 +108,15 @@ export function normalize(
  * @param scope - The current scope prefix (empty string for root).
  * @returns Normalized WireNode.
  */
-function normalizeNode(node: UINode, scope: string, ctx?: NormalizeContext): WireNode {
+function normalizeNode(
+  node: UINode,
+  scope: string,
+  windowId: string | undefined,
+  ctx?: NormalizeContext,
+): WireNode {
   const id = node.id;
   const type = node.type;
+  const currentWindowId = type === "window" ? id : windowId;
 
   // Validate: user IDs must not contain "/"
   if (!isAutoId(id) && id.includes("/")) {
@@ -127,16 +133,16 @@ function normalizeNode(node: UINode, scope: string, ctx?: NormalizeContext): Wir
   // placeholder and we have a registry context, render the placeholder
   // and normalize the rendered output in place.
   if (ctx?.registry && isPlaceholder(node)) {
-    const result = renderPlaceholder(node, scopedId, id, ctx.registry);
+    const result = renderPlaceholder(node, currentWindowId, scopedId, id, ctx.registry);
     if (result) {
       // Record the new entry for registry derivation
       if (ctx.newEntries) {
-        ctx.newEntries.set(scopedId, result.entry);
+        ctx.newEntries.set(result.key, result.entry);
       }
       // Normalize the rendered output (which may itself contain children)
       // The rendered node's ID is already set to scopedId by renderPlaceholder,
       // so we normalize it as a root (no additional scoping).
-      return normalizeRenderedWidget(result.node, scopedId, scope, ctx);
+      return normalizeRenderedWidget(result.node, scopedId, scope, currentWindowId, ctx);
     }
   }
 
@@ -146,7 +152,9 @@ function normalizeNode(node: UINode, scope: string, ctx?: NormalizeContext): Wir
   const childScope = isAutoId(id) || type === "window" ? scope : scopedId;
 
   // Normalize children recursively
-  const children = node.children.map((child) => normalizeNode(child, childScope, ctx));
+  const children = node.children.map((child) =>
+    normalizeNode(child, childScope, currentWindowId, ctx),
+  );
 
   // Check for duplicate sibling IDs (warning, not error)
   if (children.length > 1) {
@@ -182,12 +190,13 @@ function normalizeRenderedWidget(
   node: UINode,
   scopedId: string,
   parentScope: string,
+  windowId: string | undefined,
   ctx?: NormalizeContext,
 ): WireNode {
   // Windows reset scope; otherwise children are scoped under this node.
   const childScope = node.type === "window" ? "" : scopedId;
 
-  const children = node.children.map((child) => normalizeNode(child, childScope, ctx));
+  const children = node.children.map((child) => normalizeNode(child, childScope, windowId, ctx));
 
   return {
     id: scopedId,

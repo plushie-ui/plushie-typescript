@@ -352,6 +352,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "click",
       id: "form/save",
+      window_id: "main",
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
@@ -367,6 +368,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "input",
       id: "email",
+      window_id: "main",
       value: "test@example.com",
     });
     if (event.kind === "widget") {
@@ -381,6 +383,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "toggle",
       id: "list/todo_1/check",
+      window_id: "main",
       value: true,
     });
     if (event.kind === "widget") {
@@ -396,6 +399,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "slide",
       id: "volume",
+      window_id: "main",
       value: 0.75,
     });
     if (event.kind === "widget") {
@@ -410,6 +414,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "canvas_element_click",
       id: "canvas_1",
+      window_id: "main",
       data: { element_id: "bar-jan", x: 25, y: 150, button: "left" },
     });
     if (event.kind === "widget") {
@@ -563,6 +568,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "mouse_right_press",
       id: "area/context",
+      window_id: "main",
     });
     expect(event.kind).toBe("mouse_area");
     if (event.kind === "mouse_area") {
@@ -580,6 +586,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "canvas_press",
       id: "my_canvas",
+      window_id: "main",
       data: { x: 50, y: 100, button: "left" },
     });
     expect(event.kind).toBe("canvas");
@@ -598,6 +605,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "pane_clicked",
       id: "grid",
+      window_id: "main",
       data: { pane: "pane_1" },
     });
     expect(event.kind).toBe("pane");
@@ -614,6 +622,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "sensor_resize",
       id: "container/sensor_1",
+      window_id: "main",
       data: { width: 320, height: 240 },
     });
     expect(event.kind).toBe("sensor");
@@ -676,6 +685,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "canvas_element_key_press",
       id: "canvas_1/element_1",
+      window_id: "main",
       data: { key: "ArrowRight", modifiers: { ctrl: false, shift: false, alt: false } },
     });
     expect(event.kind).toBe("widget");
@@ -692,6 +702,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "canvas_element_key_release",
       id: "canvas_1",
+      window_id: "main",
       data: { key: "Escape" },
     });
     expect(event.kind).toBe("widget");
@@ -708,6 +719,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "custom_extension_event",
       id: "widget_1",
+      window_id: "main",
       value: "custom_data",
     });
     expect(event.kind).toBe("widget");

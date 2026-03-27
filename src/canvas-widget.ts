@@ -35,7 +35,7 @@
  * Each canvas widget in the chain gets a chance to handle the event:
  * `ignored` passes through, `consumed` stops the chain, and
  * `emit` replaces the event with a WidgetEvent and continues.
- * The runtime fills in `id` and `scope` automatically from the
+ * The runtime fills in `id`, `scope`, and `windowId` automatically from the
  * widget's position in the tree.
  *
  * @module
@@ -51,7 +51,7 @@ import type { Event, Subscription, UINode, WidgetEvent } from "./types.js";
  * - `ignored` -- not handled, continue to next handler in scope chain
  * - `consumed` -- captured, suppress event
  * - `update_state` -- captured, internal state change only (triggers re-render)
- * - `emit` -- captured with semantic event; runtime fills in id/scope
+ * - `emit` -- captured with semantic event; runtime fills in id/scope/windowId
  */
 export type EventAction =
   | { readonly type: "ignored" }
@@ -137,8 +137,32 @@ export interface RegistryEntry {
   readonly def: unknown;
 }
 
-/** The canvas widget registry: maps scoped widget IDs to entries. */
+/** The canvas widget registry: maps window-local widget keys to entries. */
 export type Registry = ReadonlyMap<string, RegistryEntry>;
+
+function widgetKey(windowId: string, widgetId: string): string {
+  return `${windowId}\u0000${widgetId}`;
+}
+
+function splitWidgetKey(key: string): { readonly windowId: string; readonly widgetId: string } {
+  const separator = key.indexOf("\u0000");
+  if (separator === -1) {
+    return { windowId: "", widgetId: key };
+  }
+
+  return {
+    windowId: key.slice(0, separator),
+    widgetId: key.slice(separator + 1),
+  };
+}
+
+function requiredWindowId(event: Event, fallbackKey?: string): string {
+  const windowId = extractWindowId(event, fallbackKey);
+  if (windowId === null) {
+    throw new Error("Canvas widget events must include windowId.");
+  }
+  return windowId;
+}
 
 /**
  * Create a registry entry from a typed def, props, and state.
@@ -179,19 +203,25 @@ export function isPlaceholder(node: UINode): boolean {
  */
 export function renderPlaceholder(
   node: UINode,
+  windowId: string | undefined,
   scopedId: string,
   localId: string,
   registry: Registry,
-): { readonly node: UINode; readonly entry: RegistryEntry } | null {
+): { readonly key: string; readonly node: UINode; readonly entry: RegistryEntry } | null {
   if (!node.meta || !(META_KEY in node.meta) || !(PROPS_KEY in node.meta)) {
     return null;
   }
 
+  if (!windowId) {
+    throw new Error(`Canvas widget "${localId}" must be rendered inside a window node.`);
+  }
+
   const def = node.meta[META_KEY] as CanvasWidgetDef<unknown, unknown>;
   const props = node.meta[PROPS_KEY] as unknown;
+  const key = widgetKey(windowId, scopedId);
 
   // Look up existing state or create initial
-  const existing = registry.get(scopedId);
+  const existing = registry.get(key);
   let entry: RegistryEntry;
 
   if (existing) {
@@ -219,7 +249,7 @@ export function renderPlaceholder(
     meta: widgetMeta,
   });
 
-  return { node: finalNode, entry };
+  return { key, node: finalNode, entry };
 }
 
 // -- Registry derivation -----------------------------------------------------
@@ -234,20 +264,30 @@ export function renderPlaceholder(
 export function deriveRegistry(tree: UINode | null): Map<string, RegistryEntry> {
   const registry = new Map<string, RegistryEntry>();
   if (tree === null) return registry;
-  collectEntries(tree, registry);
+  collectEntries(tree, registry, undefined);
   return registry;
 }
 
-function collectEntries(node: UINode, acc: Map<string, RegistryEntry>): void {
+function collectEntries(
+  node: UINode,
+  acc: Map<string, RegistryEntry>,
+  windowId: string | undefined,
+): void {
+  const currentWindowId = node.type === "window" ? node.id : windowId;
+
   if (node.meta && META_KEY in node.meta && PROPS_KEY in node.meta && STATE_KEY in node.meta) {
+    if (!currentWindowId) {
+      throw new Error(`Canvas widget "${node.id}" must be rendered inside a window node.`);
+    }
+
     const def = node.meta[META_KEY] as CanvasWidgetDef<unknown, unknown>;
     const props = node.meta[PROPS_KEY] as unknown;
     const state = node.meta[STATE_KEY] as unknown;
-    acc.set(node.id, makeEntry(def, props, state));
+    acc.set(widgetKey(currentWindowId, node.id), makeEntry(def, props, state));
   }
 
   for (const child of node.children) {
-    collectEntries(child, acc);
+    collectEntries(child, acc, currentWindowId);
   }
 }
 
@@ -307,15 +347,22 @@ function scopeToWidgetIds(scope: readonly string[]): string[] {
  */
 function buildHandlerChain(
   registry: ReadonlyMap<string, RegistryEntry>,
+  windowId: string | null,
   scope: readonly string[],
   eventId: string,
 ): string[] {
-  let chain = scopeToWidgetIds(scope).filter((id) => registry.has(id));
+  if (!windowId) {
+    return [];
+  }
+
+  let chain = scopeToWidgetIds(scope)
+    .map((id) => widgetKey(windowId, id))
+    .filter((key) => registry.has(key));
 
   if (chain.length === 0) {
     // No parent canvas_widgets in scope. Check if the event's target
     // itself is a canvas_widget.
-    const targetId = scopeToId(scope, eventId);
+    const targetId = widgetKey(windowId, scopeToId(scope, eventId));
     if (registry.has(targetId)) {
       chain = [targetId];
     }
@@ -335,20 +382,25 @@ function buildHandlerChain(
  */
 function resolveEmitIdentity(
   event: Event,
-  widgetId: string,
-): { readonly id: string; readonly scope: readonly string[] } {
+  widgetKeyValue: string,
+): { readonly id: string; readonly scope: readonly string[]; readonly windowId: string } {
   const scope = extractScope(event);
   if (scope.length > 0) {
-    return { id: scope[0]!, scope: scope.slice(1) };
+    return {
+      id: scope[0]!,
+      scope: scope.slice(1),
+      windowId: requiredWindowId(event, widgetKeyValue),
+    };
   }
 
   const id = extractId(event);
   if (id !== "") {
-    return { id, scope: [] };
+    return { id, scope: [], windowId: requiredWindowId(event, widgetKeyValue) };
   }
 
   // Timer or other non-widget event -- split the registered widget ID.
-  return splitWidgetId(widgetId);
+  const { widgetId, windowId } = splitWidgetKey(widgetKeyValue);
+  return { ...splitWidgetId(widgetId), windowId };
 }
 
 /**
@@ -395,8 +447,9 @@ export function dispatchThroughWidgets(
 ): { readonly event: Event | null; readonly registry: Map<string, RegistryEntry> } {
   const scope = extractScope(event);
   const eventId = extractId(event);
+  const windowId = extractWindowId(event);
 
-  const chain = buildHandlerChain(registry, scope, eventId);
+  const chain = buildHandlerChain(registry, windowId, scope, eventId);
 
   if (chain.length === 0) {
     return { event, registry };
@@ -455,6 +508,7 @@ function walkChain(
           kind: "widget",
           type: action.kind,
           id: identity.id,
+          windowId: identity.windowId,
           scope: identity.scope,
           value: null,
           data: normalizeEmitData(action.data),
@@ -476,7 +530,7 @@ const CW_TAG_PREFIX = "__cw:";
 /**
  * Collect subscriptions from all canvas widgets in the registry.
  *
- * Each subscription's tag is namespaced with the widget's scoped ID
+ * Each subscription's tag is namespaced with the window-local widget key
  * so the runtime can route timer events back to the correct widget.
  */
 export function collectSubscriptions(registry: ReadonlyMap<string, RegistryEntry>): Subscription[] {
@@ -492,7 +546,8 @@ export function collectSubscriptions(registry: ReadonlyMap<string, RegistryEntry
 
 /** Namespace a subscription's tag for a canvas widget. */
 function namespaceTag(sub: Subscription, widgetId: string): Subscription {
-  return { ...sub, tag: CW_TAG_PREFIX + widgetId + ":" + sub.tag };
+  const key = JSON.stringify({ key: widgetId, tag: sub.tag });
+  return { ...sub, tag: CW_TAG_PREFIX + key };
 }
 
 /** Check if a subscription tag is namespaced for a canvas widget. */
@@ -509,11 +564,20 @@ export function parseWidgetTag(
 ): { readonly widgetId: string; readonly innerTag: string } | null {
   if (!tag.startsWith(CW_TAG_PREFIX)) return null;
   const rest = tag.slice(CW_TAG_PREFIX.length);
-  const colonIdx = rest.indexOf(":");
-  if (colonIdx === -1) return null;
+  let parsed: { key?: unknown; tag?: unknown };
+
+  try {
+    parsed = JSON.parse(rest) as { key?: unknown; tag?: unknown };
+  } catch {
+    return null;
+  }
+
+  if (typeof parsed.key !== "string" || typeof parsed.tag !== "string") {
+    return null;
+  }
   return {
-    widgetId: rest.slice(0, colonIdx),
-    innerTag: rest.slice(colonIdx + 1),
+    widgetId: parsed.key,
+    innerTag: parsed.tag,
   };
 }
 
@@ -573,6 +637,7 @@ export function handleWidgetTimer(
         kind: "widget",
         type: action.kind,
         id: identity.id,
+        windowId: identity.windowId,
         scope: identity.scope,
         value: null,
         data: normalizeEmitData(action.data),
@@ -581,4 +646,17 @@ export function handleWidgetTimer(
       return dispatchThroughWidgets(registry, emitted);
     }
   }
+}
+
+function extractWindowId(event: Event, fallbackKey?: string): string | null {
+  const ev = event as unknown as Record<string, unknown>;
+  if (typeof ev["windowId"] === "string") {
+    return ev["windowId"] as string;
+  }
+
+  if (fallbackKey) {
+    return splitWidgetKey(fallbackKey).windowId;
+  }
+
+  return null;
 }

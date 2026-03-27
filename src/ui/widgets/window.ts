@@ -17,8 +17,8 @@ import { encodeA11y } from "../types.js";
 
 /** Props for the Window widget. */
 export interface WindowProps {
-  /** Unique window identifier. Defaults to "main". */
-  id?: string;
+  /** Unique window identifier. Required. */
+  id: string;
   /** Window title bar text. */
   title?: string;
   /** Window dimensions as [width, height] in logical pixels. */
@@ -79,7 +79,7 @@ export interface WindowProps {
  * ```
  */
 export function Window(props: WindowProps): UINode {
-  const id = props.id ?? "main";
+  const id = props.id;
   const children = props.children ?? [];
   const p: Record<string, unknown> = {};
   putIf(p, props.title, "title");

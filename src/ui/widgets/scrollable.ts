@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, containerNode, extractHandlers, putIf } from "../build.js";
+import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.js";
 import type { A11y, Anchor, Color, Direction, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
@@ -54,7 +54,7 @@ export function Scrollable(props: ScrollableProps): UINode {
   const children = props.children ?? [];
   const handlerProps: Record<string, string> = {};
   if (typeof props.onScroll === "function") handlerProps["onScroll"] = "scroll";
-  const clean = extractHandlers(id, props, handlerProps);
+  const { clean, meta } = extractHandlers(id, props, handlerProps);
 
   const p: Record<string, unknown> = {};
   putIf(p, clean.width, "width", encodeLength);
@@ -73,7 +73,13 @@ export function Scrollable(props: ScrollableProps): UINode {
   putIf(p, clean.eventRate, "event_rate");
   if (typeof props.onScroll === "boolean") putIf(p, props.onScroll, "on_scroll");
   else if (typeof props.onScroll === "function") p["on_scroll"] = true;
-  return containerNode(id, "scrollable", p, Array.isArray(children) ? children : [children]);
+  return containerNodeWithMeta(
+    id,
+    "scrollable",
+    p,
+    Array.isArray(children) ? children : [children],
+    meta,
+  );
 }
 
 export function scrollable(children: UINode[]): UINode;

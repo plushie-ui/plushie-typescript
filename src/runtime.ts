@@ -13,7 +13,7 @@
  * @module
  */
 
-import type { AppConfig } from "./app.js";
+import type { AppConfig, AppView } from "./app.js";
 import {
   collectSubscriptions as collectWidgetSubscriptions,
   dispatchThroughWidgets,
@@ -42,6 +42,7 @@ import {
   PROTOCOL_VERSION,
 } from "./client/protocol.js";
 import type { Transport } from "./client/transport.js";
+import { extensionConfigKey } from "./extension.js";
 import * as SubscriptionMod from "./subscription.js";
 import { diff } from "./tree/diff.js";
 import { type NormalizeContext, normalize, type WireNode } from "./tree/normalize.js";
@@ -58,9 +59,7 @@ import type {
   WidgetEvent,
 } from "./types.js";
 import { COMMAND } from "./types.js";
-import type { HandlerEntry } from "./ui/handlers.js";
-import { clearHandlers, drainHandlers } from "./ui/handlers.js";
-import { extensionConfigKey } from "./extension.js";
+import { handlersMeta } from "./ui/handlers.js";
 
 // =========================================================================
 // Types
@@ -74,6 +73,7 @@ export interface Diagnostic {
   readonly kind: "widget";
   readonly type: "diagnostic";
   readonly id: string;
+  readonly windowId: string;
   readonly scope: readonly string[];
   readonly value: string | number | boolean | null;
   readonly data: Readonly<Record<string, unknown>> | null;
@@ -560,7 +560,7 @@ export class Runtime<M> {
     // Widget events: check handler map first
     if (event.kind === "widget") {
       const widgetEvent = event as WidgetEvent;
-      const handler = this.lookupHandler(widgetEvent.id, widgetEvent.type);
+      const handler = this.lookupHandler(widgetEvent.windowId, widgetEvent.id, widgetEvent.type);
       if (handler) {
         this.runUpdate(event, handler);
         return;
@@ -576,13 +576,19 @@ export class Runtime<M> {
   private isCoalescable(event: Event): string | null {
     if (event.kind === "mouse" && (event as PlushieMouseEvent).type === "moved")
       return "mouse:moved";
-    if (event.kind === "sensor" && (event as SensorEvent).type === "resize")
-      return `sensor:${(event as SensorEvent).id}`;
+    if (event.kind === "sensor" && (event as SensorEvent).type === "resize") {
+      const sensorEvent = event as SensorEvent;
+      return `sensor:${sensorEvent.windowId}:${sensorEvent.id}`;
+    }
     return null;
   }
 
-  private lookupHandler(widgetId: string, eventType: string): Handler<unknown> | null {
-    const typeMap = this.state.handlerMap.get(widgetId);
+  private lookupHandler(
+    windowId: string,
+    widgetId: string,
+    eventType: string,
+  ): Handler<unknown> | null {
+    const typeMap = this.state.handlerMap.get(this.handlerKey(windowId, widgetId));
     if (!typeMap) return null;
     return typeMap.get(eventType) ?? null;
   }
@@ -639,8 +645,8 @@ export class Runtime<M> {
 
   private renderAndSync(forceSnapshot: boolean): void {
     try {
-      clearHandlers();
       const viewResult = this.config.view(this.state.model as never);
+      this.validateRootWindows(viewResult);
 
       // Build normalization context with canvas widget registry
       const newEntries = new Map<string, RegistryEntry>();
@@ -659,8 +665,7 @@ export class Runtime<M> {
       }
 
       // Extract handlers registered during view()
-      const entries = drainHandlers();
-      this.state.handlerMap = this.buildHandlerMap(entries);
+      this.state.handlerMap = this.buildHandlerMap(viewResult);
 
       // Diff and send
       if (forceSnapshot || this.state.tree === null) {
@@ -680,7 +685,6 @@ export class Runtime<M> {
       // Sync windows
       this.syncWindows(tree);
     } catch (error) {
-      clearHandlers();
       this.handleUpdateError(error);
     }
   }
@@ -689,17 +693,74 @@ export class Runtime<M> {
   // Handler map
   // =======================================================================
 
-  private buildHandlerMap(entries: HandlerEntry[]): Map<string, Map<string, Handler<unknown>>> {
+  private buildHandlerMap(view: AppView): Map<string, Map<string, Handler<unknown>>> {
     const map = new Map<string, Map<string, Handler<unknown>>>();
-    for (const entry of entries) {
-      let typeMap = map.get(entry.widgetId);
+    if (view === null) return map;
+    if (Array.isArray(view)) {
+      for (const node of view) {
+        this.collectHandlers(node, map, undefined, node.id);
+      }
+      return map;
+    }
+    const node = view as import("./app.js").WindowNode;
+    this.collectHandlers(node, map, undefined, node.id);
+    return map;
+  }
+
+  private collectHandlers(
+    node: import("./types.js").UINode,
+    map: Map<string, Map<string, Handler<unknown>>>,
+    scope: string | undefined,
+    windowId: string | undefined,
+  ): void {
+    const currentWindowId = node.type === "window" ? node.id : windowId;
+    const currentId =
+      scope !== undefined && !node.id.startsWith("auto:") ? `${scope}/${node.id}` : node.id;
+    const childScope = node.type === "window" || node.id.startsWith("auto:") ? scope : currentId;
+    const nodeHandlers = handlersMeta(node.meta);
+
+    if (nodeHandlers && currentWindowId) {
+      const key = this.handlerKey(currentWindowId, currentId);
+      let typeMap = map.get(key);
       if (!typeMap) {
         typeMap = new Map();
-        map.set(entry.widgetId, typeMap);
+        map.set(key, typeMap);
       }
-      typeMap.set(entry.eventType, entry.handler);
+
+      for (const [eventType, handler] of Object.entries(nodeHandlers)) {
+        typeMap.set(eventType, handler);
+      }
     }
-    return map;
+
+    for (const child of node.children) {
+      this.collectHandlers(child, map, childScope, currentWindowId);
+    }
+  }
+
+  private handlerKey(windowId: string, widgetId: string): string {
+    return `${windowId}\u0000${widgetId}`;
+  }
+
+  private validateRootWindows(viewResult: AppView): void {
+    if (viewResult === null) return;
+
+    if (Array.isArray(viewResult)) {
+      for (const node of viewResult) {
+        if (node.type !== "window") {
+          throw new Error(
+            `view() must return a window node or a list of window nodes at the top level, got "${node.type}"`,
+          );
+        }
+      }
+      return;
+    }
+
+    const node = viewResult as import("./app.js").WindowNode;
+    if (node.type !== "window") {
+      throw new Error(
+        `view() must return a window node or a list of window nodes at the top level, got "${node.type}"`,
+      );
+    }
   }
 
   // =======================================================================
@@ -1189,7 +1250,7 @@ export class Runtime<M> {
       // Check inline handler first
       if ("id" in event && "type" in event) {
         const widgetEvent = event as WidgetEvent;
-        const handler = this.lookupHandler(widgetEvent.id, widgetEvent.type);
+        const handler = this.lookupHandler(widgetEvent.windowId, widgetEvent.id, widgetEvent.type);
         if (handler) {
           const result = handler(this.state.model, widgetEvent) as UpdateResult<M>;
           const [newModel, commands] = this.unwrapResult(result);

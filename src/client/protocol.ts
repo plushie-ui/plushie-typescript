@@ -14,6 +14,7 @@
 import type {
   CanvasEvent,
   Event,
+  ExtensionCommandErrorEvent,
   ImeEvent,
   KeyEvent,
   Modifiers,
@@ -23,7 +24,6 @@ import type {
   MouseEvent as PlushieMouseEvent,
   TouchEvent as PlushieTouchEvent,
   SensorEvent,
-  ExtensionCommandErrorEvent,
   SystemEvent,
   WidgetEvent,
   WindowEvent,
@@ -336,6 +336,12 @@ function str(msg: WireMessage, key: string, fallback = ""): string {
   return typeof v === "string" ? v : fallback;
 }
 
+function requiredStr(msg: WireMessage, key: string, context: string): string {
+  const v = msg[key];
+  if (typeof v === "string") return v;
+  throw new Error(`${context} must include string field "${key}"`);
+}
+
 // Helper to safely read a number field.
 function num(msg: WireMessage, key: string, fallback = 0): number {
   const v = msg[key];
@@ -636,6 +642,7 @@ function decodeWidgetEvent(
     kind: "widget",
     type: family as WidgetEvent["type"],
     id,
+    windowId: requiredStr(raw, "window_id", `widget event "${family}"`),
     scope,
     value: coerceWidgetValue(raw["value"]),
     data: data as WidgetEvent["data"],
@@ -682,6 +689,7 @@ function decodeMouseAreaEvent(
     kind: "mouse_area",
     type: typeMap[family] ?? (family as MouseAreaEvent["type"]),
     id,
+    windowId: requiredStr(raw, "window_id", `mouse area event "${family}"`),
     scope,
     data: data as MouseAreaEvent["data"],
   };
@@ -711,6 +719,7 @@ function decodeCanvasEvent(
     kind: "canvas",
     type: typeMap[family] ?? (family as CanvasEvent["type"]),
     id,
+    windowId: requiredStr(raw, "window_id", `canvas event "${family}"`),
     scope,
     x: data ? num(data, "x") : 0,
     y: data ? num(data, "y") : 0,
@@ -739,6 +748,7 @@ function decodePaneEvent(raw: WireMessage, family: string, data: WireMessage | n
     kind: "pane",
     type: typeMap[family] ?? (family as PaneEvent["type"]),
     id,
+    windowId: requiredStr(raw, "window_id", `pane event "${family}"`),
     scope,
     data: data as PaneEvent["data"],
   };
@@ -752,6 +762,7 @@ function decodeSensorEvent(raw: WireMessage, data: WireMessage | null): SensorEv
     kind: "sensor",
     type: "resize",
     id,
+    windowId: requiredStr(raw, "window_id", 'sensor event "sensor_resize"'),
     scope,
     width: data ? num(data, "width") : 0,
     height: data ? num(data, "height") : 0,

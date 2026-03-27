@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, containerNode, extractHandlers, putIf } from "../build.js";
+import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.js";
 import type { A11y } from "../types.js";
 import { encodeA11y } from "../types.js";
 
@@ -68,7 +68,7 @@ export function MouseArea(props: MouseAreaProps): UINode {
       handlerProps[key] = wire;
     }
   }
-  const clean = extractHandlers(id, props, handlerProps);
+  const { clean, meta } = extractHandlers(id, props, handlerProps);
 
   const p: Record<string, unknown> = {};
   putIf(p, clean.cursor, "cursor");
@@ -80,7 +80,13 @@ export function MouseArea(props: MouseAreaProps): UINode {
     if (typeof val === "boolean") putIf(p, val, `on_${wire}`);
     else if (typeof val === "function") p[`on_${wire}`] = true;
   }
-  return containerNode(id, "mouse_area", p, Array.isArray(children) ? children : [children]);
+  return containerNodeWithMeta(
+    id,
+    "mouse_area",
+    p,
+    Array.isArray(children) ? children : [children],
+    meta,
+  );
 }
 
 export function mouseArea(opts: Omit<MouseAreaProps, "children">, children: UINode[]): UINode {

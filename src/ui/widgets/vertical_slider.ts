@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, extractHandlers, leafNode, putIf } from "../build.js";
+import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Color, Length, StyleMap } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength, encodeStyleMap } from "../types.js";
 
@@ -52,7 +52,7 @@ export interface VerticalSliderProps {
 
 export function VerticalSlider(props: VerticalSliderProps): UINode {
   const id = props.id ?? autoId("vertical_slider");
-  const clean = extractHandlers(id, props, VSLIDER_HANDLERS);
+  const { clean, meta } = extractHandlers(id, props, VSLIDER_HANDLERS);
   const p: Record<string, unknown> = {
     value: clean.value,
     range: clean.range,
@@ -68,7 +68,7 @@ export function VerticalSlider(props: VerticalSliderProps): UINode {
   putIf(p, clean.label, "label");
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  return leafNode(id, "vertical_slider", p);
+  return leafNodeWithMeta(id, "vertical_slider", p, meta);
 }
 
 export function verticalSlider(

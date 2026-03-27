@@ -166,8 +166,8 @@ describe("Window", () => {
     expect(node.props["width"]).toBe(800);
   });
 
-  test("defaults id to 'main'", () => {
-    const node = Window({ title: "App" });
+  test("requires an explicit id", () => {
+    const node = Window({ id: "main", title: "App" });
     expect(node.id).toBe("main");
   });
 });

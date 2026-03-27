@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, extractHandlers, leafNode, putIf } from "../build.js";
+import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Color, Length, StyleMap } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength, encodeStyleMap } from "../types.js";
 
@@ -64,7 +64,7 @@ export interface SliderProps {
  */
 export function Slider(props: SliderProps): UINode {
   const id = props.id ?? autoId("slider");
-  const clean = extractHandlers(id, props, SLIDER_HANDLERS);
+  const { clean, meta } = extractHandlers(id, props, SLIDER_HANDLERS);
   const p: Record<string, unknown> = {
     value: clean.value,
     range: clean.range,
@@ -82,7 +82,7 @@ export function Slider(props: SliderProps): UINode {
   putIf(p, clean.label, "label");
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  return leafNode(id, "slider", p);
+  return leafNodeWithMeta(id, "slider", p, meta);
 }
 
 /**

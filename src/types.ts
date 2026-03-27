@@ -119,6 +119,7 @@ export interface WidgetEvent extends EventBase {
     | "diagnostic"
     | string; // Allow unrecognized families to pass through
   readonly id: string;
+  readonly windowId: string;
   readonly scope: readonly string[];
   readonly value: string | number | boolean | null;
   readonly data: Readonly<Record<string, unknown>> | null;
@@ -207,6 +208,7 @@ export interface CanvasEvent extends EventBase {
   readonly kind: "canvas";
   readonly type: "press" | "release" | "move" | "scroll";
   readonly id: string;
+  readonly windowId: string;
   readonly scope: readonly string[];
   readonly x: number;
   readonly y: number;
@@ -227,6 +229,7 @@ export interface MouseAreaEvent extends EventBase {
     | "move"
     | "scroll";
   readonly id: string;
+  readonly windowId: string;
   readonly scope: readonly string[];
   readonly data: Readonly<Record<string, unknown>> | null;
 }
@@ -235,6 +238,7 @@ export interface PaneEvent extends EventBase {
   readonly kind: "pane";
   readonly type: "clicked" | "resized" | "dragged" | "focus_cycle";
   readonly id: string;
+  readonly windowId: string;
   readonly scope: readonly string[];
   readonly data: Readonly<Record<string, unknown>> | null;
 }
@@ -243,6 +247,7 @@ export interface SensorEvent extends EventBase {
   readonly kind: "sensor";
   readonly type: "resize";
   readonly id: string;
+  readonly windowId: string;
   readonly scope: readonly string[];
   readonly width: number;
   readonly height: number;

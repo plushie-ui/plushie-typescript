@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, extractHandlers, leafNode, putIf } from "../build.js";
+import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Color, Length, Padding } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength, encodePadding } from "../types.js";
 
@@ -53,7 +53,7 @@ export interface TableProps {
 
 export function Table(props: TableProps): UINode {
   const id = props.id ?? autoId("table");
-  const clean = extractHandlers(id, props, TABLE_HANDLERS);
+  const { clean, meta } = extractHandlers(id, props, TABLE_HANDLERS);
   const p: Record<string, unknown> = {
     columns: clean.columns,
     rows: clean.rows,
@@ -72,7 +72,7 @@ export function Table(props: TableProps): UINode {
   putIf(p, clean.separator, "separator");
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  return leafNode(id, "table", p);
+  return leafNodeWithMeta(id, "table", p, meta);
 }
 
 export function table(
