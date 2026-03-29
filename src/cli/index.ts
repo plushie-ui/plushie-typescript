@@ -207,6 +207,29 @@ async function handleDownload(
   const resolvedWasmDir = wasmDir ?? config?.wasm_dir;
 
   if (artifacts.includes("bin")) {
+    // Block precompiled download when native extensions are configured.
+    // The stock binary doesn't include native extensions -- users must
+    // build a custom binary with `npx plushie build` instead.
+    const extConfigPath = resolve("plushie.extensions.json");
+    if (existsSync(extConfigPath)) {
+      try {
+        const raw = JSON.parse(readFileSync(extConfigPath, "utf-8")) as {
+          extensions?: Array<{ rustCrate?: string }>;
+        };
+        const nativeExts = (raw.extensions ?? []).filter((e) => e.rustCrate);
+        if (nativeExts.length > 0) {
+          console.error(
+            `Cannot download precompiled binary: plushie.extensions.json declares ` +
+              `native widget(s) that require a custom build.\n` +
+              `Run \`npx plushie build\` instead.`,
+          );
+          process.exitCode = 1;
+          return;
+        }
+      } catch {
+        // Config exists but can't be parsed -- let it through, build will catch it
+      }
+    }
     await handleDownloadBinary(force, resolvedBinFile);
   }
   if (artifacts.includes("wasm")) {
@@ -442,7 +465,7 @@ function handleExtensionBuild(
   configPath: string,
   release: boolean,
 ): boolean {
-  const { validateExtensions, generateCargoToml, generateMainRs } =
+  const { validateExtensions, checkExtensionVersions, generateCargoToml, generateMainRs } =
     require("../native-widget-build.js") as typeof import("../native-widget-build.js");
 
   let config: import("../native-widget-build.js").NativeWidgetBuildConfig;
@@ -460,6 +483,7 @@ function handleExtensionBuild(
     if (raw.binaryName !== undefined) buildConfig["binaryName"] = raw.binaryName;
     config = buildConfig as unknown as import("../native-widget-build.js").NativeWidgetBuildConfig;
     validateExtensions(extensions);
+    checkExtensionVersions(extensions, BINARY_VERSION, (msg) => console.warn(`[plushie] ${msg}`));
   } catch (err) {
     console.error(`Failed to read ${configPath}: ${String(err)}`);
     process.exitCode = 1;
@@ -484,6 +508,14 @@ function handleExtensionBuild(
   writeFileSync(join(buildDir, "src", "main.rs"), mainRs, "utf-8");
 
   console.log(`Generated workspace at ${buildDir}`);
+
+  // Validate cargo is available before attempting the build
+  const cargoCheck = spawnSync("cargo", ["--version"], { stdio: "pipe" });
+  if (cargoCheck.status !== 0) {
+    console.error("cargo (Rust) is required for native widget builds.\nInstall: https://rustup.rs");
+    process.exitCode = 1;
+    return true;
+  }
 
   // Build
   const buildArgs = ["build"];

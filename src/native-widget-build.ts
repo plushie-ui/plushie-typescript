@@ -11,6 +11,7 @@
  * @module
  */
 
+import { existsSync, readFileSync } from "node:fs";
 import * as nodePath from "node:path";
 import type { NativeWidgetConfig } from "./native-widget.js";
 
@@ -75,6 +76,77 @@ export function validateExtensions(extensions: readonly NativeWidgetConfig[]): v
       );
     }
     crateNames.set(crateName, ext.type);
+  }
+}
+
+/**
+ * Check plushie-ext version compatibility for each native widget crate.
+ *
+ * Reads each crate's Cargo.toml and warns (via callback) if its
+ * plushie-ext dependency version doesn't match the expected version.
+ * Handles version strings, table dependencies with version, and path
+ * dependencies (reads version from the target Cargo.toml).
+ *
+ * @param extensions - Extension configs with rustCrate paths.
+ * @param expectedVersion - Expected plushie-ext major.minor (e.g. "0.5").
+ * @param warn - Callback for version mismatch warnings.
+ */
+export function checkExtensionVersions(
+  extensions: readonly NativeWidgetConfig[],
+  expectedVersion: string,
+  warn: (message: string) => void,
+): void {
+  const nativeExts = extensions.filter((e) => e.rustCrate);
+
+  for (const ext of nativeExts) {
+    const cargoPath = nodePath.resolve(ext.rustCrate!, "Cargo.toml");
+    if (!existsSync(cargoPath)) continue;
+
+    let content: string;
+    try {
+      content = readFileSync(cargoPath, "utf-8");
+    } catch {
+      continue;
+    }
+
+    // Try: plushie-ext = "version"
+    let match = content.match(/plushie-ext\s*=\s*"([^"]+)"/);
+    if (!match) {
+      // Try: plushie-ext = { version = "version", ... }
+      match = content.match(/plushie-ext\s*=\s*\{[^}]*version\s*=\s*"([^"]+)"/);
+    }
+    if (!match) {
+      // Try: plushie-ext = { path = "path", ... } -- read version from target
+      const pathMatch = content.match(/plushie-ext\s*=\s*\{[^}]*path\s*=\s*"([^"]+)"/);
+      if (pathMatch) {
+        const targetCargoPath = nodePath.resolve(ext.rustCrate!, pathMatch[1]!, "Cargo.toml");
+        if (existsSync(targetCargoPath)) {
+          try {
+            const targetContent = readFileSync(targetCargoPath, "utf-8");
+            const versionMatch = targetContent.match(/\[package\][^[]*version\s*=\s*"([^"]+)"/s);
+            if (versionMatch) {
+              match = versionMatch;
+            }
+          } catch {
+            // Skip
+          }
+        }
+      }
+    }
+
+    if (match?.[1]) {
+      const depVersion = match[1];
+      // Compare major.minor
+      const depMajorMinor = depVersion.split(".").slice(0, 2).join(".");
+      const expectedMajorMinor = expectedVersion.split(".").slice(0, 2).join(".");
+      if (depMajorMinor !== expectedMajorMinor) {
+        warn(
+          `Widget "${ext.type}" depends on plushie-ext ${depVersion}, ` +
+            `but this SDK targets ${expectedVersion}. Version mismatch may cause ` +
+            `build failures or runtime incompatibilities.`,
+        );
+      }
+    }
   }
 }
 
@@ -148,7 +220,8 @@ export function generateMainRs(extensions: readonly NativeWidgetConfig[]): strin
   const nativeExts = extensions.filter((e) => e.rustConstructor);
 
   // Validate constructors (must be valid Rust identifiers/paths)
-  const constructorPattern = /^[A-Za-z_][A-Za-z0-9_:]*(\([^)]*\))?$/;
+  // Allow turbofish generics: MyExt::<Config>::new()
+  const constructorPattern = /^[A-Za-z_][A-Za-z0-9_:<>, ]*(\([^)]*\))?$/;
   for (const ext of nativeExts) {
     if (!constructorPattern.test(ext.rustConstructor!)) {
       throw new Error(
