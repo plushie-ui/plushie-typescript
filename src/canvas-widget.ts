@@ -72,8 +72,17 @@ export interface CanvasWidgetDef<State, Props> {
   /** Render the widget to a UINode tree. */
   readonly render: (id: string, props: Props, state: State) => UINode;
 
-  /** Handle an event. Returns the action and (possibly updated) state. */
-  readonly handleEvent: (event: Event, state: State) => readonly [EventAction, State];
+  /**
+   * Handle an event. Returns the action and (possibly updated) state.
+   *
+   * Optional. Widgets without handleEvent are transparent -- events from
+   * their children pass through to the app's update(). Widgets with
+   * handleEvent are opaque by default and should return `{ type: "ignored" }`
+   * explicitly to pass events through.
+   */
+  readonly handleEvent?:
+    | ((event: Event, state: State) => readonly [EventAction, State])
+    | undefined;
 
   /** Subscriptions for this widget instance (optional). */
   readonly subscriptions?: ((props: Props, state: State) => Subscription[]) | undefined;
@@ -149,8 +158,8 @@ export function buildCanvasWidget<State, Props>(
 export interface RegistryEntry {
   /** Render the widget given its scoped ID. Returns a UINode tree. */
   readonly render: (id: string) => UINode;
-  /** Handle an event. Returns the action and an updated entry. */
-  readonly handleEvent: (event: Event) => readonly [EventAction, RegistryEntry];
+  /** Handle an event. Returns the action and an updated entry. Null for render-only widgets. */
+  readonly handleEvent: ((event: Event) => readonly [EventAction, RegistryEntry]) | null;
   /** Collect subscriptions for this widget instance. */
   readonly subscriptions: () => Subscription[];
   /** The widget's current state (type-erased). */
@@ -197,12 +206,15 @@ export function makeEntry<State, Props>(
   props: Props,
   state: State,
 ): RegistryEntry {
+  const hasHandler = typeof def.handleEvent === "function";
   return {
     render: (id: string) => def.render(id, props, state),
-    handleEvent: (ev: Event) => {
-      const [action, newState] = def.handleEvent(ev, state);
-      return [action, makeEntry(def, props, newState)];
-    },
+    handleEvent: hasHandler
+      ? (ev: Event) => {
+          const [action, newState] = def.handleEvent!(ev, state);
+          return [action, makeEntry(def, props, newState)];
+        }
+      : null,
     subscriptions: () => (def.subscriptions ? def.subscriptions(props, state) : []),
     state,
     props,
@@ -390,13 +402,17 @@ function buildHandlerChain(
 
   let chain = scopeToWidgetIds(scope)
     .map((id) => widgetKey(windowId, id))
-    .filter((key) => registry.has(key));
+    .filter((key) => {
+      const entry = registry.get(key);
+      return entry !== undefined && entry.handleEvent !== null;
+    });
 
   if (chain.length === 0) {
     // No parent canvas_widgets in scope. Check if the event's target
-    // itself is a canvas_widget.
+    // itself is a canvas_widget with event handling.
     const targetId = widgetKey(windowId, scopeToId(scope, eventId));
-    if (registry.has(targetId)) {
+    const targetEntry = registry.get(targetId);
+    if (targetEntry && targetEntry.handleEvent) {
       chain = [targetId];
     }
   }
@@ -507,6 +523,9 @@ function walkChain(
 
     const entry = registry.get(widgetId);
     if (!entry) continue;
+
+    // Render-only widgets (no handleEvent) are transparent -- skip them
+    if (!entry.handleEvent) continue;
 
     let action: EventAction;
     let newEntry: RegistryEntry;
@@ -635,7 +654,7 @@ export function handleWidgetTimer(
   if (parsed === null) return null;
 
   const entry = registry.get(parsed.widgetId);
-  if (!entry) return null;
+  if (!entry || !entry.handleEvent) return null;
 
   const timerEvent: Event = {
     kind: "timer",
