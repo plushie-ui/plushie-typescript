@@ -165,14 +165,15 @@ function normalizeNode(
     normalizeNode(child, childScope, currentWindowId, ctx),
   );
 
-  // Check for duplicate sibling IDs (warning, not error)
+  // Reject duplicate sibling IDs -- they cause undefined behavior in
+  // widget caching, event routing, and tree diffing.
   if (children.length > 1) {
     const ids = new Set<string>();
     for (const child of children) {
       if (ids.has(child.id)) {
-        console.warn(
+        throw new Error(
           `Duplicate sibling ID "${child.id}" under parent "${scopedId}". ` +
-            `This will cause undefined behavior in widget caching and event routing.`,
+            `Each sibling must have a unique ID.`,
         );
       }
       ids.add(child.id);

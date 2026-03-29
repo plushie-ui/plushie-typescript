@@ -123,14 +123,11 @@ describe("normalize", () => {
     expect(() => normalize(bad)).toThrow(/contains "\/"/i);
   });
 
-  test("warns on duplicate sibling IDs", () => {
-    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  test("throws on duplicate sibling IDs", () => {
     const child1 = node("btn", "button");
     const child2 = node("btn", "button");
     const parent = node("auto:root", "container", {}, [child1, child2]);
-    normalize(parent);
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining("Duplicate sibling ID"));
-    spy.mockRestore();
+    expect(() => normalize(parent)).toThrow(/Duplicate sibling ID/);
   });
 
   test("meta field is excluded from wire node", () => {
