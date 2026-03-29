@@ -15,6 +15,7 @@
  */
 
 import {
+  getStandardProps,
   isPlaceholder,
   type Registry,
   type RegistryEntry,
@@ -133,6 +134,7 @@ function normalizeNode(
   // placeholder and we have a registry context, render the placeholder
   // and normalize the rendered output in place.
   if (ctx?.registry && isPlaceholder(node)) {
+    const standardProps = getStandardProps(node);
     const result = renderPlaceholder(node, currentWindowId, scopedId, id, ctx.registry);
     if (result) {
       // Record the new entry for registry derivation
@@ -142,7 +144,14 @@ function normalizeNode(
       // Normalize the rendered output (which may itself contain children)
       // The rendered node's ID is already set to scopedId by renderPlaceholder,
       // so we normalize it as a root (no additional scoping).
-      return normalizeRenderedWidget(result.node, scopedId, scope, currentWindowId, ctx);
+      return normalizeRenderedWidget(
+        result.node,
+        scopedId,
+        scope,
+        currentWindowId,
+        ctx,
+        standardProps,
+      );
     }
   }
 
@@ -192,18 +201,25 @@ function normalizeRenderedWidget(
   parentScope: string,
   windowId: string | undefined,
   ctx?: NormalizeContext,
+  standardProps?: Readonly<Record<string, unknown>> | null,
 ): WireNode {
   // Windows reset scope; otherwise children are scoped under this node.
   const childScope = node.type === "window" ? "" : scopedId;
 
   const children = node.children.map((child) => normalizeNode(child, childScope, windowId, ctx));
 
+  // Auto-apply standard widget options (a11y, event_rate) from the
+  // original widget placeholder to the top-level rendered node. Widget
+  // authors do not need to manually forward these.
+  let props = resolveA11yRefs(node.props, parentScope);
+  if (standardProps && Object.keys(standardProps).length > 0) {
+    props = { ...props, ...standardProps };
+  }
+
   return {
     id: scopedId,
     type: node.type,
-    // Resolve a11y refs relative to parent scope (where siblings live),
-    // not this node's own scope. Matches Gleam/Elixir behavior.
-    props: resolveA11yRefs(node.props, parentScope),
+    props,
     children,
   };
 }

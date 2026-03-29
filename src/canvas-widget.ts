@@ -90,7 +90,18 @@ const PROPS_KEY = "__canvas_widget_props__";
 /** Metadata key carrying the widget's state (post-normalization). */
 const STATE_KEY = "__canvas_widget_state__";
 
+/** Metadata key carrying standard widget options (a11y, event_rate). */
+const STANDARD_PROPS_KEY = "__canvas_widget_standard_props__";
+
 // -- Placeholder node --------------------------------------------------------
+
+/** Standard widget options that are auto-applied to the rendered output. */
+export interface CanvasWidgetOpts {
+  /** Accessibility properties forwarded to the top-level rendered node. */
+  readonly a11y?: Readonly<Record<string, unknown>>;
+  /** Event rate limit forwarded to the top-level rendered node. */
+  readonly eventRate?: number;
+}
 
 /**
  * Build a placeholder node for a canvas widget.
@@ -98,12 +109,22 @@ const STATE_KEY = "__canvas_widget_state__";
  * The returned node has type "canvas" and carries metadata that
  * the runtime uses during normalization to render the real canvas
  * tree with the widget's current state.
+ *
+ * Standard widget options (a11y, eventRate) are automatically merged
+ * into the top-level rendered node during normalization. Widget
+ * authors do not need to forward these manually from their render
+ * callback.
  */
 export function buildCanvasWidget<State, Props>(
   def: CanvasWidgetDef<State, Props>,
   id: string,
   props: Props,
+  opts?: CanvasWidgetOpts,
 ): UINode {
+  const standardProps: Record<string, unknown> = {};
+  if (opts?.a11y !== undefined) standardProps["a11y"] = opts.a11y;
+  if (opts?.eventRate !== undefined) standardProps["event_rate"] = opts.eventRate;
+
   return Object.freeze({
     id,
     type: "canvas",
@@ -112,6 +133,9 @@ export function buildCanvasWidget<State, Props>(
     meta: Object.freeze({
       [META_KEY]: def,
       [PROPS_KEY]: props,
+      ...(Object.keys(standardProps).length > 0
+        ? { [STANDARD_PROPS_KEY]: Object.freeze(standardProps) }
+        : {}),
     }),
   });
 }
@@ -193,6 +217,15 @@ export function makeEntry<State, Props>(
  */
 export function isPlaceholder(node: UINode): boolean {
   return node.meta !== undefined && META_KEY in node.meta;
+}
+
+/**
+ * Extract standard widget props (a11y, event_rate) from a placeholder node's
+ * metadata. Returns null if none are present.
+ */
+export function getStandardProps(node: UINode): Readonly<Record<string, unknown>> | null {
+  if (!node.meta || !(STANDARD_PROPS_KEY in node.meta)) return null;
+  return node.meta[STANDARD_PROPS_KEY] as Readonly<Record<string, unknown>>;
 }
 
 /**

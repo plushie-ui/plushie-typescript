@@ -52,7 +52,10 @@ export function none(): Command {
   return cmd("none");
 }
 
-/** Combine multiple commands into one. */
+/**
+ * Combine multiple commands into one. Commands in the batch execute
+ * sequentially in list order, with state threaded through each.
+ */
 export function batch(commands: Command[]): Command {
   return cmd("batch", { commands });
 }
@@ -66,6 +69,10 @@ export function exit(): Command {
  * Run an async function. The result is delivered as an AsyncEvent
  * with the given tag. The function receives an AbortSignal for
  * cooperative cancellation.
+ *
+ * Only one task per tag can be active. If a task with the same tag is
+ * already running, it is cancelled and replaced. Use unique tags if you
+ * need concurrent tasks.
  */
 function async_(fn: (signal: AbortSignal) => Promise<unknown>, tag: string): Command {
   return cmd("async", { fn, tag });
@@ -76,6 +83,10 @@ export { async_ as async };
 /**
  * Run an async generator as a stream. Each yielded value is delivered
  * as a StreamEvent. The final return value is delivered as an AsyncEvent.
+ *
+ * Only one task per tag can be active. If a task with the same tag is
+ * already running, it is cancelled and replaced. Use unique tags if you
+ * need concurrent streams.
  */
 export function stream(fn: (signal: AbortSignal) => AsyncIterable<unknown>, tag: string): Command {
   return cmd("stream", { fn, tag });
@@ -86,7 +97,13 @@ export function cancel(tag: string): Command {
   return cmd("cancel", { tag });
 }
 
-/** Schedule an event to be dispatched after a delay. */
+/**
+ * Schedule an event to be dispatched after a delay.
+ *
+ * If a timer with the same event is already pending, the previous
+ * timer is cancelled and replaced. This prevents duplicate deliveries
+ * when sendAfter is called repeatedly for the same event.
+ */
 export function sendAfter(delayMs: number, event: unknown): Command {
   return cmd("send_after", { delay: delayMs, event });
 }
