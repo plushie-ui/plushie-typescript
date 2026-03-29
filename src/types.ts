@@ -157,6 +157,8 @@ export interface KeyEvent extends EventBase {
   readonly repeat: boolean;
   readonly tag: string;
   readonly captured: boolean;
+  /** Window that had focus when the key event fired, or null for global events. */
+  readonly windowId: string | null;
 }
 
 export interface ModifiersEvent extends EventBase {
@@ -164,6 +166,8 @@ export interface ModifiersEvent extends EventBase {
   readonly modifiers: Readonly<Modifiers>;
   readonly tag: string;
   readonly captured: boolean;
+  /** Window that had focus when modifiers changed, or null for global events. */
+  readonly windowId: string | null;
 }
 
 export interface Modifiers {
@@ -184,6 +188,8 @@ export interface MouseEvent extends EventBase {
   readonly deltaY: number;
   readonly tag: string;
   readonly captured: boolean;
+  /** Window that the cursor was in when the event fired, or null for global events. */
+  readonly windowId: string | null;
 }
 
 export interface TouchEvent extends EventBase {
@@ -194,6 +200,8 @@ export interface TouchEvent extends EventBase {
   readonly y: number;
   readonly tag: string;
   readonly captured: boolean;
+  /** Window that the touch occurred in, or null for global events. */
+  readonly windowId: string | null;
 }
 
 export interface ImeEvent extends EventBase {
@@ -203,6 +211,8 @@ export interface ImeEvent extends EventBase {
   readonly cursor: readonly [number, number] | null;
   readonly tag: string;
   readonly captured: boolean;
+  /** Window that had focus when the IME event fired, or null for global events. */
+  readonly windowId: string | null;
 }
 
 export interface WindowEvent extends EventBase {

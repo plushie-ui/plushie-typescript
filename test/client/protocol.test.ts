@@ -464,6 +464,37 @@ describe("decodeEvent", () => {
     }
   });
 
+  test("decodes key_press event with window_id", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "key_press",
+      tag: "keys",
+      modifiers: { ctrl: false, shift: false, alt: false, logo: false, command: false },
+      data: { key: "a" },
+      captured: false,
+      window_id: "editor",
+    });
+    if (event.kind === "key") {
+      expect(event.windowId).toBe("editor");
+    }
+  });
+
+  test("decodes key_press event without window_id", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "key_press",
+      tag: "keys",
+      modifiers: { ctrl: false, shift: false, alt: false, logo: false, command: false },
+      data: { key: "a" },
+      captured: false,
+    });
+    if (event.kind === "key") {
+      expect(event.windowId).toBeNull();
+    }
+  });
+
   // -- Mouse events --
 
   test("decodes cursor_moved event", () => {

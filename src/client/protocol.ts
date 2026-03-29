@@ -672,6 +672,11 @@ function decodeWidgetEvent(
 
 // -- Key events -----------------------------------------------------------
 
+/** Extract optional window_id from a wire message. */
+function optionalWindowId(msg: WireMessage): string | null {
+  return typeof msg["window_id"] === "string" ? msg["window_id"] : null;
+}
+
 function decodeKeyEvent(raw: WireMessage, family: string, data: WireMessage | null): KeyEvent {
   const type = family === "key_press" ? ("press" as const) : ("release" as const);
   return {
@@ -694,6 +699,7 @@ function decodeKeyEvent(raw: WireMessage, family: string, data: WireMessage | nu
     repeat: data ? data["repeat"] === true : false,
     tag: str(raw, "tag"),
     captured: bool(raw, "captured"),
+    windowId: optionalWindowId(raw),
   };
 }
 
@@ -703,6 +709,7 @@ function decodeModifiersEvent(raw: WireMessage): ModifiersEvent {
     modifiers: parseModifiers(raw["modifiers"]),
     tag: str(raw, "tag"),
     captured: bool(raw, "captured"),
+    windowId: optionalWindowId(raw),
   };
 }
 
@@ -744,6 +751,7 @@ function decodeMouseEvent(
     deltaY: data ? num(data, "delta_y") : 0,
     tag: str(raw, "tag"),
     captured: bool(raw, "captured"),
+    windowId: optionalWindowId(raw),
   };
 }
 
@@ -774,6 +782,7 @@ function decodeTouchEvent(
     y: data ? num(data, "y") : 0,
     tag: str(raw, "tag"),
     captured: bool(raw, "captured"),
+    windowId: optionalWindowId(raw),
   };
 }
 
@@ -804,6 +813,7 @@ function decodeImeEvent(raw: WireMessage, family: string, data: WireMessage | nu
     cursor,
     tag: str(raw, "tag"),
     captured: bool(raw, "captured"),
+    windowId: optionalWindowId(raw),
   };
 }
 
