@@ -1354,6 +1354,26 @@ export class Runtime<M> {
   private handleRendererClose(reason: string): void {
     console.warn(`[plushie] Renderer closed: ${reason}`);
 
+    // Fail pending interact calls -- they will never get a response
+    for (const [id, pending] of this.state.pendingInteract) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error(`Interact "${id}" failed: renderer closed (${reason})`));
+    }
+    this.state.pendingInteract.clear();
+
+    // Fail pending stub acks
+    for (const [kind, pending] of this.state.pendingStubAcks) {
+      pending.reject(new Error(`Effect stub "${kind}" failed: renderer closed (${reason})`));
+    }
+    this.state.pendingStubAcks.clear();
+
+    // Fail pending awaitAsync calls
+    for (const [tag, pending] of this.state.pendingAwaitAsync) {
+      clearTimeout(pending.timer);
+      // Resolve rather than reject: the task may still complete after restart
+    }
+    this.state.pendingAwaitAsync.clear();
+
     // Flush pending effects with error events
     for (const [id, timer] of this.state.pendingEffects) {
       clearTimeout(timer);
