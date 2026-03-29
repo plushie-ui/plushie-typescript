@@ -9,10 +9,11 @@ import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.
 import type { A11y, Color, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
+// Pane grid event types match the wire families directly.
 const PANE_GRID_HANDLERS = {
-  onPaneClick: "clicked",
-  onPaneResize: "resized",
-  onPaneDrag: "dragged",
+  onPaneClick: "pane_clicked",
+  onPaneResize: "pane_resized",
+  onPaneDrag: "pane_dragged",
 } as const;
 
 /** Props for the PaneGrid widget. */

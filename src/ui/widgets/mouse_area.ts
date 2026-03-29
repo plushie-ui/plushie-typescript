@@ -9,19 +9,27 @@ import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.
 import type { A11y } from "../types.js";
 import { encodeA11y } from "../types.js";
 
-const MOUSE_AREA_HANDLERS = {
-  onPress: "press",
-  onRelease: "release",
-  onRightPress: "right_press",
-  onRightRelease: "right_release",
-  onMiddlePress: "middle_press",
-  onMiddleRelease: "middle_release",
-  onDoubleClick: "double_click",
-  onEnter: "enter",
-  onExit: "exit",
-  onMove: "move",
-  onScroll: "scroll",
-} as const;
+// Handler event type (for handler map registration) and wire prop suffix
+// (for the boolean enable prop sent to the renderer).
+//
+// The handler event type matches the wire family the renderer emits.
+// The wire prop suffix is what the renderer checks (on_<suffix>).
+// These differ because mouse area wire families gained a mouse_ prefix
+// but the renderer props didn't.
+const MOUSE_AREA_EVENTS: Record<string, { readonly eventType: string; readonly wireProp: string }> =
+  {
+    onPress: { eventType: "click", wireProp: "press" },
+    onRelease: { eventType: "click", wireProp: "release" },
+    onRightPress: { eventType: "mouse_right_press", wireProp: "right_press" },
+    onRightRelease: { eventType: "mouse_right_release", wireProp: "right_release" },
+    onMiddlePress: { eventType: "mouse_middle_press", wireProp: "middle_press" },
+    onMiddleRelease: { eventType: "mouse_middle_release", wireProp: "middle_release" },
+    onDoubleClick: { eventType: "mouse_double_click", wireProp: "double_click" },
+    onEnter: { eventType: "mouse_enter", wireProp: "enter" },
+    onExit: { eventType: "mouse_exit", wireProp: "exit" },
+    onMove: { eventType: "mouse_move", wireProp: "move" },
+    onScroll: { eventType: "mouse_scroll", wireProp: "scroll" },
+  };
 
 /** Props for the MouseArea widget. */
 export interface MouseAreaProps {
@@ -62,10 +70,12 @@ export interface MouseAreaProps {
 export function MouseArea(props: MouseAreaProps): UINode {
   const id = props.id ?? autoId("mouse_area");
   const children = props.children ?? [];
+
+  // Build handler prop mapping: prop name -> event type for handler registration
   const handlerProps: Record<string, string> = {};
-  for (const [key, wire] of Object.entries(MOUSE_AREA_HANDLERS)) {
+  for (const [key, spec] of Object.entries(MOUSE_AREA_EVENTS)) {
     if (typeof (props as Record<string, unknown>)[key] === "function") {
-      handlerProps[key] = wire;
+      handlerProps[key] = spec.eventType;
     }
   }
   const { clean, meta } = extractHandlers(id, props, handlerProps);
@@ -74,11 +84,11 @@ export function MouseArea(props: MouseAreaProps): UINode {
   putIf(p, clean.cursor, "cursor");
   putIf(p, clean.a11y, "a11y", encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
-  // Boolean flags for event enablement
-  for (const [key, wire] of Object.entries(MOUSE_AREA_HANDLERS)) {
+  // Boolean flags for event enablement (wire prop names, not event types)
+  for (const [key, spec] of Object.entries(MOUSE_AREA_EVENTS)) {
     const val = (props as Record<string, unknown>)[key];
-    if (typeof val === "boolean") putIf(p, val, `on_${wire}`);
-    else if (typeof val === "function") p[`on_${wire}`] = true;
+    if (typeof val === "boolean") putIf(p, val, `on_${spec.wireProp}`);
+    else if (typeof val === "function") p[`on_${spec.wireProp}`] = true;
   }
   return containerNodeWithMeta(
     id,

@@ -9,7 +9,7 @@ import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.
 import type { A11y } from "../types.js";
 import { encodeA11y } from "../types.js";
 
-const _SENSOR_HANDLERS = { onResize: "resize" } as const;
+const _SENSOR_HANDLERS = { onResize: "sensor_resize" } as const;
 
 /** Props for the Sensor widget. */
 export interface SensorProps {
@@ -33,7 +33,7 @@ export function Sensor(props: SensorProps): UINode {
   const id = props.id ?? autoId("sensor");
   const children = props.children ?? [];
   const handlerProps: Record<string, string> = {};
-  if (typeof props.onResize === "function") handlerProps["onResize"] = "resize";
+  if (typeof props.onResize === "function") handlerProps["onResize"] = "sensor_resize";
   const { clean, meta } = extractHandlers(id, props, handlerProps);
 
   const p: Record<string, unknown> = {};

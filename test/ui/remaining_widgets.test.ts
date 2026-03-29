@@ -618,7 +618,7 @@ describe("PaneGrid", () => {
     expect(node.props["onPaneClick"]).toBeUndefined();
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(2);
-    expect(handlers.map((h) => h.eventType).sort()).toEqual(["clicked", "resized"]);
+    expect(handlers.map((h) => h.eventType).sort()).toEqual(["pane_clicked", "pane_resized"]);
   });
 });
 
@@ -658,7 +658,7 @@ describe("MouseArea", () => {
     expect(node.props["onRightPress"]).toBeUndefined();
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("right_press");
+    expect(handlers[0]!.eventType).toBe("mouse_right_press");
   });
 
   test("boolean handler sets wire prop without registering", () => {
@@ -672,7 +672,11 @@ describe("MouseArea", () => {
     mouseArea({ id: "ma4", onEnter: h, onExit: h, onMove: h }, []);
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(3);
-    expect(handlers.map((e) => e.eventType).sort()).toEqual(["enter", "exit", "move"]);
+    expect(handlers.map((e) => e.eventType).sort()).toEqual([
+      "mouse_enter",
+      "mouse_exit",
+      "mouse_move",
+    ]);
   });
 });
 
@@ -694,7 +698,7 @@ describe("Sensor", () => {
     expect(node.props["onResize"]).toBeUndefined();
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("resize");
+    expect(handlers[0]!.eventType).toBe("sensor_resize");
   });
 
   test("boolean onResize sets wire prop without handler", () => {
@@ -746,7 +750,7 @@ describe("Canvas", () => {
     expect(node.props["onPress"]).toBeUndefined();
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("press");
+    expect(handlers[0]!.eventType).toBe("canvas_press");
   });
 
   test("boolean handler sets wire prop without registering", () => {

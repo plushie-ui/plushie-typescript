@@ -9,12 +9,13 @@ import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.
 import type { A11y, Color, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
-const CANVAS_HANDLERS = {
-  onPress: "press",
-  onRelease: "release",
-  onMove: "move",
-  onScroll: "scroll",
-} as const;
+// Handler event type (matches wire family) and wire prop suffix (matches renderer prop).
+const CANVAS_EVENTS: Record<string, { readonly eventType: string; readonly wireProp: string }> = {
+  onPress: { eventType: "canvas_press", wireProp: "press" },
+  onRelease: { eventType: "canvas_release", wireProp: "release" },
+  onMove: { eventType: "canvas_move", wireProp: "move" },
+  onScroll: { eventType: "canvas_scroll", wireProp: "scroll" },
+};
 
 /** Props for the Canvas widget. */
 export interface CanvasProps {
@@ -56,9 +57,9 @@ export function Canvas(props: CanvasProps): UINode {
   const id = props.id ?? autoId("canvas");
   const children = props.children ?? [];
   const handlerProps: Record<string, string> = {};
-  for (const [key, wire] of Object.entries(CANVAS_HANDLERS)) {
+  for (const [key, spec] of Object.entries(CANVAS_EVENTS)) {
     if (typeof (props as Record<string, unknown>)[key] === "function") {
-      handlerProps[key] = wire;
+      handlerProps[key] = spec.eventType;
     }
   }
   const { clean, meta } = extractHandlers(id, props, handlerProps);
@@ -74,10 +75,10 @@ export function Canvas(props: CanvasProps): UINode {
   putIf(p, clean.role, "role");
   putIf(p, clean.arrowMode, "arrow_mode");
   putIf(p, clean.eventRate, "event_rate");
-  for (const [key, wire] of Object.entries(CANVAS_HANDLERS)) {
+  for (const [key, spec] of Object.entries(CANVAS_EVENTS)) {
     const val = (props as Record<string, unknown>)[key];
-    if (typeof val === "boolean") putIf(p, val, `on_${wire}`);
-    else if (typeof val === "function") p[`on_${wire}`] = true;
+    if (typeof val === "boolean") putIf(p, val, `on_${spec.wireProp}`);
+    else if (typeof val === "function") p[`on_${spec.wireProp}`] = true;
   }
   return containerNodeWithMeta(
     id,
