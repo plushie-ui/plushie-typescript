@@ -184,15 +184,19 @@ export function encodeSubscribe(
   kind: string,
   tag: string,
   maxRate?: number,
+  windowId?: string,
 ): WireMessage {
   const msg: WireMessage = { type: "subscribe", session, kind, tag };
   if (maxRate !== undefined) msg["max_rate"] = maxRate;
+  if (windowId !== undefined) msg["window_id"] = windowId;
   return msg;
 }
 
 /** Encode an Unsubscribe message. */
-export function encodeUnsubscribe(session: string, kind: string): WireMessage {
-  return { type: "unsubscribe", session, kind };
+export function encodeUnsubscribe(session: string, kind: string, tag?: string): WireMessage {
+  const msg: WireMessage = { type: "unsubscribe", session, kind };
+  if (tag !== undefined) msg["tag"] = tag;
+  return msg;
 }
 
 /** Encode a WidgetOp message. */

@@ -789,9 +789,9 @@ export class Runtime<M> {
     }
 
     // Stop removed subscriptions
-    for (const oldKey of this.state.subscriptionMap.keys()) {
+    for (const [oldKey, oldSub] of this.state.subscriptionMap) {
       if (!newKeys.has(oldKey)) {
-        this.stopSubscription(oldKey);
+        this.stopSubscription(oldKey, oldSub);
       }
     }
 
@@ -806,7 +806,9 @@ export class Runtime<M> {
     for (const [key, newSub] of newKeys) {
       const oldSub = this.state.subscriptionMap.get(key);
       if (oldSub && oldSub.maxRate !== newSub.maxRate && newSub.type !== "every") {
-        this.send(encodeSubscribe(this.sessionId, newSub.type, newSub.tag, newSub.maxRate));
+        this.send(
+          encodeSubscribe(this.sessionId, newSub.type, newSub.tag, newSub.maxRate, newSub.windowId),
+        );
       }
     }
 
@@ -833,11 +835,11 @@ export class Runtime<M> {
       this.startTimerSubscription(key, sub.interval, sub.tag);
     } else {
       // Renderer subscription: send subscribe message
-      this.send(encodeSubscribe(this.sessionId, sub.type, sub.tag, sub.maxRate));
+      this.send(encodeSubscribe(this.sessionId, sub.type, sub.tag, sub.maxRate, sub.windowId));
     }
   }
 
-  private stopSubscription(key: string): void {
+  private stopSubscription(key: string, sub?: Subscription): void {
     // Check if it's a timer
     const timer = this.state.pendingTimers.get(key);
     if (timer) {
@@ -850,7 +852,8 @@ export class Runtime<M> {
     const colonIdx = key.indexOf(":");
     if (colonIdx !== -1) {
       const kind = key.slice(0, colonIdx);
-      this.send(encodeUnsubscribe(this.sessionId, kind));
+      // Include tag for targeted removal when the subscription is window-scoped
+      this.send(encodeUnsubscribe(this.sessionId, kind, sub?.windowId ? sub.tag : undefined));
     }
   }
 

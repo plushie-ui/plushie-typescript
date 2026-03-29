@@ -34,4 +34,26 @@ describe("Subscription", () => {
     const keys = Subscription.onKeyPress("x");
     expect(Subscription.key(timer)).not.toBe(Subscription.key(keys));
   });
+
+  test("window option scopes subscription to a window", () => {
+    const sub = Subscription.onKeyPress("keys", { window: "editor" });
+    expect(sub.windowId).toBe("editor");
+  });
+
+  test("key() distinguishes window-scoped subscriptions", () => {
+    const global = Subscription.onKeyPress("keys");
+    const scoped = Subscription.onKeyPress("keys", { window: "editor" });
+    expect(Subscription.key(global)).not.toBe(Subscription.key(scoped));
+  });
+
+  test("forWindow() scopes a list of subscriptions", () => {
+    const subs = Subscription.forWindow("editor", [
+      Subscription.onKeyPress("keys"),
+      Subscription.onMouseMove("mouse", { maxRate: 60 }),
+    ]);
+    expect(subs).toHaveLength(2);
+    expect(subs[0]!.windowId).toBe("editor");
+    expect(subs[1]!.windowId).toBe("editor");
+    expect(subs[1]!.maxRate).toBe(60);
+  });
 });

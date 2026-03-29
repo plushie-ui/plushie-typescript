@@ -45,6 +45,8 @@ export interface Subscription {
   readonly tag: string;
   readonly interval?: number;
   readonly maxRate?: number;
+  /** Scope the subscription to a specific window. Events from other windows are filtered. */
+  readonly windowId?: string | undefined;
 }
 
 /**
