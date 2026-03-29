@@ -591,11 +591,20 @@ export class Runtime<M> {
       return "mouse:moved";
     if (event.kind === "widget") {
       const we = event as WidgetEvent;
-      if (we.type === "sensor_resize") return `sensor:${we.windowId}:${we.id}`;
-      if (we.type === "canvas_move") return `canvas_move:${we.windowId}:${we.id}`;
-      if (we.type === "mouse_move") return `mouse_move:${we.windowId}:${we.id}`;
-      if (we.type === "mouse_scroll") return `mouse_scroll:${we.windowId}:${we.id}`;
-      if (we.type === "pane_resized") return `pane_resized:${we.windowId}:${we.id}`;
+      switch (we.type) {
+        case "sensor_resize":
+        case "canvas_move":
+        case "mouse_move":
+        case "mouse_scroll":
+        case "pane_resized": {
+          // Use the full scoped path (scope reversed + id) so widgets with the
+          // same local id in different scopes don't collide. Example: form/sensor
+          // and sidebar/sensor both have id "sensor" but must coalesce separately.
+          const fullId =
+            we.scope.length === 0 ? we.id : [...we.scope].reverse().join("/") + "/" + we.id;
+          return `${we.type}\0${we.windowId}\0${fullId}`;
+        }
+      }
     }
     return null;
   }
