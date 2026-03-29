@@ -21,16 +21,15 @@ export const binaryPath: string | null = (() => {
   const os = platform === "darwin" ? "darwin" : platform === "win32" ? "windows" : "linux";
   const cpu = arch === "x64" ? "x86_64" : arch === "arm64" ? "aarch64" : arch;
   const ext = os === "windows" ? ".exe" : "";
-  const name = `plushie-${os}-${cpu}${ext}`;
+  const name = `plushie-renderer-${os}-${cpu}${ext}`;
 
   const downloadPath = resolve("node_modules", ".plushie", "bin", name);
   if (existsSync(downloadPath)) return downloadPath;
 
   // 3. Local build paths
   const localPaths = [
-    resolve("plushie"),
-    resolve("..", "plushie", "target", "release", "plushie"),
-    resolve("..", "plushie", "target", "debug", "plushie"),
+    resolve("..", "plushie-renderer", "target", "release", "plushie-renderer"),
+    resolve("..", "plushie-renderer", "target", "debug", "plushie-renderer"),
   ];
   for (const p of localPaths) {
     if (existsSync(p)) return p;

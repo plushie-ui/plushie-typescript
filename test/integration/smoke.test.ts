@@ -58,7 +58,7 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
       if (hello.type === "hello") {
         expect(hello.data.protocol).toBe(PROTOCOL_VERSION);
         expect(hello.data.mode).toBe("mock");
-        expect(hello.data.name).toBe("plushie");
+        expect(hello.data.name).toBe("plushie-renderer");
       }
 
       // Send a tree with a button
@@ -73,10 +73,13 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
       // Click the button
       const interactPromise = waitForMessage(transport, (d) => d.type === "interact_response");
       transport.send(
-        encodeInteract("", "click-1", "click", { by: "id", value: "btn" }, {}) as Record<
-          string,
-          unknown
-        >,
+        encodeInteract(
+          "",
+          "click-1",
+          "click",
+          { by: "id", value: "btn", window_id: "main" },
+          {},
+        ) as Record<string, unknown>,
       );
       const response = await interactPromise;
 
@@ -158,9 +161,9 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
 
       transport.send(
         encodeSnapshot("", {
-          id: "root",
-          type: "column",
-          props: {},
+          id: "main",
+          type: "window",
+          props: { title: "Test" },
           children: [
             {
               id: "input",
@@ -179,7 +182,7 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
           "",
           "i1",
           "type_text",
-          { by: "id", value: "input" },
+          { by: "id", value: "input", window_id: "main" },
           { text: "hi" },
         ) as Record<string, unknown>,
       );
@@ -211,9 +214,9 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
 
       transport.send(
         encodeSnapshot("", {
-          id: "root",
-          type: "column",
-          props: {},
+          id: "main",
+          type: "window",
+          props: { title: "Test" },
           children: [
             {
               id: "check",
@@ -227,10 +230,13 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
 
       const togglePromise = waitForMessage(transport, (d) => d.type === "interact_response");
       transport.send(
-        encodeInteract("", "i2", "toggle", { by: "id", value: "check" }, { value: true }) as Record<
-          string,
-          unknown
-        >,
+        encodeInteract(
+          "",
+          "i2",
+          "toggle",
+          { by: "id", value: "check", window_id: "main" },
+          { value: true },
+        ) as Record<string, unknown>,
       );
       const response = await togglePromise;
 
@@ -307,9 +313,9 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
 
       transport.send(
         encodeSnapshot("", {
-          id: "root",
-          type: "column",
-          props: {},
+          id: "main",
+          type: "window",
+          props: { title: "Test" },
           children: [
             {
               id: "vol",
@@ -323,10 +329,13 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
 
       const slidePromise = waitForMessage(transport, (d) => d.type === "interact_response");
       transport.send(
-        encodeInteract("", "s1", "slide", { by: "id", value: "vol" }, { value: 75 }) as Record<
-          string,
-          unknown
-        >,
+        encodeInteract(
+          "",
+          "s1",
+          "slide",
+          { by: "id", value: "vol", window_id: "main" },
+          { value: 75 },
+        ) as Record<string, unknown>,
       );
       const response = await slidePromise;
 
