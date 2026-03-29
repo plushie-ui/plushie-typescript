@@ -33,6 +33,9 @@
 
 import type {
   AsyncEvent,
+  CanvasInteractionData,
+  CanvasMoveData,
+  CanvasScrollData,
   EffectEvent,
   Event,
   ExtensionCommandErrorEvent,
@@ -40,6 +43,7 @@ import type {
   KeyEvent,
   ModifiersEvent,
   MouseEvent,
+  SensorResizeData,
   StreamEvent,
   SystemEvent,
   TimerEvent,
@@ -146,12 +150,19 @@ export function isWindow(event: Event): event is WindowEvent {
 // Canvas interaction types
 const CANVAS_TYPES = new Set(["canvas_press", "canvas_release", "canvas_move", "canvas_scroll"]);
 
-/** Narrows to a canvas interaction event (press, release, move, scroll on the canvas surface). */
+/**
+ * Narrows to a canvas interaction event (press, release, move, scroll on the canvas surface).
+ *
+ * All canvas interaction events carry at least `data.x` and `data.y`.
+ * Press/release events also carry `data.button`. Scroll events carry
+ * `data.delta_x` and `data.delta_y`.
+ */
 export function isCanvas(
   event: Event,
   id?: string,
 ): event is WidgetEvent & {
   readonly type: "canvas_press" | "canvas_release" | "canvas_move" | "canvas_scroll";
+  readonly data: CanvasInteractionData | CanvasMoveData | CanvasScrollData;
 } {
   return (
     event.kind === "widget" &&
@@ -213,11 +224,11 @@ export function isPane(
   );
 }
 
-/** Narrows to a sensor resize event. */
+/** Narrows to a sensor resize event with typed width/height data. */
 export function isSensor(
   event: Event,
   id?: string,
-): event is WidgetEvent & { readonly type: "sensor_resize" } {
+): event is WidgetEvent & { readonly type: "sensor_resize"; readonly data: SensorResizeData } {
   return (
     event.kind === "widget" &&
     (event as WidgetEvent).type === "sensor_resize" &&

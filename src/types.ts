@@ -150,6 +150,76 @@ export interface WidgetEvent extends EventBase {
   readonly data: Readonly<Record<string, unknown>> | null;
 }
 
+// -- Typed event data interfaces ------------------------------------------
+//
+// These describe the `data` field shape for specific WidgetEvent types.
+// Type guards in events.ts use them to narrow `data` so callers get
+// typed field access without manual casts.
+
+/** Data for canvas_press and canvas_release events. */
+export interface CanvasInteractionData {
+  readonly x: number;
+  readonly y: number;
+  readonly button: string;
+  readonly [key: string]: unknown;
+}
+
+/** Data for canvas_move events. */
+export interface CanvasMoveData {
+  readonly x: number;
+  readonly y: number;
+  readonly [key: string]: unknown;
+}
+
+/** Data for canvas_scroll events. */
+export interface CanvasScrollData {
+  readonly x: number;
+  readonly y: number;
+  readonly delta_x: number;
+  readonly delta_y: number;
+  readonly [key: string]: unknown;
+}
+
+/** Data for sensor_resize events. */
+export interface SensorResizeData {
+  readonly width: number;
+  readonly height: number;
+  readonly [key: string]: unknown;
+}
+
+/** Data for scroll events (scrollable widget). */
+export interface ScrollData {
+  readonly absolute_x: number;
+  readonly absolute_y: number;
+  readonly relative_x: number;
+  readonly relative_y: number;
+  readonly [key: string]: unknown;
+}
+
+/** Data for canvas_element_drag events. */
+export interface CanvasElementDragData {
+  readonly x: number;
+  readonly y: number;
+  readonly dx: number;
+  readonly dy: number;
+  readonly [key: string]: unknown;
+}
+
+/** Data for canvas_element_key_press events. */
+export interface CanvasElementKeyPressData {
+  readonly key: string;
+  readonly modifiers: Readonly<Record<string, unknown>>;
+  readonly text: string;
+  readonly [key: string]: unknown;
+}
+
+/** Data for canvas_element_key_release events. */
+export interface CanvasElementKeyReleaseData {
+  readonly key: string;
+  readonly modifiers: Readonly<Record<string, unknown>>;
+  readonly [key: string]: unknown;
+}
+
 export interface KeyEvent extends EventBase {
   readonly kind: "key";
   readonly type: "press" | "release";

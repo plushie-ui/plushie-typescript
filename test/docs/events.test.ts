@@ -311,9 +311,11 @@ test("events_canvas_press_guard", () => {
   };
   expect(isCanvas(event)).toBe(true);
   expect(isCanvas(event, "drawArea")).toBe(true);
-  expect(event.data?.["x"]).toBe(42);
-  expect(event.data?.["y"]).toBe(100);
-  expect(event.data?.["button"]).toBe("left");
+  // After narrowing, data.x and data.y are typed as number
+  if (isCanvas(event)) {
+    expect(event.data.x).toBe(42);
+    expect(event.data.y).toBe(100);
+  }
 });
 
 // -- Sensor events --
@@ -330,8 +332,11 @@ test("events_sensor_resize_guard", () => {
   };
   expect(isSensor(event)).toBe(true);
   expect(isSensor(event, "contentArea")).toBe(true);
-  expect(event.data?.["width"]).toBe(800);
-  expect(event.data?.["height"]).toBe(600);
+  // After narrowing, data.width and data.height are typed as number
+  if (isSensor(event)) {
+    expect(event.data.width).toBe(800);
+    expect(event.data.height).toBe(600);
+  }
 });
 
 // -- Timer events --

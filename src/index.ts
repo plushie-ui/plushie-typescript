@@ -82,6 +82,12 @@ export {
 // Core types.
 export type {
   AsyncEvent,
+  CanvasElementDragData,
+  CanvasElementKeyPressData,
+  CanvasElementKeyReleaseData,
+  CanvasInteractionData,
+  CanvasMoveData,
+  CanvasScrollData,
   Command as CommandType,
   DeepReadonly,
   EffectEvent,
@@ -93,6 +99,8 @@ export type {
   Modifiers,
   ModifiersEvent,
   MouseEvent,
+  ScrollData,
+  SensorResizeData,
   StreamEvent,
   Subscription as SubscriptionType,
   SystemEvent,
