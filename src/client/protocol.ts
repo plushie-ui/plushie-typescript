@@ -584,8 +584,14 @@ export function decodeEvent(raw: WireMessage): Event {
     return decodeSystemEvent(raw, family, data);
   }
 
-  // Fallback: treat as a generic widget event for unrecognized families
-  return decodeWidgetEvent(raw, family, data);
+  // The renderer and SDK are lock-step; an unrecognized family is a protocol
+  // bug. Throwing here surfaces the issue immediately instead of silently
+  // producing malformed events that cause confusing failures downstream.
+  throw new Error(
+    `Unknown event family "${family}". ` +
+      "The renderer sent an event type this SDK version does not recognize. " +
+      "Ensure the SDK and renderer versions are compatible.",
+  );
 }
 
 // -- Widget events --------------------------------------------------------

@@ -762,21 +762,18 @@ describe("decodeEvent", () => {
     }
   });
 
-  // -- Fallback --
+  // -- Strict decode --
 
-  test("unrecognized family falls through to widget event", () => {
-    const event = decodeEvent({
-      type: "event",
-      session: "",
-      family: "custom_extension_event",
-      id: "widget_1",
-      window_id: "main",
-      value: "custom_data",
-    });
-    expect(event.kind).toBe("widget");
-    if (event.kind === "widget") {
-      expect(event.type).toBe("custom_extension_event");
-    }
+  test("unrecognized family throws", () => {
+    expect(() =>
+      decodeEvent({
+        type: "event",
+        session: "",
+        family: "completely_unknown_event",
+        id: "widget_1",
+        window_id: "main",
+      }),
+    ).toThrow(/Unknown event family "completely_unknown_event"/);
   });
 });
 
