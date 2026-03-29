@@ -34,15 +34,15 @@ export type {
 } from "./app.js";
 export { app } from "./app.js";
 
-// Canvas widget system.
+// Widget handler system (stateful pure-TypeScript widgets).
 export type {
-  CanvasWidgetDef,
-  CanvasWidgetOpts,
   EventAction,
   Registry,
   RegistryEntry,
-} from "./canvas-widget.js";
-export { buildCanvasWidget } from "./canvas-widget.js";
+  WidgetDef,
+  WidgetOpts,
+} from "./widget-handler.js";
+export { buildWidget } from "./widget-handler.js";
 
 // Command constructors as a namespace-style object.
 import * as Command from "./command.js";
@@ -162,13 +162,16 @@ import * as Keys from "./keys.js";
 // Dev server.
 export type { DevServerOptions } from "./dev-server.js";
 export { DevServer } from "./dev-server.js";
-export type { ExtensionPropType, ExtensionWidgetConfig } from "./extension.js";
-// Extension widget system.
-export { defineExtensionWidget, extensionCommands } from "./extension.js";
-// Extension build-time types (values are in extension-build.ts,
-// imported only by the CLI to avoid pulling node:path into browser builds).
-export type { ExtensionBuildConfig } from "./extension-build.js";
 export { resolveKey } from "./keys.js";
+export type {
+  NativeWidgetConfig,
+  NativeWidgetPropType,
+} from "./native-widget.js";
+// Native widget system (Rust-backed widgets).
+export { defineNativeWidget, nativeWidgetCommands } from "./native-widget.js";
+// Native widget build-time types (values are in native-widget-build.ts,
+// imported only by the CLI to avoid pulling node:path into browser builds).
+export type { NativeWidgetBuildConfig } from "./native-widget-build.js";
 export type { Instruction, RunResult, Script, ScriptHeader } from "./script.js";
 // Script parser/runner.
 export { parseScript, parseScriptFile, runScript } from "./script.js";

@@ -1,26 +1,26 @@
 /**
- * Build-time extension functions.
+ * Build-time native widget functions.
  *
  * These functions generate Cargo workspace files for building custom
  * plushie binaries with native widget extensions. They require Node.js
  * (node:path) and are NOT safe to import in browser bundles.
  *
- * Runtime extension support (defineExtensionWidget, extensionCommands)
- * lives in extension.ts and is browser-safe.
+ * Runtime native widget support (defineNativeWidget, nativeWidgetCommands)
+ * lives in native-widget.ts and is browser-safe.
  *
  * @module
  */
 
 import * as nodePath from "node:path";
-import type { ExtensionWidgetConfig } from "./extension.js";
+import type { NativeWidgetConfig } from "./native-widget.js";
 
 /**
- * Configuration for building a custom plushie binary with extensions.
+ * Configuration for building a custom plushie binary with native widgets.
  * Used by the CLI `plushie build` command.
  */
-export interface ExtensionBuildConfig {
-  /** List of extension widget configs to include in the custom binary. */
-  readonly extensions: readonly ExtensionWidgetConfig[];
+export interface NativeWidgetBuildConfig {
+  /** List of native widget configs to include in the custom binary. */
+  readonly extensions: readonly NativeWidgetConfig[];
   /** Path to the plushie Rust source checkout. If omitted, uses published crates. */
   readonly sourcePath?: string;
   /** Custom binary name (defaults to "plushie-custom"). */
@@ -39,7 +39,7 @@ export interface ExtensionBuildConfig {
  *
  * @throws {Error} If validation fails.
  */
-export function validateExtensions(extensions: readonly ExtensionWidgetConfig[]): void {
+export function validateExtensions(extensions: readonly NativeWidgetConfig[]): void {
   // Check for native build fields
   const nativeExts = extensions.filter((e) => e.rustCrate || e.rustConstructor);
   for (const ext of nativeExts) {
@@ -84,7 +84,7 @@ export function validateExtensions(extensions: readonly ExtensionWidgetConfig[])
  * @param config - Build configuration.
  * @returns Cargo.toml content as a string.
  */
-export function generateCargoToml(config: ExtensionBuildConfig): string {
+export function generateCargoToml(config: NativeWidgetBuildConfig): string {
   const binName = config.binaryName ?? "plushie-custom";
   const packageName = binName.replace(/-/g, "_");
   const nativeExts = config.extensions.filter((e) => e.rustCrate);
@@ -144,7 +144,7 @@ ${extDeps}
  * @param extensions - Extension configs with rustConstructor.
  * @returns main.rs content as a string.
  */
-export function generateMainRs(extensions: readonly ExtensionWidgetConfig[]): string {
+export function generateMainRs(extensions: readonly NativeWidgetConfig[]): string {
   const nativeExts = extensions.filter((e) => e.rustConstructor);
 
   // Validate constructors (must be valid Rust identifiers/paths)

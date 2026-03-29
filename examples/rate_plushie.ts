@@ -1,6 +1,6 @@
 // App rating page for Plushie.
 //
-// Demonstrates custom canvas widgets (starRating, themeToggle) composed
+// Demonstrates custom widget handlers (starRating, themeToggle) composed
 // with styled containers using the full function API. The "Dark humor"
 // toggle animates the emoji and flips the entire page theme.
 //
@@ -331,7 +331,7 @@ export default app<Model>({
     }
 
     // ThemeToggle emits "toggle" with { value: boolean }.
-    // Animation is managed internally by the canvas_widget.
+    // Animation is managed internally by the widget handler.
     if (isWidget(event) && event.type === "toggle" && event.id === "theme-toggle") {
       return { ...state, darkMode: Boolean(event.data?.["value"]) };
     }

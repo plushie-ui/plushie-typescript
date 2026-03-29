@@ -9,8 +9,8 @@
 
 import type { CanvasShape, PathCommand } from "../../src/canvas/index.js";
 import { close, group, lineTo, moveTo, path } from "../../src/canvas/index.js";
-import type { CanvasWidgetDef, Event, EventAction, UINode } from "../../src/index.js";
-import { buildCanvasWidget } from "../../src/index.js";
+import type { Event, EventAction, UINode, WidgetDef } from "../../src/index.js";
+import { buildWidget } from "../../src/index.js";
 import { Canvas } from "../../src/ui/widgets/canvas.js";
 
 // -- Types --------------------------------------------------------------------
@@ -173,7 +173,7 @@ function render(id: string, props: StarRatingProps, state: StarState): UINode {
 
 // -- Canvas widget definition -------------------------------------------------
 
-const starRatingDef: CanvasWidgetDef<StarState, StarRatingProps> = {
+const starRatingDef: WidgetDef<StarState, StarRatingProps> = {
   init: () => ({ hover: null }),
   render,
   handleEvent,
@@ -181,5 +181,5 @@ const starRatingDef: CanvasWidgetDef<StarState, StarRatingProps> = {
 
 /** Build a star rating canvas widget. */
 export function starRating(id: string, props: StarRatingProps): UINode {
-  return buildCanvasWidget(starRatingDef, id, props);
+  return buildWidget(starRatingDef, id, props);
 }

@@ -216,14 +216,14 @@ describe("Command", () => {
 
   // -- Extension commands ---------------------------------------------------
 
-  test("extensionCommand() sends command to extension widget", () => {
-    const cmd = Command.extensionCommand("ext-1", "set_value", { value: 42 });
+  test("nativeWidgetCommand() sends command to extension widget", () => {
+    const cmd = Command.nativeWidgetCommand("ext-1", "set_value", { value: 42 });
     expect(cmd.type).toBe("extension_command");
     expect(cmd.payload).toEqual({ node_id: "ext-1", op: "set_value", payload: { value: 42 } });
   });
 
-  test("extensionCommand() defaults payload to empty object", () => {
-    const cmd = Command.extensionCommand("ext-1", "reset");
+  test("nativeWidgetCommand() defaults payload to empty object", () => {
+    const cmd = Command.nativeWidgetCommand("ext-1", "reset");
     expect(cmd.payload["payload"]).toEqual({});
   });
 

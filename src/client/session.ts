@@ -10,7 +10,7 @@
  * @module
  */
 
-import { type ExtensionWidgetConfig, extensionConfigKey } from "../extension.js";
+import { type NativeWidgetConfig, nativeWidgetConfigKey } from "../native-widget.js";
 import type { DecodedResponse, HelloInfo, WireMessage } from "./protocol.js";
 import { decodeMessage, PROTOCOL_VERSION } from "./protocol.js";
 import type { Transport } from "./transport.js";
@@ -24,7 +24,7 @@ export interface ConnectOptions {
   /** Connection timeout in milliseconds (defaults to 10000). */
   timeout?: number;
   /** Native extensions this session expects the renderer to have loaded. */
-  expectedExtensions?: readonly (string | ExtensionWidgetConfig)[];
+  expectedExtensions?: readonly (string | NativeWidgetConfig)[];
 }
 
 /** Pending request awaiting a response. */
@@ -70,7 +70,7 @@ export class Session {
     const timeout = opts.timeout ?? 10_000;
     const settings = opts.settings ?? {};
     const expectedExtensions = (opts.expectedExtensions ?? []).map((ext) =>
-      typeof ext === "string" ? ext : extensionConfigKey(ext),
+      typeof ext === "string" ? ext : nativeWidgetConfigKey(ext),
     );
 
     return new Promise<HelloInfo>((resolve, reject) => {

@@ -480,10 +480,10 @@ export function paneRestore(paneGridId: string): Command {
   return cmd("widget_op", { op: "pane_restore", target: paneGridId });
 }
 
-// -- Extension commands -----------------------------------------------------
+// -- Native widget commands --------------------------------------------------
 
-/** Send a command to a native extension widget. */
-export function extensionCommand(
+/** Send a command to a native widget. */
+export function nativeWidgetCommand(
   nodeId: string,
   op: string,
   payload: Record<string, unknown> = {},
@@ -491,8 +491,8 @@ export function extensionCommand(
   return cmd("extension_command", { node_id: nodeId, op, payload });
 }
 
-/** Send a batch of extension commands (processed in one cycle). */
-export function extensionCommands(
+/** Send a batch of native widget commands (processed in one cycle). */
+export function nativeWidgetCommands(
   commands: Array<{ nodeId: string; op: string; payload?: Record<string, unknown> }>,
 ): Command {
   return cmd("extension_commands", { commands });

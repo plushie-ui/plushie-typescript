@@ -14,14 +14,14 @@
  * @module
  */
 
+import type { UINode } from "../types.js";
 import {
   getStandardProps,
   isPlaceholder,
   type Registry,
   type RegistryEntry,
   renderPlaceholder,
-} from "../canvas-widget.js";
-import type { UINode } from "../types.js";
+} from "../widget-handler.js";
 
 /**
  * A wire-compatible tree node. All keys are strings, all values

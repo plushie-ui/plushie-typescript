@@ -1,13 +1,13 @@
 /**
- * Extension widget support.
+ * Native widget support.
  *
- * Provides `defineExtensionWidget` for creating widget builder
- * functions for extension types, and `extensionCommands` for
- * generating Command constructors from extension config.
+ * Provides `defineNativeWidget` for creating widget builder
+ * functions backed by Rust extensions, and `nativeWidgetCommands`
+ * for generating Command constructors from widget config.
  *
- * This is the TypeScript equivalent of `use Plushie.Extension`
- * from the Elixir SDK -- not a macro system, but a function that
- * generates typed widget builders and command constructors.
+ * Native widgets are Rust-backed custom widgets that communicate
+ * over the wire protocol. Pure TypeScript widgets use the
+ * `WidgetDef` system in `widget-handler.ts` instead.
  *
  * @module
  */
@@ -26,7 +26,7 @@ import { withHandlersMeta } from "./ui/handlers.js";
  * - Generic: "any"
  * - Compound: { list: <element-type> }
  */
-export type ExtensionPropType =
+export type NativeWidgetPropType =
   | "string"
   | "number"
   | "boolean"
@@ -37,14 +37,14 @@ export type ExtensionPropType =
   | "font"
   | "style"
   | "any"
-  | { readonly list: ExtensionPropType };
+  | { readonly list: NativeWidgetPropType };
 
 /** Configuration for defining an extension widget. */
-export interface ExtensionWidgetConfig {
+export interface NativeWidgetConfig {
   /** Wire type name for the extension (e.g., "sparkline", "color_wheel"). */
   readonly type: string;
   /** Declared props with their types. Values are validated at build time. */
-  readonly props?: Readonly<Record<string, ExtensionPropType>>;
+  readonly props?: Readonly<Record<string, NativeWidgetPropType>>;
   /** Event names this widget can emit (e.g., ["change", "hover"]). */
   readonly events?: readonly string[];
   /** If true, the widget accepts children (container widget). */
@@ -83,7 +83,7 @@ function handlerPropName(eventType: string): string {
  *
  * For leaf widgets (container is false or omitted):
  * ```ts
- * const sparkline = defineExtensionWidget({
+ * const sparkline = defineNativeWidget({
  *   type: "sparkline",
  *   props: { values: "any", color: "color", height: "number" },
  *   events: ["hover"],
@@ -95,7 +95,7 @@ function handlerPropName(eventType: string): string {
  *
  * For container widgets:
  * ```ts
- * const panel = defineExtensionWidget({
+ * const panel = defineNativeWidget({
  *   type: "panel",
  *   props: { title: "string" },
  *   container: true,
@@ -105,8 +105,8 @@ function handlerPropName(eventType: string): string {
  * panel("main", { title: "Content" }, [text("greeting", "Hello")])
  * ```
  */
-export function defineExtensionWidget(
-  config: ExtensionWidgetConfig,
+export function defineNativeWidget(
+  config: NativeWidgetConfig,
 ): (id: string, opts?: Record<string, unknown>, children?: UINode[]) => UINode {
   const widgetType = config.type;
   const declaredEvents = config.events ?? [];
@@ -154,7 +154,7 @@ export function defineExtensionWidget(
   };
 }
 
-export function extensionConfigKey(config: Pick<ExtensionWidgetConfig, "type">): string {
+export function nativeWidgetConfigKey(config: Pick<NativeWidgetConfig, "type">): string {
   return config.type;
 }
 
@@ -171,14 +171,14 @@ export function extensionConfigKey(config: Pick<ExtensionWidgetConfig, "type">):
  *   commands: ["set_value", "reset"],
  * } as const
  *
- * const gauge = defineExtensionWidget(gaugeConfig)
- * const cmds = extensionCommands(gaugeConfig)
+ * const gauge = defineNativeWidget(gaugeConfig)
+ * const cmds = nativeWidgetCommands(gaugeConfig)
  * // cmds.set_value("my-gauge", { value: 42 })
  * // cmds.reset("my-gauge")
  * ```
  */
-export function extensionCommands(
-  config: ExtensionWidgetConfig,
+export function nativeWidgetCommands(
+  config: NativeWidgetConfig,
 ): Record<string, (nodeId: string, payload?: Record<string, unknown>) => Command> {
   const cmds: Record<string, (nodeId: string, payload?: Record<string, unknown>) => Command> = {};
 

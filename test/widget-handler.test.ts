@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
+import type { Event, UINode, WidgetEvent } from "../src/types.js";
 import {
-  buildCanvasWidget,
-  type CanvasWidgetDef,
+  buildWidget,
   collectSubscriptions,
   deriveRegistry,
   dispatchThroughWidgets,
@@ -10,8 +10,8 @@ import {
   makeEntry,
   parseWidgetTag,
   type RegistryEntry,
-} from "../src/canvas-widget.js";
-import type { Event, UINode, WidgetEvent } from "../src/types.js";
+  type WidgetDef,
+} from "../src/widget-handler.js";
 
 // -- Helpers -----------------------------------------------------------------
 
@@ -23,7 +23,7 @@ interface CounterProps {
   max: number;
 }
 
-function counterDef(): CanvasWidgetDef<CounterState, CounterProps> {
+function counterDef(): WidgetDef<CounterState, CounterProps> {
   return {
     init: () => ({ count: 0 }),
     render: (id, props, state) =>
@@ -50,7 +50,7 @@ function counterDef(): CanvasWidgetDef<CounterState, CounterProps> {
   };
 }
 
-function consumingDef(): CanvasWidgetDef<object, object> {
+function consumingDef(): WidgetDef<object, object> {
   return {
     init: () => ({}),
     render: (id) =>
@@ -64,7 +64,7 @@ function consumingDef(): CanvasWidgetDef<object, object> {
   };
 }
 
-function ignoringDef(): CanvasWidgetDef<object, object> {
+function ignoringDef(): WidgetDef<object, object> {
   return {
     init: () => ({}),
     render: (id) =>
@@ -78,7 +78,7 @@ function ignoringDef(): CanvasWidgetDef<object, object> {
   };
 }
 
-function updateStateDef(): CanvasWidgetDef<{ hover: boolean }, object> {
+function updateStateDef(): WidgetDef<{ hover: boolean }, object> {
   return {
     init: () => ({ hover: false }),
     render: (id) =>
@@ -113,12 +113,12 @@ function registryWith(entries: [string, RegistryEntry][]): Map<string, RegistryE
   return new Map(entries);
 }
 
-// -- buildCanvasWidget -------------------------------------------------------
+// -- buildWidget -------------------------------------------------------
 
-describe("buildCanvasWidget", () => {
+describe("buildWidget", () => {
   test("creates a placeholder node with canvas type", () => {
     const def = counterDef();
-    const node = buildCanvasWidget(def, "stars", { max: 5 });
+    const node = buildWidget(def, "stars", { max: 5 });
     expect(node.id).toBe("stars");
     expect(node.type).toBe("canvas");
     expect(node.children).toHaveLength(0);
@@ -127,14 +127,14 @@ describe("buildCanvasWidget", () => {
 
   test("stores def and props in meta", () => {
     const def = counterDef();
-    const node = buildCanvasWidget(def, "stars", { max: 5 });
+    const node = buildWidget(def, "stars", { max: 5 });
     expect(node.meta).toBeDefined();
-    expect(node.meta!["__canvas_widget__"]).toBe(def);
-    expect(node.meta!["__canvas_widget_props__"]).toEqual({ max: 5 });
+    expect(node.meta!["__widget_handler__"]).toBe(def);
+    expect(node.meta!["__widget_handler_props__"]).toEqual({ max: 5 });
   });
 
   test("placeholder node is frozen", () => {
-    const node = buildCanvasWidget(counterDef(), "stars", { max: 5 });
+    const node = buildWidget(counterDef(), "stars", { max: 5 });
     expect(Object.isFrozen(node)).toBe(true);
     expect(Object.isFrozen(node.props)).toBe(true);
     expect(Object.isFrozen(node.children)).toBe(true);
@@ -269,7 +269,7 @@ describe("dispatchThroughWidgets", () => {
   test("chain walks innermost to outermost", () => {
     const calls: string[] = [];
 
-    const innerDef: CanvasWidgetDef<object, object> = {
+    const innerDef: WidgetDef<object, object> = {
       init: () => ({}),
       render: (id) =>
         Object.freeze({
@@ -284,7 +284,7 @@ describe("dispatchThroughWidgets", () => {
       },
     };
 
-    const outerDef: CanvasWidgetDef<object, object> = {
+    const outerDef: WidgetDef<object, object> = {
       init: () => ({}),
       render: (id) =>
         Object.freeze({
@@ -334,7 +334,7 @@ describe("dispatchThroughWidgets", () => {
   test("handler error is caught and treated as ignored", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const crashDef: CanvasWidgetDef<object, object> = {
+    const crashDef: WidgetDef<object, object> = {
       init: () => ({}),
       render: (id) =>
         Object.freeze({
@@ -363,7 +363,7 @@ describe("dispatchThroughWidgets", () => {
 
 describe("widget subscriptions", () => {
   test("collectSubscriptions gathers from all widgets", () => {
-    const def: CanvasWidgetDef<object, object> = {
+    const def: WidgetDef<object, object> = {
       init: () => ({}),
       render: (id) =>
         Object.freeze({
@@ -412,7 +412,7 @@ describe("handleWidgetTimer", () => {
   });
 
   test("routes timer to widget handler", () => {
-    const timerDef: CanvasWidgetDef<{ ticks: number }, object> = {
+    const timerDef: WidgetDef<{ ticks: number }, object> = {
       init: () => ({ ticks: 0 }),
       render: (id) =>
         Object.freeze({
@@ -442,7 +442,7 @@ describe("handleWidgetTimer", () => {
   });
 
   test("timer emit dispatches through scope chain", () => {
-    const emittingDef: CanvasWidgetDef<object, object> = {
+    const emittingDef: WidgetDef<object, object> = {
       init: () => ({}),
       render: (id) =>
         Object.freeze({
@@ -491,9 +491,9 @@ describe("deriveRegistry", () => {
       props: Object.freeze({}),
       children: Object.freeze([]),
       meta: Object.freeze({
-        __canvas_widget__: def,
-        __canvas_widget_props__: { max: 5 },
-        __canvas_widget_state__: { count: 3 },
+        __widget_handler__: def,
+        __widget_handler_props__: { max: 5 },
+        __widget_handler_state__: { count: 3 },
       }),
     });
     const node: UINode = Object.freeze({
@@ -517,9 +517,9 @@ describe("deriveRegistry", () => {
       props: Object.freeze({}),
       children: Object.freeze([]),
       meta: Object.freeze({
-        __canvas_widget__: def,
-        __canvas_widget_props__: { max: 5 },
-        __canvas_widget_state__: { count: 0 },
+        __widget_handler__: def,
+        __widget_handler_props__: { max: 5 },
+        __widget_handler_state__: { count: 0 },
       }),
     });
 

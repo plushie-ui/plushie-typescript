@@ -19,8 +19,8 @@ import {
   rotate,
   translate,
 } from "../../src/canvas/index.js";
-import type { CanvasWidgetDef, Event, EventAction, Subscription, UINode } from "../../src/index.js";
-import { buildCanvasWidget, Subscription as Sub } from "../../src/index.js";
+import type { Event, EventAction, Subscription, UINode, WidgetDef } from "../../src/index.js";
+import { buildWidget, Subscription as Sub } from "../../src/index.js";
 import { Canvas } from "../../src/ui/widgets/canvas.js";
 
 // -- Constants ----------------------------------------------------------------
@@ -180,7 +180,7 @@ function render(id: string, _props: ThemeToggleProps, state: ThemeToggleState): 
 
 // -- Canvas widget definition -------------------------------------------------
 
-const themeToggleDef: CanvasWidgetDef<ThemeToggleState, ThemeToggleProps> = {
+const themeToggleDef: WidgetDef<ThemeToggleState, ThemeToggleProps> = {
   init: () => ({ progress: 0.0, target: 0.0 }),
   render,
   handleEvent,
@@ -189,5 +189,5 @@ const themeToggleDef: CanvasWidgetDef<ThemeToggleState, ThemeToggleProps> = {
 
 /** Build a theme toggle canvas widget. */
 export function themeToggle(id: string): UINode {
-  return buildCanvasWidget(themeToggleDef, id, {});
+  return buildWidget(themeToggleDef, id, {});
 }

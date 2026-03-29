@@ -1,31 +1,31 @@
 /**
- * Canvas widget extension system.
+ * Widget handler system.
  *
- * Canvas widgets are pure TypeScript widgets that render via canvas shapes,
+ * Widgets are pure TypeScript widgets that render via canvas shapes,
  * manage internal state (hover, focus, animation), and transform raw
  * canvas events into semantic widget events via `handleEvent`.
  *
  * ## Defining a canvas widget
  *
  * ```ts
- * import { type CanvasWidgetDef, buildCanvasWidget } from 'plushie'
+ * import { type WidgetDef, buildWidget } from 'plushie'
  *
  * interface StarState { hover: string | null }
  * interface StarProps { rating: number; max: number }
  *
- * const starRating: CanvasWidgetDef<StarState, StarProps> = {
+ * const starRating: WidgetDef<StarState, StarProps> = {
  *   init: () => ({ hover: null }),
  *   render: (id, props, state) => canvas(id, {}, []),
  *   handleEvent: (event, state) => [{ type: 'ignored' }, state],
  * }
  *
  * // In your view:
- * buildCanvasWidget(starRating, 'stars', { rating: 3, max: 5 })
+ * buildWidget(starRating, 'stars', { rating: 3, max: 5 })
  * ```
  *
  * ## How it works
  *
- * `buildCanvasWidget` creates a placeholder canvas node tagged with metadata.
+ * `buildWidget` creates a placeholder canvas node tagged with metadata.
  * During tree normalization, the runtime detects the tag, looks up the
  * widget's state from the registry, calls `render`, and recursively
  * normalizes the output. The normalized tree carries metadata for
@@ -65,7 +65,7 @@ export type EventAction =
  * `State` is the widget's internal state (managed by the runtime).
  * `Props` is the widget's input from the parent view function.
  */
-export interface CanvasWidgetDef<State, Props> {
+export interface WidgetDef<State, Props> {
   /** Create the initial state for a new widget instance. */
   readonly init: () => State;
 
@@ -91,21 +91,21 @@ export interface CanvasWidgetDef<State, Props> {
 // -- Metadata keys -----------------------------------------------------------
 
 /** Metadata key marking a node as a canvas widget placeholder. */
-const META_KEY = "__canvas_widget__";
+const META_KEY = "__widget_handler__";
 
 /** Metadata key carrying the widget's encoded props. */
-const PROPS_KEY = "__canvas_widget_props__";
+const PROPS_KEY = "__widget_handler_props__";
 
 /** Metadata key carrying the widget's state (post-normalization). */
-const STATE_KEY = "__canvas_widget_state__";
+const STATE_KEY = "__widget_handler_state__";
 
 /** Metadata key carrying standard widget options (a11y, event_rate). */
-const STANDARD_PROPS_KEY = "__canvas_widget_standard_props__";
+const STANDARD_PROPS_KEY = "__widget_handler_standard_props__";
 
 // -- Placeholder node --------------------------------------------------------
 
 /** Standard widget options that are auto-applied to the rendered output. */
-export interface CanvasWidgetOpts {
+export interface WidgetOpts {
   /** Accessibility properties forwarded to the top-level rendered node. */
   readonly a11y?: Readonly<Record<string, unknown>>;
   /** Event rate limit forwarded to the top-level rendered node. */
@@ -124,11 +124,11 @@ export interface CanvasWidgetOpts {
  * authors do not need to forward these manually from their render
  * callback.
  */
-export function buildCanvasWidget<State, Props>(
-  def: CanvasWidgetDef<State, Props>,
+export function buildWidget<State, Props>(
+  def: WidgetDef<State, Props>,
   id: string,
   props: Props,
-  opts?: CanvasWidgetOpts,
+  opts?: WidgetOpts,
 ): UINode {
   const standardProps: Record<string, unknown> = {};
   if (opts?.a11y !== undefined) standardProps["a11y"] = opts.a11y;
@@ -202,7 +202,7 @@ function requiredWindowId(event: Event): string {
  * The entry captures the concrete types in closures.
  */
 export function makeEntry<State, Props>(
-  def: CanvasWidgetDef<State, Props>,
+  def: WidgetDef<State, Props>,
   props: Props,
   state: State,
 ): RegistryEntry {
@@ -261,7 +261,7 @@ export function renderPlaceholder(
     throw new Error(`Canvas widget "${localId}" must be rendered inside a window node.`);
   }
 
-  const def = node.meta[META_KEY] as CanvasWidgetDef<unknown, unknown>;
+  const def = node.meta[META_KEY] as WidgetDef<unknown, unknown>;
   const props = node.meta[PROPS_KEY] as unknown;
   const key = widgetKey(windowId, scopedId);
 
@@ -325,7 +325,7 @@ function collectEntries(
       throw new Error(`Canvas widget "${node.id}" must be rendered inside a window node.`);
     }
 
-    const def = node.meta[META_KEY] as CanvasWidgetDef<unknown, unknown>;
+    const def = node.meta[META_KEY] as WidgetDef<unknown, unknown>;
     const props = node.meta[PROPS_KEY] as unknown;
     const state = node.meta[STATE_KEY] as unknown;
     acc.set(widgetKey(currentWindowId, node.id), makeEntry(def, props, state));
@@ -408,11 +408,11 @@ function buildHandlerChain(
     });
 
   if (chain.length === 0) {
-    // No parent canvas_widgets in scope. Check if the event's target
-    // itself is a canvas_widget with event handling.
+    // No parent widget_handlers in scope. Check if the event's target
+    // itself is a widget_handler with event handling.
     const targetId = widgetKey(windowId, scopeToId(scope, eventId));
     const targetEntry = registry.get(targetId);
-    if (targetEntry && targetEntry.handleEvent) {
+    if (targetEntry?.handleEvent) {
       chain = [targetId];
     }
   }
@@ -534,7 +534,7 @@ function walkChain(
       [action, newEntry] = entry.handleEvent(currentEvent);
     } catch (err) {
       console.warn(
-        `[plushie] canvas_widget "${widgetId}" raised in handleEvent, treating as ignored:`,
+        `[plushie] widget_handler "${widgetId}" raised in handleEvent, treating as ignored:`,
         err,
       );
       continue;
@@ -669,7 +669,7 @@ export function handleWidgetTimer(
     [action, newEntry] = entry.handleEvent(timerEvent);
   } catch (err) {
     console.warn(
-      `[plushie] canvas_widget "${parsed.widgetId}" raised in timer handler, ignoring:`,
+      `[plushie] widget_handler "${parsed.widgetId}" raised in timer handler, ignoring:`,
       err,
     );
     return { event: null, registry };

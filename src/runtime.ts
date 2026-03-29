@@ -14,13 +14,6 @@
  */
 
 import type { AppConfig, AppView } from "./app.js";
-import {
-  collectSubscriptions as collectWidgetSubscriptions,
-  dispatchThroughWidgets,
-  handleWidgetTimer,
-  isWidgetTag,
-  type RegistryEntry,
-} from "./canvas-widget.js";
 import type { DecodedResponse, WireMessage, WirePatchOp } from "./client/protocol.js";
 import {
   decodeMessage,
@@ -44,7 +37,7 @@ import {
   PROTOCOL_VERSION,
 } from "./client/protocol.js";
 import type { Transport } from "./client/transport.js";
-import { extensionConfigKey } from "./extension.js";
+import { nativeWidgetConfigKey } from "./native-widget.js";
 import * as SubscriptionMod from "./subscription.js";
 import { diff } from "./tree/diff.js";
 import { type NormalizeContext, normalize, type WireNode } from "./tree/normalize.js";
@@ -61,6 +54,13 @@ import type {
 } from "./types.js";
 import { COMMAND } from "./types.js";
 import { handlersMeta } from "./ui/handlers.js";
+import {
+  collectSubscriptions as collectWidgetSubscriptions,
+  dispatchThroughWidgets,
+  handleWidgetTimer,
+  isWidgetTag,
+  type RegistryEntry,
+} from "./widget-handler.js";
 
 // =========================================================================
 // Types
@@ -101,7 +101,7 @@ interface RuntimeState<M> {
       timer: ReturnType<typeof setTimeout>;
     }
   >;
-  canvasWidgetRegistry: Map<string, RegistryEntry>;
+  widgetHandlerRegistry: Map<string, RegistryEntry>;
   diagnostics: Diagnostic[];
   consecutiveErrors: number;
   restartCount: number;
@@ -160,7 +160,7 @@ export class Runtime<M> {
       pendingStubAcks: new Map(),
       pendingAwaitAsync: new Map(),
       pendingInteract: new Map(),
-      canvasWidgetRegistry: new Map(),
+      widgetHandlerRegistry: new Map(),
       diagnostics: [],
       consecutiveErrors: 0,
       restartCount: 0,
@@ -429,7 +429,7 @@ export class Runtime<M> {
           }
 
           const expectedExtensions = (this.config.expectedExtensions ?? []).map((ext) =>
-            typeof ext === "string" ? ext : extensionConfigKey(ext),
+            typeof ext === "string" ? ext : nativeWidgetConfigKey(ext),
           );
           const missing = expectedExtensions.filter(
             (ext) => !decoded.data.extensions.includes(ext),
@@ -532,17 +532,17 @@ export class Runtime<M> {
       }
     }
 
-    // Route timer events for canvas widget subscriptions
+    // Route timer events for widget handler subscriptions
     if (event.kind === "timer") {
       const timerTag = (event as import("./types.js").TimerEvent).tag;
       if (isWidgetTag(timerTag)) {
         const timerResult = handleWidgetTimer(
-          this.state.canvasWidgetRegistry,
+          this.state.widgetHandlerRegistry,
           timerTag,
           (event as import("./types.js").TimerEvent).timestamp,
         );
         if (timerResult) {
-          this.state.canvasWidgetRegistry = timerResult.registry;
+          this.state.widgetHandlerRegistry = timerResult.registry;
           if (timerResult.event) {
             // Re-dispatch the emitted event
             this.dispatchEvent(timerResult.event);
@@ -555,13 +555,13 @@ export class Runtime<M> {
       }
     }
 
-    // Route through canvas widget handlers before inline handlers / update
-    if (this.state.canvasWidgetRegistry.size > 0) {
-      const dispatchResult = dispatchThroughWidgets(this.state.canvasWidgetRegistry, event);
-      this.state.canvasWidgetRegistry = dispatchResult.registry;
+    // Route through widget handler handlers before inline handlers / update
+    if (this.state.widgetHandlerRegistry.size > 0) {
+      const dispatchResult = dispatchThroughWidgets(this.state.widgetHandlerRegistry, event);
+      this.state.widgetHandlerRegistry = dispatchResult.registry;
 
       if (dispatchResult.event === null) {
-        // Consumed by canvas widget -- re-render for state changes
+        // Consumed by widget handler -- re-render for state changes
         this.renderAndSync(false);
         return;
       }
@@ -665,20 +665,20 @@ export class Runtime<M> {
       const viewResult = this.config.view(this.state.model as never);
       this.validateRootWindows(viewResult);
 
-      // Build normalization context with canvas widget registry
+      // Build normalization context with widget handler registry
       const newEntries = new Map<string, RegistryEntry>();
       const normalizeCtx: NormalizeContext = {
-        registry: this.state.canvasWidgetRegistry,
+        registry: this.state.widgetHandlerRegistry,
         newEntries,
       };
       const tree = normalize(viewResult, normalizeCtx);
 
-      // Update canvas widget registry from normalization results
+      // Update widget handler registry from normalization results
       if (newEntries.size > 0) {
-        this.state.canvasWidgetRegistry = newEntries;
+        this.state.widgetHandlerRegistry = newEntries;
       } else {
-        // No canvas widgets in this tree -- clear registry
-        this.state.canvasWidgetRegistry = new Map();
+        // No widget handlers in this tree -- clear registry
+        this.state.widgetHandlerRegistry = new Map();
       }
 
       // Extract handlers registered during view()
@@ -791,8 +791,8 @@ export class Runtime<M> {
           .filter((s): s is Subscription => s !== false && s !== null && s !== undefined)
       : [];
 
-    // Merge canvas widget subscriptions
-    const widgetSubs = collectWidgetSubscriptions(this.state.canvasWidgetRegistry);
+    // Merge widget handler subscriptions
+    const widgetSubs = collectWidgetSubscriptions(this.state.widgetHandlerRegistry);
     const subs = widgetSubs.length > 0 ? [...appSubs, ...widgetSubs] : appSubs;
 
     const newKeys = new Map<string, Subscription>();
@@ -1278,10 +1278,10 @@ export class Runtime<M> {
   /** Process an event through update+commands without rendering.
    * Used by interact_step to batch events before a single render. */
   private applyEvent(event: Event): void {
-    // Route through canvas widget handlers
-    if (this.state.canvasWidgetRegistry.size > 0) {
-      const result = dispatchThroughWidgets(this.state.canvasWidgetRegistry, event);
-      this.state.canvasWidgetRegistry = result.registry;
+    // Route through widget handler handlers
+    if (this.state.widgetHandlerRegistry.size > 0) {
+      const result = dispatchThroughWidgets(this.state.widgetHandlerRegistry, event);
+      this.state.widgetHandlerRegistry = result.registry;
       if (result.event === null) return; // consumed
       event = result.event;
     }

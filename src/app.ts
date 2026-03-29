@@ -10,7 +10,7 @@
 import { resolveBinary } from "./client/binary.js";
 import type { WireFormat } from "./client/transport.js";
 import { SpawnTransport } from "./client/transport.js";
-import type { ExtensionWidgetConfig } from "./extension.js";
+import type { NativeWidgetConfig } from "./native-widget.js";
 import { Runtime } from "./runtime.js";
 import type { Command, DeepReadonly, Event, Subscription, UINode, UpdateResult } from "./types.js";
 
@@ -71,7 +71,7 @@ export interface AppConfig<M> {
   windowConfig?: (state: DeepReadonly<M>) => Record<string, unknown>;
 
   /** Native extensions this app expects the renderer to have loaded. */
-  expectedExtensions?: readonly (string | ExtensionWidgetConfig)[];
+  expectedExtensions?: readonly (string | NativeWidgetConfig)[];
 
   /** Called when the renderer process exits unexpectedly. */
   handleRendererExit?: (state: DeepReadonly<M>, reason: string) => M;

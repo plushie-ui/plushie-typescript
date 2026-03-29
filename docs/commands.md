@@ -471,10 +471,10 @@ like terminal output or streaming log lines.
 <!-- test: commands_extension_command_construct, commands_extension_commands_construct -- keep this code block in sync with the test -->
 ```typescript
 // Single command
-Command.extensionCommand('term-1', 'write', { data: output })
+Command.nativeWidgetCommand('term-1', 'write', { data: output })
 
 // Batch (all processed before next view cycle)
-Command.extensionCommands([
+Command.nativeWidgetCommands([
   { nodeId: 'term-1', op: 'write', payload: { data: line1 } },
   { nodeId: 'log-1', op: 'append', payload: { line: entry } },
 ])

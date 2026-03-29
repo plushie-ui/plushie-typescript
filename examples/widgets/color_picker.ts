@@ -19,8 +19,8 @@ import {
   rect,
   stroke,
 } from "../../src/canvas/index.js";
-import type { CanvasWidgetDef, Event, EventAction, UINode } from "../../src/index.js";
-import { buildCanvasWidget } from "../../src/index.js";
+import type { Event, EventAction, UINode, WidgetDef } from "../../src/index.js";
+import { buildWidget } from "../../src/index.js";
 import { Canvas } from "../../src/ui/widgets/canvas.js";
 
 // -- Types --------------------------------------------------------------------
@@ -373,7 +373,7 @@ function render(id: string, _props: ColorPickerProps, state: ColorPickerState): 
 
 // -- Canvas widget definition -------------------------------------------------
 
-const colorPickerDef: CanvasWidgetDef<ColorPickerState, ColorPickerProps> = {
+const colorPickerDef: WidgetDef<ColorPickerState, ColorPickerProps> = {
   init: () => ({ hue: 0.0, saturation: 1.0, value: 1.0, drag: "none" }),
   render,
   handleEvent,
@@ -381,5 +381,5 @@ const colorPickerDef: CanvasWidgetDef<ColorPickerState, ColorPickerProps> = {
 
 /** Build a color picker canvas widget. */
 export function colorPickerWidget(id: string): UINode {
-  return buildCanvasWidget(colorPickerDef, id, {});
+  return buildWidget(colorPickerDef, id, {});
 }

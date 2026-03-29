@@ -17,7 +17,7 @@ repository:
 
 An extension has two halves:
 
-1. **TypeScript side:** use `defineExtensionWidget()` to declare the
+1. **TypeScript side:** use `defineNativeWidget()` to declare the
    widget's props, commands, and (for native widgets) the Rust crate.
 
 2. **Rust side:** implement the `WidgetExtension` trait from
@@ -26,7 +26,7 @@ An extension has two halves:
 
 ```typescript
 // lib/sparkline.ts
-import { defineExtensionWidget, extensionCommands } from 'plushie'
+import { defineNativeWidget, nativeWidgetCommands } from 'plushie'
 
 export const sparklineConfig = {
   type: 'sparkline',
@@ -41,8 +41,8 @@ export const sparklineConfig = {
   rustConstructor: 'my_sparkline::SparklineExtension::new()',
 } as const
 
-export const Sparkline = defineExtensionWidget(sparklineConfig)
-export const SparklineCmds = extensionCommands(sparklineConfig)
+export const Sparkline = defineNativeWidget(sparklineConfig)
+export const SparklineCmds = nativeWidgetCommands(sparklineConfig)
 ```
 
 ```rust
@@ -109,7 +109,7 @@ For widgets rendered by a Rust crate. Requires `rustCrate` and
 `rustConstructor` in the config.
 
 ```typescript
-const HexView = defineExtensionWidget({
+const HexView = defineNativeWidget({
   type: 'hex_view',
   props: { data: 'string', columns: 'number' },
   rustCrate: 'native/hex_view',
@@ -139,14 +139,14 @@ function donutChart(
 }
 ```
 
-Pure TypeScript widgets don't need `defineExtensionWidget` at all --
+Pure TypeScript widgets don't need `defineNativeWidget` at all --
 they're just functions that return UINodes. Use
-`defineExtensionWidget` only when you need handler registration,
+`defineNativeWidget` only when you need handler registration,
 command generation, or Rust build integration.
 
 ### Canvas widgets -- canvas-based widgets with internal state
 
-Use `CanvasWidgetDef` for widgets that render via canvas shapes,
+Use `WidgetDef` for widgets that render via canvas shapes,
 manage their own internal state, and transform raw canvas events into
 semantic events. No Rust code needed. This sits between composite
 widgets (pure functions, no state) and native widgets (Rust-backed).
@@ -165,13 +165,13 @@ Canvas widgets have three capabilities that composite widgets do not:
   not the app's `update`.
 
 ```typescript
-import { type CanvasWidgetDef, buildCanvasWidget } from 'plushie'
+import { type WidgetDef, buildWidget } from 'plushie'
 import { canvas } from 'plushie/ui'
 
 interface StarState { hover: string | null }
 interface StarProps { rating: number; max: number }
 
-const starRating: CanvasWidgetDef<StarState, StarProps> = {
+const starRating: WidgetDef<StarState, StarProps> = {
   init: () => ({ hover: null }),
 
   handleEvent(event, state) {
@@ -193,7 +193,7 @@ const starRating: CanvasWidgetDef<StarState, StarProps> = {
 }
 
 // In your view:
-const view = (state: Model) => buildCanvasWidget(starRating, 'stars', { rating: 3, max: 5 })
+const view = (state: Model) => buildWidget(starRating, 'stars', { rating: 3, max: 5 })
 ```
 
 #### `handleEvent` return values
@@ -281,14 +281,14 @@ high-frequency data (streaming values, log lines, terminal output).
 
 ```typescript
 // Generated command constructors:
-const cmds = extensionCommands(sparklineConfig)
+const cmds = nativeWidgetCommands(sparklineConfig)
 cmds.push('spark-1', { value: 42 })
 
 // Or use the raw Command API:
-Command.extensionCommand('spark-1', 'push', { value: 42 })
+Command.nativeWidgetCommand('spark-1', 'push', { value: 42 })
 
 // Batch multiple commands (processed in one cycle):
-Command.extensionCommands([
+Command.nativeWidgetCommands([
   { nodeId: 'spark-1', op: 'push', payload: { value: 42 } },
   { nodeId: 'spark-2', op: 'clear', payload: {} },
 ])
@@ -310,7 +310,7 @@ update(state, event) {
 }
 ```
 
-Or with inline handlers via `defineExtensionWidget`:
+Or with inline handlers via `defineNativeWidget`:
 
 ```typescript
 Sparkline('spark-1', {
@@ -346,7 +346,7 @@ widgets automatically.
 Set `container: true` to accept children:
 
 ```typescript
-const Panel = defineExtensionWidget({
+const Panel = defineNativeWidget({
   type: 'panel',
   props: { title: 'string', collapsible: 'boolean' },
   container: true,
@@ -722,10 +722,10 @@ A full native extension showing both TypeScript and Rust sides.
 
 ```typescript
 // src/gauge.ts
-import { defineExtensionWidget, extensionCommands } from 'plushie'
-import type { ExtensionWidgetConfig } from 'plushie'
+import { defineNativeWidget, nativeWidgetCommands } from 'plushie'
+import type { NativeWidgetConfig } from 'plushie'
 
-export const gaugeConfig: ExtensionWidgetConfig = {
+export const gaugeConfig: NativeWidgetConfig = {
   type: 'gauge',
   props: {
     value: 'number',
@@ -743,10 +743,10 @@ export const gaugeConfig: ExtensionWidgetConfig = {
 }
 
 /** Gauge widget builder. */
-export const Gauge = defineExtensionWidget(gaugeConfig)
+export const Gauge = defineNativeWidget(gaugeConfig)
 
 /** Gauge command constructors. */
-export const GaugeCmds = extensionCommands(gaugeConfig)
+export const GaugeCmds = nativeWidgetCommands(gaugeConfig)
 ```
 
 ```typescript

@@ -115,7 +115,7 @@ npx plushie run examples/async_fetch.ts
 
 **File:** `color_picker.ts`
 
-HSV color picker using a canvas_widget. The color picker widget
+HSV color picker using a widget handler. The color picker widget
 handles all interaction internally (mouse drag, keyboard adjustment,
 focus tracking). The app receives semantic `:change` events with
 the current HSV values.
@@ -128,12 +128,12 @@ npx plushie run examples/color_picker.ts
 
 **Files:** `rate_plushie.ts`, `widgets/star_rating.ts`, `widgets/theme_toggle.ts`
 
-App rating page with canvas_widget components composed into a styled
+App rating page with widget handler components composed into a styled
 UI. Features a 5-star rating built from path-drawn star geometry and an
 animated theme toggle that slides and rotates when "Dark humor" is
 enabled. The entire page theme interpolates smoothly.
 
-Demonstrates: canvas_widget extension system, semantic event emission,
+Demonstrates: widget handler extension system, semantic event emission,
 form validation with per-field error state, accessible error wiring
 (required, invalid, error_message), timer-based animation via
 widget-scoped subscriptions, theme-aware rendering.

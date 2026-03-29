@@ -443,12 +443,12 @@ function handleExtensionBuild(
   release: boolean,
 ): boolean {
   const { validateExtensions, generateCargoToml, generateMainRs } =
-    require("../extension-build.js") as typeof import("../extension-build.js");
+    require("../native-widget-build.js") as typeof import("../native-widget-build.js");
 
-  let config: import("../extension-build.js").ExtensionBuildConfig;
+  let config: import("../native-widget-build.js").NativeWidgetBuildConfig;
   try {
     const raw = JSON.parse(readFileSync(configPath, "utf-8")) as {
-      extensions?: Array<import("../extension.js").ExtensionWidgetConfig>;
+      extensions?: Array<import("../native-widget.js").NativeWidgetConfig>;
       binaryName?: string;
     };
     const extensions = raw.extensions ?? [];
@@ -458,7 +458,7 @@ function handleExtensionBuild(
     }
     const buildConfig: Record<string, unknown> = { extensions, sourcePath, release };
     if (raw.binaryName !== undefined) buildConfig["binaryName"] = raw.binaryName;
-    config = buildConfig as unknown as import("../extension-build.js").ExtensionBuildConfig;
+    config = buildConfig as unknown as import("../native-widget-build.js").NativeWidgetBuildConfig;
     validateExtensions(extensions);
   } catch (err) {
     console.error(`Failed to read ${configPath}: ${String(err)}`);

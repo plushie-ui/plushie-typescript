@@ -153,7 +153,7 @@ test("commands_batch_construct", () => {
 // -- Extension commands --
 
 test("commands_extension_command_construct", () => {
-  const cmd = Command.extensionCommand("term-1", "write", { data: "output" });
+  const cmd = Command.nativeWidgetCommand("term-1", "write", { data: "output" });
   expect(cmd.type).toBe("extension_command");
   expect(cmd.payload["node_id"]).toBe("term-1");
   expect(cmd.payload["op"]).toBe("write");
@@ -164,7 +164,7 @@ test("commands_extension_commands_construct", () => {
     { nodeId: "term-1", op: "write", payload: { data: "line1" } },
     { nodeId: "log-1", op: "append", payload: { line: "entry" } },
   ];
-  const cmd = Command.extensionCommands(cmds);
+  const cmd = Command.nativeWidgetCommands(cmds);
   expect(cmd.type).toBe("extension_commands");
 });
 
