@@ -326,18 +326,19 @@ export default app<Model>({
     // but none of these helpers mutate the original state.
     const state = rawState as unknown as Model;
 
-    // StarRating emits "select" with { value: n } (the number of stars).
+    // StarRating emits "select" with value: n (the number of stars).
+    // Uses event.value just like a built-in select event.
     if (isWidget(event) && event.type === "select" && event.id === "stars") {
-      const stars = event.data?.["value"] as number;
+      const stars = event.value as number;
       const errors = { ...state.errors };
       delete errors.rating;
       return { ...state, rating: stars, errors };
     }
 
-    // ThemeToggle emits "toggle" with { value: boolean }.
-    // Animation is managed internally by the widget handler.
+    // ThemeToggle emits "toggle" with value: boolean.
+    // Uses event.value just like a built-in toggle event.
     if (isWidget(event) && event.type === "toggle" && event.id === "theme-toggle") {
-      return { ...state, darkMode: Boolean(event.data?.["value"]) };
+      return { ...state, darkMode: Boolean(event.value) };
     }
 
     // Review form inputs -- clear errors on change

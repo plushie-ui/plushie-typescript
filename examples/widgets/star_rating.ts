@@ -75,7 +75,7 @@ function handleEvent(event: Event, state: StarState): readonly [EventAction, Sta
       const match = String(event.data["element_id"]).match(/^star-(\d+)$/);
       if (match) {
         const n = Number(match[1]) + 1;
-        return [{ type: "emit", kind: "select", data: n }, state];
+        return [{ type: "emit", kind: "select", value: n }, state];
       }
     }
 

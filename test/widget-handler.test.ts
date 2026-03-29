@@ -133,6 +133,23 @@ describe("buildWidget", () => {
     expect(node.meta!["__widget_handler_props__"]).toEqual({ max: 5 });
   });
 
+  test("stateless widget (no init) gets empty state", () => {
+    const statelessDef: WidgetDef<object, { label: string }> = {
+      render: (id, props) =>
+        Object.freeze({
+          id,
+          type: "text",
+          props: Object.freeze({ content: props.label }),
+          children: Object.freeze([]),
+        }),
+      handleEvent: (_event, state) => [{ type: "emit", kind: "open" }, state],
+    };
+    const entry = makeEntry(statelessDef, { label: "hi" }, {});
+    const rendered = entry.render("card");
+    expect(rendered.type).toBe("text");
+    expect(entry.state).toEqual({});
+  });
+
   test("placeholder node is frozen", () => {
     const node = buildWidget(counterDef(), "stars", { max: 5 });
     expect(Object.isFrozen(node)).toBe(true);
@@ -230,6 +247,57 @@ describe("dispatchThroughWidgets", () => {
     expect(emitted.windowId).toBe("main");
     expect(emitted.scope).toEqual([]);
     expect(emitted.data).toEqual({ value: 1 });
+  });
+
+  test("emit with value routes to WidgetEvent.value", () => {
+    const valueDef: WidgetDef<object, object> = {
+      init: () => ({}),
+      render: (id) =>
+        Object.freeze({
+          id,
+          type: "canvas",
+          props: Object.freeze({}),
+          children: Object.freeze([]),
+        }),
+      handleEvent: (_event, state) => [{ type: "emit", kind: "select", value: 42 }, state],
+    };
+    const entry = makeEntry(valueDef, {}, {});
+    const registry = registryWith([["main\u0000picker", entry]]);
+    const ev = widgetEvent("btn", "click", ["picker"]);
+    const result = dispatchThroughWidgets(registry, ev);
+
+    expect(result.event).not.toBeNull();
+    const emitted = result.event as WidgetEvent;
+    expect(emitted.type).toBe("select");
+    expect(emitted.value).toBe(42);
+    expect(emitted.data).toBeNull();
+  });
+
+  test("emit with data routes to WidgetEvent.data", () => {
+    const dataDef: WidgetDef<object, object> = {
+      init: () => ({}),
+      render: (id) =>
+        Object.freeze({
+          id,
+          type: "canvas",
+          props: Object.freeze({}),
+          children: Object.freeze([]),
+        }),
+      handleEvent: (_event, state) => [
+        { type: "emit", kind: "change", data: { hue: 180, saturation: 0.5 } },
+        state,
+      ],
+    };
+    const entry = makeEntry(dataDef, {}, {});
+    const registry = registryWith([["main\u0000picker", entry]]);
+    const ev = widgetEvent("btn", "click", ["picker"]);
+    const result = dispatchThroughWidgets(registry, ev);
+
+    expect(result.event).not.toBeNull();
+    const emitted = result.event as WidgetEvent;
+    expect(emitted.type).toBe("change");
+    expect(emitted.value).toBeNull();
+    expect(emitted.data).toEqual({ hue: 180, saturation: 0.5 });
   });
 
   test("emit resolves id and scope from interception context", () => {

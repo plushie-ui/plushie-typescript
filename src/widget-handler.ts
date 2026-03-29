@@ -52,12 +52,31 @@ import type { Event, Subscription, UINode, WidgetEvent } from "./types.js";
  * - `consumed` -- captured, suppress event
  * - `update_state` -- captured, internal state change only (triggers re-render)
  * - `emit` -- captured with semantic event; runtime fills in id/scope/windowId
+ *
+ * ## Emit value vs data
+ *
+ * Use `value` for scalar payloads -- the value goes into `WidgetEvent.value`,
+ * making the emitted event indistinguishable from a built-in widget event:
+ *
+ *     { type: "emit", kind: "select", value: 3 }       // event.value = 3
+ *     { type: "emit", kind: "toggle", value: true }     // event.value = true
+ *
+ * Use `data` for structured payloads -- the object goes into `WidgetEvent.data`:
+ *
+ *     { type: "emit", kind: "change", data: { hue: 180 } }  // event.data.hue = 180
  */
 export type EventAction =
   | { readonly type: "ignored" }
   | { readonly type: "consumed" }
   | { readonly type: "update_state" }
-  | { readonly type: "emit"; readonly kind: string; readonly data: unknown };
+  | {
+      readonly type: "emit";
+      readonly kind: string;
+      /** Scalar payload -- goes into WidgetEvent.value (like built-in widget events). */
+      readonly value?: string | number | boolean | null;
+      /** Structured payload -- goes into WidgetEvent.data as a key/value map. */
+      readonly data?: unknown;
+    };
 
 /**
  * Definition of a widget's behaviour.
@@ -66,8 +85,14 @@ export type EventAction =
  * `Props` is the widget's input from the parent view function.
  */
 export interface WidgetDef<State, Props> {
-  /** Create the initial state for a new widget instance. */
-  readonly init: () => State;
+  /**
+   * Create the initial state for a new widget instance.
+   *
+   * Optional. When omitted, the widget starts with an empty object as
+   * state (stateless widget). Stateless widgets can still define
+   * handleEvent for event interception.
+   */
+  readonly init?: (() => State) | undefined;
 
   /** Render the widget to a UINode tree. */
   readonly render: (id: string, props: Props, state: State) => UINode;
@@ -273,8 +298,8 @@ export function renderPlaceholder(
     // Update entry with fresh def and props, keep existing state
     entry = makeEntry(def, props, existing.state);
   } else {
-    // New widget: create entry with initial state
-    const state = def.init();
+    // New widget: create entry with initial state (defaults to {} for stateless widgets)
+    const state = def.init ? def.init() : ({} as unknown);
     entry = makeEntry(def, props, state);
   }
 
@@ -485,6 +510,33 @@ function normalizeEmitData(data: unknown): Readonly<Record<string, unknown>> {
 }
 
 /**
+ * Build a WidgetEvent from an emit action and resolved identity.
+ *
+ * Routes data to the correct WidgetEvent fields:
+ * - `action.value` → `event.value` (scalars, like built-in widget events)
+ * - `action.data` → `event.data` (structured maps)
+ * - Neither → both null
+ *
+ * When `value` is set, the emitted event is indistinguishable from a
+ * built-in widget event of the same type.
+ */
+function buildEmitEvent(
+  action: Extract<EventAction, { type: "emit" }>,
+  identity: { readonly id: string; readonly scope: readonly string[]; readonly windowId: string },
+): WidgetEvent {
+  const hasValue = action.value !== undefined && action.value !== null;
+  return {
+    kind: "widget",
+    type: action.kind,
+    id: identity.id,
+    windowId: identity.windowId,
+    scope: identity.scope,
+    value: hasValue ? action.value! : null,
+    data: hasValue ? null : action.data != null ? normalizeEmitData(action.data) : null,
+  };
+}
+
+/**
  * Route an event through widget handlers in the scope chain.
  *
  * Returns `{ event, registry }` where event is null if consumed,
@@ -556,16 +608,7 @@ function walkChain(
       case "emit": {
         // Captured with output -- replace event and continue
         const identity = resolveEmitIdentity(currentEvent, widgetId);
-        const emitted: WidgetEvent = {
-          kind: "widget",
-          type: action.kind,
-          id: identity.id,
-          windowId: identity.windowId,
-          scope: identity.scope,
-          value: null,
-          data: normalizeEmitData(action.data),
-        };
-        currentEvent = emitted;
+        currentEvent = buildEmitEvent(action, identity);
         break;
       }
     }
@@ -685,15 +728,7 @@ export function handleWidgetTimer(
 
     case "emit": {
       const identity = resolveEmitIdentity(timerEvent, parsed.widgetId);
-      const emitted: WidgetEvent = {
-        kind: "widget",
-        type: action.kind,
-        id: identity.id,
-        windowId: identity.windowId,
-        scope: identity.scope,
-        value: null,
-        data: normalizeEmitData(action.data),
-      };
+      const emitted = buildEmitEvent(action, identity);
       // Dispatch through the scope chain so parent widgets can intercept
       return dispatchThroughWidgets(registry, emitted);
     }

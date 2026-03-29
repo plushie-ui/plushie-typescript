@@ -103,7 +103,7 @@ function handleEvent(
   ) {
     const newTarget = state.target === 0.0 ? 1.0 : 0.0;
     return [
-      { type: "emit", kind: "toggle", data: newTarget >= 0.5 },
+      { type: "emit", kind: "toggle", value: newTarget >= 0.5 },
       { ...state, target: newTarget },
     ];
   }
