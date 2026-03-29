@@ -116,11 +116,11 @@ function registryWith(entries: [string, RegistryEntry][]): Map<string, RegistryE
 // -- buildWidget -------------------------------------------------------
 
 describe("buildWidget", () => {
-  test("creates a placeholder node with canvas type", () => {
+  test("creates a placeholder node with __widget__ type", () => {
     const def = counterDef();
     const node = buildWidget(def, "stars", { max: 5 });
     expect(node.id).toBe("stars");
-    expect(node.type).toBe("canvas");
+    expect(node.type).toBe("__widget__");
     expect(node.children).toHaveLength(0);
     expect(Object.keys(node.props)).toHaveLength(0);
   });

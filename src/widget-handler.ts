@@ -115,7 +115,7 @@ export interface WidgetOpts {
 /**
  * Build a placeholder node for a widget.
  *
- * The returned node has type "canvas" and carries metadata that
+ * The returned node has type "__widget__" and carries metadata that
  * the runtime uses during normalization to render the real canvas
  * tree with the widget's current state.
  *
@@ -136,7 +136,7 @@ export function buildWidget<State, Props>(
 
   return Object.freeze({
     id,
-    type: "canvas",
+    type: "__widget__",
     props: Object.freeze({}),
     children: Object.freeze([]) as readonly UINode[],
     meta: Object.freeze({
