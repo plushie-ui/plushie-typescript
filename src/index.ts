@@ -76,7 +76,6 @@ export {
 // Core types.
 export type {
   AsyncEvent,
-  CanvasEvent,
   Command as CommandType,
   DeepReadonly,
   EffectEvent,
@@ -87,10 +86,7 @@ export type {
   KeyEvent,
   Modifiers,
   ModifiersEvent,
-  MouseAreaEvent,
   MouseEvent,
-  PaneEvent,
-  SensorEvent,
   StreamEvent,
   Subscription as SubscriptionType,
   SystemEvent,

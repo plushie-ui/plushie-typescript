@@ -590,9 +590,9 @@ describe("decodeEvent", () => {
       id: "area/context",
       window_id: "main",
     });
-    expect(event.kind).toBe("mouse_area");
-    if (event.kind === "mouse_area") {
-      expect(event.type).toBe("right_press");
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("mouse_right_press");
       expect(event.id).toBe("context");
       expect(event.scope).toEqual(["area"]);
     }
@@ -609,11 +609,11 @@ describe("decodeEvent", () => {
       window_id: "main",
       data: { x: 50, y: 100, button: "left" },
     });
-    expect(event.kind).toBe("canvas");
-    if (event.kind === "canvas") {
-      expect(event.type).toBe("press");
-      expect(event.x).toBe(50);
-      expect(event.button).toBe("left");
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("canvas_press");
+      expect(event.data?.["x"]).toBe(50);
+      expect(event.data?.["button"]).toBe("left");
     }
   });
 
@@ -628,9 +628,9 @@ describe("decodeEvent", () => {
       window_id: "main",
       data: { pane: "pane_1" },
     });
-    expect(event.kind).toBe("pane");
-    if (event.kind === "pane") {
-      expect(event.type).toBe("clicked");
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("pane_clicked");
     }
   });
 
@@ -645,13 +645,13 @@ describe("decodeEvent", () => {
       window_id: "main",
       data: { width: 320, height: 240 },
     });
-    expect(event.kind).toBe("sensor");
-    if (event.kind === "sensor") {
-      expect(event.type).toBe("resize");
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("sensor_resize");
       expect(event.id).toBe("sensor_1");
       expect(event.scope).toEqual(["container"]);
-      expect(event.width).toBe(320);
-      expect(event.height).toBe(240);
+      expect(event.data?.["width"]).toBe(320);
+      expect(event.data?.["height"]).toBe(240);
     }
   });
 

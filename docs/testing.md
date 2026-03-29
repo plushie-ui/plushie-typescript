@@ -176,9 +176,9 @@ response events through the app's runtime:
 | `scroll(id, dx, dy)` | `scrollable` | `WidgetEvent { type: "scroll" }` |
 | `paste(id, text)` | `text_input` | `WidgetEvent { type: "paste" }` |
 | `sort(id, key)` | `table` | `WidgetEvent { type: "sort" }` |
-| `canvasPress(id, x, y)` | `canvas` | `CanvasEvent { type: "press" }` |
-| `canvasRelease(id, x, y)` | `canvas` | `CanvasEvent { type: "release" }` |
-| `canvasMove(id, x, y)` | `canvas` | `CanvasEvent { type: "move" }` |
+| `canvasPress(id, x, y)` | `canvas` | `WidgetEvent { type: "canvas_press" }` |
+| `canvasRelease(id, x, y)` | `canvas` | `WidgetEvent { type: "canvas_release" }` |
+| `canvasMove(id, x, y)` | `canvas` | `WidgetEvent { type: "canvas_move" }` |
 
 Interacting with the wrong widget type raises with an actionable hint:
 

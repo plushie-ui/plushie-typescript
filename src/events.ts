@@ -33,17 +33,13 @@
 
 import type {
   AsyncEvent,
-  CanvasEvent,
   EffectEvent,
   Event,
   ExtensionCommandErrorEvent,
   ImeEvent,
   KeyEvent,
   ModifiersEvent,
-  MouseAreaEvent,
   MouseEvent,
-  PaneEvent,
-  SensorEvent,
   StreamEvent,
   SystemEvent,
   TimerEvent,
@@ -147,24 +143,86 @@ export function isWindow(event: Event): event is WindowEvent {
   return event.kind === "window";
 }
 
-/** Narrows to a canvas interaction event (press, release, move, scroll). */
-export function isCanvas(event: Event): event is CanvasEvent {
-  return event.kind === "canvas";
+// Canvas interaction types
+const CANVAS_TYPES = new Set(["canvas_press", "canvas_release", "canvas_move", "canvas_scroll"]);
+
+/** Narrows to a canvas interaction event (press, release, move, scroll on the canvas surface). */
+export function isCanvas(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & {
+  readonly type: "canvas_press" | "canvas_release" | "canvas_move" | "canvas_scroll";
+} {
+  return (
+    event.kind === "widget" &&
+    CANVAS_TYPES.has((event as WidgetEvent).type) &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
 }
+
+// Mouse area types
+const MOUSE_AREA_TYPES = new Set([
+  "mouse_right_press",
+  "mouse_right_release",
+  "mouse_middle_press",
+  "mouse_middle_release",
+  "mouse_double_click",
+  "mouse_enter",
+  "mouse_exit",
+  "mouse_move",
+  "mouse_scroll",
+]);
 
 /** Narrows to a mouse area event (right click, double click, enter, exit, etc.). */
-export function isMouseArea(event: Event): event is MouseAreaEvent {
-  return event.kind === "mouse_area";
+export function isMouseArea(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & {
+  readonly type:
+    | "mouse_right_press"
+    | "mouse_right_release"
+    | "mouse_middle_press"
+    | "mouse_middle_release"
+    | "mouse_double_click"
+    | "mouse_enter"
+    | "mouse_exit"
+    | "mouse_move"
+    | "mouse_scroll";
+} {
+  return (
+    event.kind === "widget" &&
+    MOUSE_AREA_TYPES.has((event as WidgetEvent).type) &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
 }
 
+// Pane types
+const PANE_TYPES = new Set(["pane_resized", "pane_dragged", "pane_clicked", "pane_focus_cycle"]);
+
 /** Narrows to a pane grid event (resized, dragged, clicked, focus cycle). */
-export function isPane(event: Event): event is PaneEvent {
-  return event.kind === "pane";
+export function isPane(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & {
+  readonly type: "pane_resized" | "pane_dragged" | "pane_clicked" | "pane_focus_cycle";
+} {
+  return (
+    event.kind === "widget" &&
+    PANE_TYPES.has((event as WidgetEvent).type) &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
 }
 
 /** Narrows to a sensor resize event. */
-export function isSensor(event: Event): event is SensorEvent {
-  return event.kind === "sensor";
+export function isSensor(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & { readonly type: "sensor_resize" } {
+  return (
+    event.kind === "widget" &&
+    (event as WidgetEvent).type === "sensor_resize" &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
 }
 
 /** Narrows to an effect response event, optionally matching a request ID. */

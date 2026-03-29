@@ -70,10 +70,6 @@ export type EventKind =
   | "touch"
   | "ime"
   | "window"
-  | "canvas"
-  | "mouse_area"
-  | "pane"
-  | "sensor"
   | "effect"
   | "extension_command_error"
   | "system"
@@ -88,7 +84,7 @@ interface EventBase {
 
 export interface WidgetEvent extends EventBase {
   readonly kind: "widget";
-  readonly type:
+  readonly type: // Standard widget events
     | "click"
     | "input"
     | "submit"
@@ -103,6 +99,7 @@ export interface WidgetEvent extends EventBase {
     | "scroll"
     | "sort"
     | "key_binding"
+    // Canvas element events
     | "canvas_element_enter"
     | "canvas_element_leave"
     | "canvas_element_click"
@@ -116,8 +113,31 @@ export interface WidgetEvent extends EventBase {
     | "canvas_group_blurred"
     | "canvas_element_key_press"
     | "canvas_element_key_release"
+    // Canvas interaction events (press/release/move/scroll on canvas surface)
+    | "canvas_press"
+    | "canvas_release"
+    | "canvas_move"
+    | "canvas_scroll"
+    // Mouse area events
+    | "mouse_right_press"
+    | "mouse_right_release"
+    | "mouse_middle_press"
+    | "mouse_middle_release"
+    | "mouse_double_click"
+    | "mouse_enter"
+    | "mouse_exit"
+    | "mouse_move"
+    | "mouse_scroll"
+    // Pane grid events
+    | "pane_resized"
+    | "pane_dragged"
+    | "pane_clicked"
+    | "pane_focus_cycle"
+    // Sensor events
+    | "sensor_resize"
+    // Diagnostic
     | "diagnostic"
-    | string; // Allow unrecognized families to pass through
+    | string; // Allow unrecognized types to pass through
   readonly id: string;
   readonly windowId: string;
   readonly scope: readonly string[];
@@ -204,55 +224,6 @@ export interface WindowEvent extends EventBase {
   readonly data: Readonly<Record<string, unknown>> | null;
 }
 
-export interface CanvasEvent extends EventBase {
-  readonly kind: "canvas";
-  readonly type: "press" | "release" | "move" | "scroll";
-  readonly id: string;
-  readonly windowId: string;
-  readonly scope: readonly string[];
-  readonly x: number;
-  readonly y: number;
-  readonly button: string | null;
-  readonly data: Readonly<Record<string, unknown>> | null;
-}
-
-export interface MouseAreaEvent extends EventBase {
-  readonly kind: "mouse_area";
-  readonly type:
-    | "enter"
-    | "exit"
-    | "right_press"
-    | "right_release"
-    | "middle_press"
-    | "middle_release"
-    | "double_click"
-    | "move"
-    | "scroll";
-  readonly id: string;
-  readonly windowId: string;
-  readonly scope: readonly string[];
-  readonly data: Readonly<Record<string, unknown>> | null;
-}
-
-export interface PaneEvent extends EventBase {
-  readonly kind: "pane";
-  readonly type: "clicked" | "resized" | "dragged" | "focus_cycle";
-  readonly id: string;
-  readonly windowId: string;
-  readonly scope: readonly string[];
-  readonly data: Readonly<Record<string, unknown>> | null;
-}
-
-export interface SensorEvent extends EventBase {
-  readonly kind: "sensor";
-  readonly type: "resize";
-  readonly id: string;
-  readonly windowId: string;
-  readonly scope: readonly string[];
-  readonly width: number;
-  readonly height: number;
-}
-
 export interface EffectEvent extends EventBase {
   readonly kind: "effect";
   readonly requestId: string;
@@ -306,10 +277,6 @@ export type Event =
   | TouchEvent
   | ImeEvent
   | WindowEvent
-  | CanvasEvent
-  | MouseAreaEvent
-  | PaneEvent
-  | SensorEvent
   | EffectEvent
   | ExtensionCommandErrorEvent
   | SystemEvent

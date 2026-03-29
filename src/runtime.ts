@@ -55,7 +55,6 @@ import type {
   Event,
   Handler,
   MouseEvent as PlushieMouseEvent,
-  SensorEvent,
   Subscription,
   UpdateResult,
   WidgetEvent,
@@ -578,9 +577,13 @@ export class Runtime<M> {
   private isCoalescable(event: Event): string | null {
     if (event.kind === "mouse" && (event as PlushieMouseEvent).type === "moved")
       return "mouse:moved";
-    if (event.kind === "sensor" && (event as SensorEvent).type === "resize") {
-      const sensorEvent = event as SensorEvent;
-      return `sensor:${sensorEvent.windowId}:${sensorEvent.id}`;
+    if (event.kind === "widget") {
+      const we = event as WidgetEvent;
+      if (we.type === "sensor_resize") return `sensor:${we.windowId}:${we.id}`;
+      if (we.type === "canvas_move") return `canvas_move:${we.windowId}:${we.id}`;
+      if (we.type === "mouse_move") return `mouse_move:${we.windowId}:${we.id}`;
+      if (we.type === "mouse_scroll") return `mouse_scroll:${we.windowId}:${we.id}`;
+      if (we.type === "pane_resized") return `pane_resized:${we.windowId}:${we.id}`;
     }
     return null;
   }

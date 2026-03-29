@@ -82,11 +82,10 @@ target(event)
 
 ## Which events carry scope
 
-- `WidgetEvent` (click, input, toggle, etc.)
-- `CanvasEvent`
-- `MouseAreaEvent`
-- `PaneEvent`
-- `SensorEvent`
+All widget events carry scope: standard events (click, input, toggle,
+etc.), canvas interaction events (canvas_press, etc.), mouse area
+events (mouse_enter, etc.), pane events (pane_resized, etc.), and
+sensor events (sensor_resize).
 
 Subscription events (Key, Mouse, Touch, IME, Modifiers) are global
 and do not carry scope.

@@ -12,18 +12,14 @@
  */
 
 import type {
-  CanvasEvent,
   Event,
   ExtensionCommandErrorEvent,
   ImeEvent,
   KeyEvent,
   Modifiers,
   ModifiersEvent,
-  MouseAreaEvent,
-  PaneEvent,
   MouseEvent as PlushieMouseEvent,
   TouchEvent as PlushieTouchEvent,
-  SensorEvent,
   SystemEvent,
   WidgetEvent,
   WindowEvent,
@@ -545,29 +541,10 @@ export function decodeEvent(raw: WireMessage): Event {
     } as SystemEvent;
   }
 
-  // Widget events (scoped ID)
+  // Widget events: all widget-scoped events (standard, canvas, mouse area,
+  // pane, sensor) are decoded into WidgetEvent with data maps.
   if (isWidgetFamily(family)) {
     return decodeWidgetEvent(raw, family, data);
-  }
-
-  // Mouse area events (scoped ID)
-  if (isMouseAreaFamily(family)) {
-    return decodeMouseAreaEvent(raw, family, data);
-  }
-
-  // Canvas events (scoped ID)
-  if (isCanvasFamily(family)) {
-    return decodeCanvasEvent(raw, family, data);
-  }
-
-  // Pane events (scoped ID)
-  if (isPaneFamily(family)) {
-    return decodePaneEvent(raw, family, data);
-  }
-
-  // Sensor events (scoped ID)
-  if (family === "sensor_resize") {
-    return decodeSensorEvent(raw, data);
   }
 
   // Keyboard events
@@ -610,6 +587,7 @@ export function decodeEvent(raw: WireMessage): Event {
 // -- Widget events --------------------------------------------------------
 
 const WIDGET_FAMILIES = new Set([
+  // Standard widget events
   "click",
   "input",
   "submit",
@@ -624,6 +602,7 @@ const WIDGET_FAMILIES = new Set([
   "key_binding",
   "sort",
   "scroll",
+  // Canvas element events
   "canvas_element_enter",
   "canvas_element_leave",
   "canvas_element_click",
@@ -637,6 +616,29 @@ const WIDGET_FAMILIES = new Set([
   "canvas_blurred",
   "canvas_group_focused",
   "canvas_group_blurred",
+  // Canvas interaction events
+  "canvas_press",
+  "canvas_release",
+  "canvas_move",
+  "canvas_scroll",
+  // Mouse area events
+  "mouse_right_press",
+  "mouse_right_release",
+  "mouse_middle_press",
+  "mouse_middle_release",
+  "mouse_double_click",
+  "mouse_enter",
+  "mouse_exit",
+  "mouse_move",
+  "mouse_scroll",
+  // Pane events
+  "pane_resized",
+  "pane_dragged",
+  "pane_clicked",
+  "pane_focus_cycle",
+  // Sensor events
+  "sensor_resize",
+  // Diagnostic
   "diagnostic",
 ]);
 
@@ -665,126 +667,6 @@ function decodeWidgetEvent(
     scope,
     value: coerceWidgetValue(raw["value"]),
     data: data as WidgetEvent["data"],
-  };
-}
-
-// -- Mouse area events ----------------------------------------------------
-
-const MOUSE_AREA_FAMILIES = new Set([
-  "mouse_right_press",
-  "mouse_right_release",
-  "mouse_middle_press",
-  "mouse_middle_release",
-  "mouse_double_click",
-  "mouse_enter",
-  "mouse_exit",
-  "mouse_move",
-  "mouse_scroll",
-]);
-
-function isMouseAreaFamily(family: string): boolean {
-  return MOUSE_AREA_FAMILIES.has(family);
-}
-
-function decodeMouseAreaEvent(
-  raw: WireMessage,
-  family: string,
-  data: WireMessage | null,
-): MouseAreaEvent {
-  const { id, scope } = splitScopedId(str(raw, "id"));
-  // Map wire family to MouseAreaEvent type
-  const typeMap: Record<string, MouseAreaEvent["type"]> = {
-    mouse_right_press: "right_press",
-    mouse_right_release: "right_release",
-    mouse_middle_press: "middle_press",
-    mouse_middle_release: "middle_release",
-    mouse_double_click: "double_click",
-    mouse_enter: "enter",
-    mouse_exit: "exit",
-    mouse_move: "move",
-    mouse_scroll: "scroll",
-  };
-  return {
-    kind: "mouse_area",
-    type: typeMap[family] ?? (family as MouseAreaEvent["type"]),
-    id,
-    windowId: requiredStr(raw, "window_id", `mouse area event "${family}"`),
-    scope,
-    data: data as MouseAreaEvent["data"],
-  };
-}
-
-// -- Canvas events --------------------------------------------------------
-
-const CANVAS_FAMILIES = new Set(["canvas_press", "canvas_release", "canvas_move", "canvas_scroll"]);
-
-function isCanvasFamily(family: string): boolean {
-  return CANVAS_FAMILIES.has(family);
-}
-
-function decodeCanvasEvent(
-  raw: WireMessage,
-  family: string,
-  data: WireMessage | null,
-): CanvasEvent {
-  const { id, scope } = splitScopedId(str(raw, "id"));
-  const typeMap: Record<string, CanvasEvent["type"]> = {
-    canvas_press: "press",
-    canvas_release: "release",
-    canvas_move: "move",
-    canvas_scroll: "scroll",
-  };
-  return {
-    kind: "canvas",
-    type: typeMap[family] ?? (family as CanvasEvent["type"]),
-    id,
-    windowId: requiredStr(raw, "window_id", `canvas event "${family}"`),
-    scope,
-    x: data ? num(data, "x") : 0,
-    y: data ? num(data, "y") : 0,
-    button: data ? (typeof data["button"] === "string" ? data["button"] : "left") : "left",
-    data: data as CanvasEvent["data"],
-  };
-}
-
-// -- Pane events ----------------------------------------------------------
-
-const PANE_FAMILIES = new Set(["pane_resized", "pane_dragged", "pane_clicked", "pane_focus_cycle"]);
-
-function isPaneFamily(family: string): boolean {
-  return PANE_FAMILIES.has(family);
-}
-
-function decodePaneEvent(raw: WireMessage, family: string, data: WireMessage | null): PaneEvent {
-  const { id, scope } = splitScopedId(str(raw, "id"));
-  const typeMap: Record<string, PaneEvent["type"]> = {
-    pane_resized: "resized",
-    pane_dragged: "dragged",
-    pane_clicked: "clicked",
-    pane_focus_cycle: "focus_cycle",
-  };
-  return {
-    kind: "pane",
-    type: typeMap[family] ?? (family as PaneEvent["type"]),
-    id,
-    windowId: requiredStr(raw, "window_id", `pane event "${family}"`),
-    scope,
-    data: data as PaneEvent["data"],
-  };
-}
-
-// -- Sensor events --------------------------------------------------------
-
-function decodeSensorEvent(raw: WireMessage, data: WireMessage | null): SensorEvent {
-  const { id, scope } = splitScopedId(str(raw, "id"));
-  return {
-    kind: "sensor",
-    type: "resize",
-    id,
-    windowId: requiredStr(raw, "window_id", 'sensor event "sensor_resize"'),
-    scope,
-    width: data ? num(data, "width") : 0,
-    height: data ? num(data, "height") : 0,
   };
 }
 

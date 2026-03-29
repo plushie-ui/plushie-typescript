@@ -21,12 +21,10 @@ import {
 } from "../../src/index.js";
 import type {
   AsyncEvent,
-  CanvasEvent,
   EffectEvent,
   KeyEvent,
   ModifiersEvent,
   MouseEvent,
-  SensorEvent,
   StreamEvent,
   TimerEvent,
   TouchEvent,
@@ -292,36 +290,38 @@ test("events_window_resized_guard", () => {
 // -- Canvas events --
 
 test("events_canvas_press_guard", () => {
-  const event: CanvasEvent = {
-    kind: "canvas",
-    type: "press",
+  const event: WidgetEvent = {
+    kind: "widget",
+    type: "canvas_press",
     id: "drawArea",
+    windowId: "main",
     scope: [],
-    x: 42,
-    y: 100,
-    button: "left",
-    data: null,
+    value: null,
+    data: { x: 42, y: 100, button: "left" },
   };
   expect(isCanvas(event)).toBe(true);
-  expect(event.x).toBe(42);
-  expect(event.y).toBe(100);
-  expect(event.button).toBe("left");
+  expect(isCanvas(event, "drawArea")).toBe(true);
+  expect(event.data?.["x"]).toBe(42);
+  expect(event.data?.["y"]).toBe(100);
+  expect(event.data?.["button"]).toBe("left");
 });
 
 // -- Sensor events --
 
 test("events_sensor_resize_guard", () => {
-  const event: SensorEvent = {
-    kind: "sensor",
-    type: "resize",
+  const event: WidgetEvent = {
+    kind: "widget",
+    type: "sensor_resize",
     id: "contentArea",
+    windowId: "main",
     scope: [],
-    width: 800,
-    height: 600,
+    value: null,
+    data: { width: 800, height: 600 },
   };
   expect(isSensor(event)).toBe(true);
-  expect(event.width).toBe(800);
-  expect(event.height).toBe(600);
+  expect(isSensor(event, "contentArea")).toBe(true);
+  expect(event.data?.["width"]).toBe(800);
+  expect(event.data?.["height"]).toBe(600);
 });
 
 // -- Timer events --
