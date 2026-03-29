@@ -1,9 +1,9 @@
 /**
  * Widget handler system.
  *
- * Widgets are pure TypeScript widgets that render via canvas shapes,
- * manage internal state (hover, focus, animation), and transform raw
- * canvas events into semantic widget events via `handleEvent`.
+ * Pure TypeScript widgets that manage internal state (hover, focus,
+ * animation) and transform low-level events into semantic widget
+ * events via `handleEvent`.
  *
  * ## Defining a widget
  *
@@ -25,7 +25,7 @@
  *
  * ## How it works
  *
- * `buildWidget` creates a placeholder canvas node tagged with metadata.
+ * `buildWidget` creates a placeholder node tagged with metadata.
  * During tree normalization, the runtime detects the tag, looks up the
  * widget's state from the registry, calls `render`, and recursively
  * normalizes the output. The normalized tree carries metadata for

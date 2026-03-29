@@ -144,22 +144,22 @@ they're just functions that return UINodes. Use
 `defineNativeWidget` only when you need handler registration,
 command generation, or Rust build integration.
 
-### Canvas widgets -- canvas-based widgets with internal state
+### Stateful widgets -- pure-TypeScript widgets with internal state
 
-Use `WidgetDef` for widgets that render via canvas shapes,
-manage their own internal state, and transform raw canvas events into
-semantic events. No Rust code needed. This sits between composite
-widgets (pure functions, no state) and native widgets (Rust-backed).
+Use `WidgetDef` for widgets that manage their own internal state and
+transform low-level events into semantic events. No Rust code needed.
+This sits between composite widgets (pure functions, no state) and
+native widgets (Rust-backed).
 
-Canvas widgets have three capabilities that composite widgets do not:
+Stateful widgets have three capabilities that composite widgets do not:
 
 - **Internal state** -- initialized by `init`, managed by the runtime.
   The widget tree is the source of truth; state is keyed by scoped
   widget ID.
 - **Event transformation** -- `handleEvent` intercepts events at the
-  widget's scope boundary before they reach `update`. Raw canvas
-  events become semantic events that are indistinguishable from built-in
-  widget events.
+  widget's scope boundary before they reach `update`. Low-level events
+  become semantic events that are indistinguishable from built-in widget
+  events.
 - **Widget-scoped subscriptions** -- `subscriptions` returns subscriptions
   scoped to this widget instance. Timer events route to `handleEvent`,
   not the app's `update`.
