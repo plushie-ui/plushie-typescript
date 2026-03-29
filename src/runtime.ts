@@ -199,6 +199,10 @@ export class Runtime<M> {
    * Sends the registration and waits for the ack round-trip.
    */
   async registerEffectStub(kind: string, response: unknown, timeout = 5000): Promise<void> {
+    if (this.state.pendingStubAcks.has(kind)) {
+      throw new Error(`registerEffectStub: ack already pending for "${kind}"`);
+    }
+
     return new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.state.pendingStubAcks.delete(kind);
@@ -225,6 +229,10 @@ export class Runtime<M> {
    * Sends the unregistration and waits for the ack round-trip.
    */
   async unregisterEffectStub(kind: string, timeout = 5000): Promise<void> {
+    if (this.state.pendingStubAcks.has(kind)) {
+      throw new Error(`unregisterEffectStub: ack already pending for "${kind}"`);
+    }
+
     return new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.state.pendingStubAcks.delete(kind);
@@ -254,6 +262,10 @@ export class Runtime<M> {
     // If the task is not running, resolve immediately
     if (!this.state.asyncTasks.has(tag)) {
       return Promise.resolve();
+    }
+
+    if (this.state.pendingAwaitAsync.has(tag)) {
+      return Promise.reject(new Error(`awaitAsync: already waiting for async task "${tag}"`));
     }
 
     return new Promise<void>((resolve, reject) => {
