@@ -261,7 +261,7 @@ Pass configuration to extensions at startup:
 ```typescript
 app({
   settings: {
-    extensionConfig: {
+    nativeWidgetConfig: {
       sparkline: { defaultColor: '#4CAF50', maxSamples: 1000 },
     },
   },
@@ -764,7 +764,7 @@ export default app<Model>({
   init: { temperature: 20, targetTemp: 20 },
 
   settings: {
-    extensionConfig: {
+    nativeWidgetConfig: {
       gauge: { arcWidth: 8, tickCount: 10 },
     },
   },

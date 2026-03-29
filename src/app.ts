@@ -30,11 +30,11 @@ export interface AppSettings {
   readonly fonts?: readonly string[];
   readonly defaultEventRate?: number;
   /**
-   * Configuration passed to widget extensions at runtime.
-   * Keyed by extension widget type.
-   * Sent in the Settings message so extensions can initialize their state.
+   * Configuration passed to native widgets at runtime.
+   * Keyed by native widget type name.
+   * Sent in the Settings message so native widgets can initialize their state.
    */
-  readonly extensionConfig?: Readonly<Record<string, unknown>>;
+  readonly nativeWidgetConfig?: Readonly<Record<string, unknown>>;
 }
 
 /**
