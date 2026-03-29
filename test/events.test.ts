@@ -9,6 +9,7 @@ const click: WidgetEvent = {
   scope: ["form"],
   value: null,
   data: null,
+  windowId: "main",
 };
 
 const toggle: WidgetEvent = {
@@ -18,6 +19,7 @@ const toggle: WidgetEvent = {
   scope: ["todo_1", "list"],
   value: true,
   data: null,
+  windowId: "main",
 };
 
 const timer: TimerEvent = {

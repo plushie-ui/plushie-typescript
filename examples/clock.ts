@@ -5,7 +5,7 @@
 // - isTimer() for narrowing timer events in update()
 // - Simple model with derived display value
 
-import type { Event } from "../src/index.js";
+import type { Event, WindowNode } from "../src/index.js";
 import { app, isTimer, Subscription } from "../src/index.js";
 import { column, text, window } from "../src/ui/index.js";
 
@@ -47,5 +47,5 @@ export default app<Model>({
         text("clock_display", s.time, { size: 48 }),
         text("subtitle", "Updates every second", { size: 12, color: "#888888" }),
       ]),
-    ]),
+    ]) as WindowNode,
 });

@@ -7,7 +7,7 @@
 // - Data.query() for full-text search across fields
 // - View helper extraction (viewList, viewEdit)
 
-import type { Event, UINode } from "../src/index.js";
+import type { Event, UINode, WindowNode } from "../src/index.js";
 import {
   app,
   Data,
@@ -140,7 +140,10 @@ export default app<Model>({
 
   // -- Update -----------------------------------------------------------------
 
-  update(state, event: Event) {
+  update(rawState, event: Event) {
+    // DeepReadonly mangles function types in Selection/UndoStack/Route,
+    // but none of these helpers mutate their arguments.
+    const state = rawState as unknown as Model;
     if (isClick(event, "new_note")) {
       const id = state.nextId;
       const note: Note = { id, title: "", body: "" };
@@ -240,12 +243,13 @@ export default app<Model>({
 
   // -- View -------------------------------------------------------------------
 
-  view: (s) => {
+  view: (rawState) => {
+    const s = rawState as unknown as Model;
     switch (Route.currentPath(s.route)) {
       case "/edit":
-        return viewEdit(s);
+        return viewEdit(s) as WindowNode;
       default:
-        return viewList(s);
+        return viewList(s) as WindowNode;
     }
   },
 });

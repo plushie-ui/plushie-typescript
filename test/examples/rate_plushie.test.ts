@@ -9,7 +9,7 @@ describe("rate_plushie example", () => {
   });
 
   test("init produces correct model", () => {
-    const init = ratePlushie.config.init as Record<string, unknown>;
+    const init = ratePlushie.config.init as unknown as Record<string, unknown>;
     expect(init["rating"]).toBe(0);
     expect(init["darkMode"]).toBe(false);
     expect(Array.isArray(init["reviews"])).toBe(true);

@@ -4,7 +4,7 @@
 // keyboard adjustment, focus tracking). The app receives "change" events
 // with the current HSV values.
 
-import type { Event } from "../src/index.js";
+import type { Event, WindowNode } from "../src/index.js";
 import { app, isWidget } from "../src/index.js";
 import { column, container, row, text, window } from "../src/ui/index.js";
 import { colorPickerWidget } from "./widgets/color_picker.js";
@@ -128,6 +128,6 @@ export default app<Model>({
           ]),
         ]),
       ]),
-    ]);
+    ]) as WindowNode;
   },
 });

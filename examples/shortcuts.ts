@@ -6,7 +6,7 @@
 // - scrollable for overflow content with dynamic list items
 // - Capped log buffer (MAX_LOG_ENTRIES)
 
-import type { Event, KeyEvent, Modifiers } from "../src/index.js";
+import type { Event, KeyEvent, Modifiers, WindowNode } from "../src/index.js";
 import { app, isKey, Subscription } from "../src/index.js";
 import { column, rule, scrollable, text, window } from "../src/ui/index.js";
 
@@ -50,7 +50,8 @@ export default app<Model>({
 
   // -- Update -----------------------------------------------------------------
 
-  update(state, event: Event) {
+  update(rawState, event: Event) {
+    const state = rawState as unknown as Model;
     if (isKey(event, "press")) {
       const entry = formatKeyEvent(event, state.count + 1);
       return {
@@ -79,5 +80,5 @@ export default app<Model>({
           ),
         ]),
       ]),
-    ]),
+    ]) as WindowNode,
 });

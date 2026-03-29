@@ -9,7 +9,7 @@ describe("color_picker example", () => {
   });
 
   test("init produces correct model shape", () => {
-    const init = colorPicker.config.init as Record<string, unknown>;
+    const init = colorPicker.config.init as unknown as Record<string, unknown>;
     expect(init).toHaveProperty("hue");
     expect(init).toHaveProperty("saturation");
     expect(init).toHaveProperty("value");

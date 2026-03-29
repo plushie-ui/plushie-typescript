@@ -197,6 +197,7 @@ test("events_key_press_cmd_s_guard", () => {
     repeat: false,
     tag: "keys",
     captured: false,
+    windowId: null,
   };
   expect(isKey(event, "press")).toBe(true);
   expect(event.key).toBe("s");
@@ -216,6 +217,7 @@ test("events_key_press_escape_guard", () => {
     repeat: false,
     tag: "keys",
     captured: false,
+    windowId: null,
   };
   expect(isKey(event, "press")).toBe(true);
   expect(event.key).toBe("Escape");
@@ -234,6 +236,7 @@ test("events_mouse_moved_guard", () => {
     deltaY: 0,
     tag: "mouse",
     captured: false,
+    windowId: null,
   };
   expect(isMouse(event)).toBe(true);
   expect(event.x).toBe(100);
@@ -251,6 +254,7 @@ test("events_touch_pressed_guard", () => {
     y: 75,
     tag: "touch",
     captured: false,
+    windowId: null,
   };
   expect(isTouch(event)).toBe(true);
   expect(event.x).toBe(50);
@@ -265,6 +269,7 @@ test("events_modifiers_changed_guard", () => {
     modifiers: { shift: true, ctrl: false, alt: false, logo: false, command: false },
     tag: "mods",
     captured: false,
+    windowId: null,
   };
   expect(isModifiers(event)).toBe(true);
   expect(event.modifiers.shift).toBe(true);

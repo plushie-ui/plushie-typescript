@@ -6,7 +6,7 @@
 // - Loading state management
 // - Extracting view helpers for reuse
 
-import type { Event, UINode } from "../src/index.js";
+import type { Event, UINode, WindowNode } from "../src/index.js";
 import { app, Command, isAsync, isClick } from "../src/index.js";
 import { button, column, text, window } from "../src/ui/index.js";
 
@@ -74,5 +74,5 @@ export default app<Model>({
         button("fetch", "Fetch Data"),
         statusMessage(s),
       ]),
-    ]),
+    ]) as WindowNode,
 });

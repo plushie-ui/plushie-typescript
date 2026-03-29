@@ -19,6 +19,7 @@ import {
   rect,
   stroke,
 } from "../../src/canvas/index.js";
+import { isCanvas } from "../../src/events.js";
 import type { Event, EventAction, UINode, WidgetDef } from "../../src/index.js";
 import { buildWidget } from "../../src/index.js";
 import { Canvas } from "../../src/ui/widgets/canvas.js";
@@ -139,12 +140,11 @@ function handleEvent(
   event: Event,
   state: ColorPickerState,
 ): readonly [EventAction, ColorPickerState] {
-  // Canvas press/move/release for drag interaction
-  if (event.kind === "canvas") {
-    const x = event.x;
-    const y = event.y;
-
-    if (event.type === "press" && event.button === "left") {
+  // Canvas press/move/release for drag interaction.
+  // isCanvas() narrows the event to WidgetEvent with typed data (x, y, etc.)
+  if (isCanvas(event) && event.type === "canvas_press") {
+    const { x, y } = event.data;
+    if ("button" in event.data && event.data.button === "left") {
       const dx = x - CX;
       const dy = y - CY;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -157,24 +157,25 @@ function handleEvent(
         const newState = applySv({ ...state, drag: "square" as const }, x, y);
         return [{ type: "emit", kind: "change", data: hsvData(newState) }, newState];
       }
-      return [{ type: "consumed" }, state];
     }
+    return [{ type: "consumed" }, state];
+  }
 
-    if (event.type === "move") {
-      if (state.drag === "ring") {
-        const newState = { ...state, hue: hueFromPoint(x - CX, y - CY) };
-        return [{ type: "emit", kind: "change", data: hsvData(newState) }, newState];
-      }
-      if (state.drag === "square") {
-        const newState = applySv(state, x, y);
-        return [{ type: "emit", kind: "change", data: hsvData(newState) }, newState];
-      }
-      return [{ type: "consumed" }, state];
+  if (isCanvas(event) && event.type === "canvas_move") {
+    const { x, y } = event.data;
+    if (state.drag === "ring") {
+      const newState = { ...state, hue: hueFromPoint(x - CX, y - CY) };
+      return [{ type: "emit", kind: "change", data: hsvData(newState) }, newState];
     }
+    if (state.drag === "square") {
+      const newState = applySv(state, x, y);
+      return [{ type: "emit", kind: "change", data: hsvData(newState) }, newState];
+    }
+    return [{ type: "consumed" }, state];
+  }
 
-    if (event.type === "release") {
-      return [{ type: "update_state" }, { ...state, drag: "none" as const }];
-    }
+  if (isCanvas(event) && event.type === "canvas_release") {
+    return [{ type: "update_state" }, { ...state, drag: "none" as const }];
   }
 
   // Keyboard navigation for hue cursor

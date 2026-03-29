@@ -9,7 +9,7 @@ describe("shortcuts example", () => {
   });
 
   test("init produces correct model shape", () => {
-    const init = shortcuts.config.init as Record<string, unknown>;
+    const init = shortcuts.config.init as unknown as Record<string, unknown>;
     expect(init).toHaveProperty("log");
     expect(init).toHaveProperty("count");
     expect(Array.isArray(init["log"])).toBe(true);

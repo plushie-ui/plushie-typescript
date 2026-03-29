@@ -8,7 +8,7 @@
 // - Filter buttons with conditional list rendering
 // - View helper extraction (todoRow, filtered)
 
-import type { Event, Handler, UINode, WidgetEvent } from "../src/index.js";
+import type { Event, Handler, UINode, WidgetEvent, WindowNode } from "../src/index.js";
 import { app, Command, isClick, isInput, isSubmit } from "../src/index.js";
 import {
   button,
@@ -66,9 +66,9 @@ function filtered(model: Model): readonly Todo[] {
 function todoRow(todo: Todo): UINode {
   return container(todo.id, {}, [
     row({ spacing: 8 }, [
-      checkbox("toggle", todo.done, { onToggle: toggleTodo }),
+      checkbox("toggle", todo.done, { onToggle: toggleTodo as Handler<unknown> }),
       text(todo.text),
-      button("delete", "x", { onClick: deleteTodo }),
+      button("delete", "x", { onClick: deleteTodo as Handler<unknown> }),
     ]),
   ]);
 }
@@ -82,7 +82,8 @@ export default app<Model>({
 
   // -- Update -----------------------------------------------------------------
 
-  update(state, event: Event) {
+  update(rawState, event: Event) {
+    const state = rawState as unknown as Model;
     if (isInput(event, "new_todo")) {
       return { ...state, input: String(event.value) };
     }
@@ -119,7 +120,7 @@ export default app<Model>({
           button("filter_done", "Done"),
         ]),
 
-        column({ id: "list", spacing: 4 }, filtered(s).map(todoRow)),
+        column({ id: "list", spacing: 4 }, filtered(s as unknown as Model).map(todoRow)),
       ]),
-    ]),
+    ]) as WindowNode,
 });

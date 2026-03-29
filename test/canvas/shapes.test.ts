@@ -298,7 +298,10 @@ describe("stroke", () => {
 describe("interactive", () => {
   test("wraps a leaf shape in a group with interactive fields", () => {
     const r = rect(0, 0, 100, 40, { fill: "#3498db" });
-    const ir = interactive(r, "btn", { on_click: true, cursor: "pointer" });
+    const ir = interactive(r as unknown as Record<string, unknown>, "btn", {
+      on_click: true,
+      cursor: "pointer",
+    });
     expect(ir.type).toBe("group");
     expect(ir.id).toBe("btn");
     expect(ir.on_click).toBe(true);
@@ -309,7 +312,10 @@ describe("interactive", () => {
 
   test("merges interactive fields onto an existing group", () => {
     const g = group([rect(0, 0, 10, 10)]);
-    const ig = interactive(g, "panel", { on_hover: true, tooltip: "info" });
+    const ig = interactive(g as unknown as Record<string, unknown>, "panel", {
+      on_hover: true,
+      tooltip: "info",
+    });
     expect(ig.type).toBe("group");
     expect(ig.id).toBe("panel");
     expect(ig.on_hover).toBe(true);
@@ -319,7 +325,7 @@ describe("interactive", () => {
 
   test("creates group with only id when no opts given", () => {
     const c = circle(0, 0, 10);
-    const ic = interactive(c, "dot");
+    const ic = interactive(c as unknown as Record<string, unknown>, "dot");
     expect(ic.type).toBe("group");
     expect(ic.id).toBe("dot");
     expect(ic.children).toEqual([c]);
@@ -327,7 +333,7 @@ describe("interactive", () => {
 
   test("includes drag options", () => {
     const r = rect(0, 0, 50, 50);
-    const ir = interactive(r, "handle", {
+    const ir = interactive(r as unknown as Record<string, unknown>, "handle", {
       draggable: true,
       drag_axis: "x",
       drag_bounds: { min_x: 0, max_x: 200 },

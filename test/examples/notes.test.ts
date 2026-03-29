@@ -9,7 +9,7 @@ describe("notes example", () => {
   });
 
   test("init produces correct model shape", () => {
-    const init = notes.config.init as Record<string, unknown>;
+    const init = notes.config.init as unknown as Record<string, unknown>;
     expect(init).toHaveProperty("notes");
     expect(init).toHaveProperty("nextId");
     expect(init).toHaveProperty("searchQuery");

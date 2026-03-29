@@ -5,7 +5,7 @@
 // - Model updates from events
 // - Basic column/row layout
 
-import { app } from "../src/index.js";
+import { app, type Handler, type WindowNode } from "../src/index.js";
 import { button, column, row, text, window } from "../src/ui/index.js";
 
 // -- Types --------------------------------------------------------------------
@@ -32,9 +32,9 @@ export default app<Model>({
         text("count", `Count: ${s.count}`),
 
         row({ spacing: 8 }, [
-          button("increment", "+", { onClick: increment }),
-          button("decrement", "-", { onClick: decrement }),
+          button("increment", "+", { onClick: increment as Handler<unknown> }),
+          button("decrement", "-", { onClick: decrement as Handler<unknown> }),
         ]),
       ]),
-    ]),
+    ]) as WindowNode,
 });

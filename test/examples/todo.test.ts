@@ -10,11 +10,12 @@ const widgetEvent = (type: string, id: string, opts?: Partial<WidgetEvent>): Wid
   scope: [],
   value: null,
   data: null,
+  windowId: "main",
   ...opts,
 });
 
 describe("todo example", () => {
-  const initModel = todo.config.init as Record<string, unknown>;
+  const initModel = todo.config.init as unknown as Record<string, unknown>;
   const update = todo.config.update!;
 
   test("init produces empty todo list", () => {
@@ -28,14 +29,14 @@ describe("todo example", () => {
       initModel as never,
       widgetEvent("input", "new_todo", { value: "Buy milk" }),
     );
-    expect((result as Record<string, unknown>)["input"]).toBe("Buy milk");
+    expect((result as unknown as Record<string, unknown>)["input"]).toBe("Buy milk");
   });
 
   test("submit with text creates a todo and returns focus command", () => {
     const withInput = { ...initModel, input: "Buy milk" };
     const result = update(withInput as never, widgetEvent("submit", "new_todo"));
     expect(Array.isArray(result)).toBe(true);
-    const [model] = result as [Record<string, unknown>, unknown];
+    const [model] = result as unknown as [Record<string, unknown>, unknown];
     expect((model["todos"] as unknown[]).length).toBe(1);
     expect(model["input"]).toBe("");
   });

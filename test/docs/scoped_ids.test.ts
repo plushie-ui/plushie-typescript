@@ -12,6 +12,7 @@ test("scoped_ids_match_local_id", () => {
     scope: ["form", "sidebar"],
     value: null,
     data: null,
+    windowId: "main",
   };
   expect(isClick(event, "save")).toBe(true);
 });
@@ -26,6 +27,7 @@ test("scoped_ids_match_immediate_parent", () => {
     scope: ["form", "sidebar"],
     value: null,
     data: null,
+    windowId: "main",
   };
   expect(isClick(event, "save")).toBe(true);
   expect(event.scope[0]).toBe("form");
@@ -41,6 +43,7 @@ test("scoped_ids_dynamic_list_bind_parent", () => {
     scope: ["item_42", "todoList"],
     value: true,
     data: null,
+    windowId: "main",
   };
 
   expect(isToggle(event, "done")).toBe(true);
@@ -58,6 +61,7 @@ test("scoped_ids_dynamic_list_delete", () => {
     scope: ["item_7", "todoList"],
     value: null,
     data: null,
+    windowId: "main",
   };
 
   expect(isClick(event, "delete")).toBe(true);
@@ -74,6 +78,7 @@ test("scoped_ids_depth_agnostic", () => {
     scope: ["search", "sidebar", "root"],
     value: "hi",
     data: null,
+    windowId: "main",
   };
 
   expect(isInput(event, "query")).toBe(true);
@@ -90,6 +95,7 @@ test("scoped_ids_exact_depth", () => {
     scope: ["search"],
     value: "hi",
     data: null,
+    windowId: "main",
   };
 
   expect(event.scope.length).toBe(1);
@@ -105,6 +111,7 @@ test("scoped_ids_exact_depth_mismatch", () => {
     scope: ["search", "panel"],
     value: "hi",
     data: null,
+    windowId: "main",
   };
 
   // Exact match on ["search"] alone would fail
@@ -121,6 +128,7 @@ test("scoped_ids_no_scope", () => {
     scope: [],
     value: null,
     data: null,
+    windowId: "main",
   };
 
   expect(event.scope.length).toBe(0);
@@ -135,6 +143,7 @@ test("scoped_ids_no_scope_mismatch", () => {
     scope: ["form"],
     value: null,
     data: null,
+    windowId: "main",
   };
 
   expect(event.scope.length).not.toBe(0);
@@ -150,6 +159,7 @@ test("scoped_ids_target_reconstruction", () => {
     scope: ["form", "sidebar"],
     value: null,
     data: null,
+    windowId: "main",
   };
   expect(target(event)).toBe("sidebar/form/save");
 });

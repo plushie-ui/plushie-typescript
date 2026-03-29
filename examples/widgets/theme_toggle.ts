@@ -19,7 +19,13 @@ import {
   rotate,
   translate,
 } from "../../src/canvas/index.js";
-import type { Event, EventAction, Subscription, UINode, WidgetDef } from "../../src/index.js";
+import type {
+  Event,
+  EventAction,
+  SubscriptionType as Subscription,
+  UINode,
+  WidgetDef,
+} from "../../src/index.js";
 import { buildWidget, Subscription as Sub } from "../../src/index.js";
 import { Canvas } from "../../src/ui/widgets/canvas.js";
 

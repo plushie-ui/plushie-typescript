@@ -117,6 +117,7 @@ test("tutorial_step2_input_updates_model", () => {
     scope: [],
     value: "Buy milk",
     data: null,
+    windowId: "main",
   };
   const updated = handleInput(model, event);
   expect(updated.input).toBe("Buy milk");
@@ -256,6 +257,7 @@ test("tutorial_step4_toggle", () => {
     scope: ["todo_1", "list", "app"],
     value: true,
     data: null,
+    windowId: "main",
   };
 
   const updated = toggleTodo(model, event);
@@ -277,6 +279,7 @@ test("tutorial_step4_delete", () => {
     scope: ["todo_1", "list", "app"],
     value: null,
     data: null,
+    windowId: "main",
   };
 
   const updated = deleteTodo(model, event);

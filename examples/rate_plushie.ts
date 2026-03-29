@@ -18,7 +18,7 @@
 // - Theme interpolation (light to dark)
 // - Accessibility (heading roles, form labels, radio group)
 
-import type { Event, UINode } from "../src/index.js";
+import type { Event, UINode, WindowNode } from "../src/index.js";
 import { app, isClick, isInput, isSubmit, isWidget } from "../src/index.js";
 import {
   button,
@@ -195,12 +195,12 @@ function reviewForm(model: Model, t: Theme): UINode {
       textInput("review-name", model.reviewName, {
         placeholder: "Your name",
         onSubmit: true,
-        style: inputStyle(model.errors.name, t),
+        ...(model.errors.name ? { style: inputStyle(model.errors.name, t)! } : {}),
         a11y: {
           label: "Your name",
           required: true,
           invalid: model.errors.name !== undefined,
-          errorMessage: model.errors.name ? "review-name-error" : undefined,
+          ...(model.errors.name ? { errorMessage: "review-name-error" } : {}),
         },
       }),
       ...(model.errors.name
@@ -218,12 +218,12 @@ function reviewForm(model: Model, t: Theme): UINode {
         content: model.reviewComment,
         placeholder: "Write your review...",
         height: 80,
-        style: inputStyle(model.errors.comment, t),
+        ...(model.errors.comment ? { style: inputStyle(model.errors.comment, t)! } : {}),
         a11y: {
           label: "Review text",
           required: true,
           invalid: model.errors.comment !== undefined,
-          errorMessage: model.errors.comment ? "review-comment-error" : undefined,
+          ...(model.errors.comment ? { errorMessage: "review-comment-error" } : {}),
         },
       }),
       ...(model.errors.comment
@@ -321,7 +321,11 @@ export default app<Model>({
     errors: {},
   },
 
-  update(state, event: Event) {
+  update(rawState, event: Event) {
+    // DeepReadonly mangles the Errors type with delete operations,
+    // but none of these helpers mutate the original state.
+    const state = rawState as unknown as Model;
+
     // StarRating emits "select" with { value: n } (the number of stars).
     if (isWidget(event) && event.type === "select" && event.id === "stars") {
       const stars = event.data?.["value"] as number;
@@ -354,7 +358,8 @@ export default app<Model>({
     return state;
   },
 
-  view: (s) => {
+  view: (rawState) => {
+    const s = rawState as unknown as Model;
     const p = s.darkMode ? 1.0 : 0.0;
     const t = buildTheme(p);
 
@@ -384,6 +389,6 @@ export default app<Model>({
           ]),
         ],
       ),
-    ]);
+    ]) as WindowNode;
   },
 });

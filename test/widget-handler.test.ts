@@ -165,7 +165,7 @@ describe("makeEntry", () => {
     const def = counterDef();
     const entry = makeEntry(def, { max: 5 }, { count: 0 });
     const ev = widgetEvent("btn", "click", ["my-counter"]);
-    const [action, newEntry] = entry.handleEvent(ev);
+    const [action, newEntry] = entry.handleEvent!(ev);
     expect(action).toEqual({ type: "emit", kind: "select", data: { value: 1 } });
     expect(newEntry.state).toEqual({ count: 1 });
   });
@@ -251,15 +251,13 @@ describe("dispatchThroughWidgets", () => {
     // Canvas press event where the canvas widget IS the target
     const registry = registryWith([["main\u0000picker", entry]]);
     const ev: Event = {
-      kind: "canvas",
-      type: "press",
+      kind: "widget",
+      type: "canvas_press",
       id: "picker",
       windowId: "main",
       scope: [],
-      x: 10,
-      y: 20,
-      button: "left",
-      data: null,
+      value: null,
+      data: { x: 10, y: 20, button: "left" },
     };
     const result = dispatchThroughWidgets(registry, ev);
     // counterDef ignores non-widget events

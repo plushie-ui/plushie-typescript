@@ -11,10 +11,11 @@ const clickEvent = (id: string): WidgetEvent => ({
   scope: [],
   value: null,
   data: null,
+  windowId: "main",
 });
 
 describe("async_fetch example", () => {
-  const initModel = asyncFetch.config.init as Record<string, unknown>;
+  const initModel = asyncFetch.config.init as unknown as Record<string, unknown>;
   const update = asyncFetch.config.update!;
 
   test("init starts with idle status", () => {
@@ -26,7 +27,10 @@ describe("async_fetch example", () => {
   test("clicking fetch transitions to loading and returns async command", () => {
     const result = update(initModel as never, clickEvent("fetch"));
     expect(Array.isArray(result)).toBe(true);
-    const [model, cmd] = result as [Record<string, unknown>, Record<symbol | string, unknown>];
+    const [model, cmd] = result as unknown as [
+      Record<string, unknown>,
+      Record<symbol | string, unknown>,
+    ];
     expect(model["status"]).toBe("loading");
     expect(cmd[COMMAND]).toBe(true);
     expect(cmd["type"]).toBe("async");
@@ -40,7 +44,7 @@ describe("async_fetch example", () => {
       result: { ok: true, value: "fetched data" },
     };
     const result = update(loading as never, event);
-    const m = result as Record<string, unknown>;
+    const m = result as unknown as Record<string, unknown>;
     expect(m["status"]).toBe("done");
     expect(m["result"]).toBeDefined();
   });
@@ -53,7 +57,7 @@ describe("async_fetch example", () => {
       result: { ok: false, error: "network error" },
     };
     const result = update(loading as never, event);
-    const m = result as Record<string, unknown>;
+    const m = result as unknown as Record<string, unknown>;
     expect(m["status"]).toBe("error");
     expect(m["error"]).toBeDefined();
   });

@@ -96,7 +96,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && tsc --project tsconfig.check.json",
     "lint": "biome check src/ test/ examples/",
     "format": "biome format --write src/ test/ examples/",
     "test": "vitest run",
