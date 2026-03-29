@@ -42,9 +42,9 @@ describe("detectWindows", () => {
     expect(detectWindows(tree)).toEqual(new Set(["main", "settings"]));
   });
 
-  test("ignores deeply nested windows", () => {
+  test("detects deeply nested windows", () => {
     const tree = w("root", "column", [w("wrapper", "container", [w("nested", "window")])]);
-    expect(detectWindows(tree)).toEqual(new Set());
+    expect(detectWindows(tree)).toEqual(new Set(["nested"]));
   });
 
   test("returns empty set when no windows", () => {

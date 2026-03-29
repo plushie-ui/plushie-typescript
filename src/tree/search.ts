@@ -34,26 +34,26 @@ export function findById(tree: WireNode, id: string): WireNode | null {
 }
 
 /**
- * Detect window node IDs at the root or direct-child level.
+ * Detect all window node IDs in the tree (recursive).
  *
- * Window nodes are only recognized at the top of the tree -- they
- * must be the root node itself or direct children of the root.
+ * Searches the entire tree for window nodes, matching the renderer's
+ * behavior. Nested window nodes inside containers or layout widgets
+ * are detected and tracked.
  *
  * @param tree - Normalized wire tree.
  * @returns Set of window node IDs found.
  */
 export function detectWindows(tree: WireNode): Set<string> {
   const windows = new Set<string>();
-
-  if (tree.type === "window") {
-    windows.add(tree.id);
-  }
-
-  for (const child of tree.children) {
-    if (child.type === "window") {
-      windows.add(child.id);
-    }
-  }
-
+  collectWindows(tree, windows);
   return windows;
+}
+
+function collectWindows(node: WireNode, acc: Set<string>): void {
+  if (node.type === "window") {
+    acc.add(node.id);
+  }
+  for (const child of node.children) {
+    collectWindows(child, acc);
+  }
 }
