@@ -32,9 +32,9 @@ with TypeScript -- no webview, no Electron.
 - **Canvas** -- shape primitives, interactive shapes, path commands,
   transforms, gradients.
 - **Hot reload** -- edit code, see changes instantly. Model preserved.
-- **Extensions** -- compose existing widgets or build native Rust
-  extensions with the `WidgetExtension` trait.
-  [Extensions guide](docs/extensions.md)
+- **Custom widgets** -- compose existing widgets or build native Rust
+  widgets with the `WidgetExtension` trait.
+  [Native widgets guide](docs/native-widgets.md)
 - **WASM** -- run in the browser with WasmTransport.
 - **SEA** -- bundle as a standalone executable.
 - **Remote rendering** -- Unix socket, TCP, SSH via SocketTransport.
@@ -199,7 +199,7 @@ PLUSHIE_TEST_BACKEND=headless pnpm test
 - [Running](docs/running.md) -- local, remote, WASM, SEA, binary management
 - [Composition patterns](docs/composition-patterns.md) -- tab bars, modals, cards
 - [Accessibility](docs/accessibility.md) -- a11y props, roles, screen readers
-- [Extensions](docs/extensions.md) -- custom widgets, Rust extensions
+- [Native widgets](docs/native-widgets.md) -- custom widgets, Rust extensions
 - [Builder internals](docs/builder-internals.md) -- how the SDK works under the hood
 - [Examples](examples/README.md) -- all example apps
 

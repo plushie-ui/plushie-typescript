@@ -528,4 +528,4 @@ protocol layer doesn't know about widget types.
 - [Getting started](getting-started.md) -- setup, first app
 - [Commands and subscriptions](commands.md) -- event rate limiting details
 - [Testing](testing.md) -- three-backend test framework
-- [Extensions](extensions.md) -- custom widgets
+- [Native widgets](native-widgets.md) -- custom widgets
