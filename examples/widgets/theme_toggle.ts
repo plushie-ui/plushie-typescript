@@ -184,7 +184,7 @@ function render(id: string, _props: ThemeToggleProps, state: ThemeToggleState): 
   });
 }
 
-// -- Canvas widget definition -------------------------------------------------
+// -- Widget definition -------------------------------------------------
 
 const themeToggleDef: WidgetDef<ThemeToggleState, ThemeToggleProps> = {
   init: () => ({ progress: 0.0, target: 0.0 }),
@@ -193,7 +193,7 @@ const themeToggleDef: WidgetDef<ThemeToggleState, ThemeToggleProps> = {
   subscriptions,
 };
 
-/** Build a theme toggle canvas widget. */
+/** Build a theme toggle widget. */
 export function themeToggle(id: string): UINode {
   return buildWidget(themeToggleDef, id, {});
 }

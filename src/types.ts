@@ -209,7 +209,8 @@ export interface CanvasElementDragData {
 export interface CanvasElementKeyPressData {
   readonly key: string;
   readonly modifiers: Readonly<Record<string, unknown>>;
-  readonly text: string;
+  /** Text produced by the key press, or null for non-printable keys. */
+  readonly text: string | null;
   readonly [key: string]: unknown;
 }
 

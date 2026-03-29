@@ -63,12 +63,12 @@ export function isAutoId(id: string): boolean {
  * ```
  */
 /**
- * Context passed through normalization to support canvas widget expansion.
- * When a registry is provided, canvas widget placeholders are expanded
+ * Context passed through normalization to support widget expansion.
+ * When a registry is provided, widget placeholders are expanded
  * inline during normalization.
  */
 export interface NormalizeContext {
-  /** Existing canvas widget registry for state continuity. */
+  /** Existing widget registry for state continuity. */
   readonly registry?: Registry | undefined;
   /** Accumulator for new registry entries discovered during expansion. */
   readonly newEntries?: Map<string, RegistryEntry> | undefined;
@@ -130,9 +130,9 @@ function normalizeNode(
   // Apply scope prefix to this node's ID
   const scopedId = scope !== "" && !isAutoId(id) ? `${scope}/${id}` : id;
 
-  // Canvas widget placeholder expansion: if this node is a canvas widget
-  // placeholder and we have a registry context, render the placeholder
-  // and normalize the rendered output in place.
+  // Widget placeholder expansion: if this node is a widget placeholder
+  // and we have a registry context, render the placeholder and normalize
+  // the rendered output in place.
   if (ctx?.registry && isPlaceholder(node)) {
     const standardProps = getStandardProps(node);
     const result = renderPlaceholder(node, currentWindowId, scopedId, id, ctx.registry);

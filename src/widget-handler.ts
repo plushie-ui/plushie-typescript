@@ -116,7 +116,7 @@ export interface WidgetOpts {
  * Build a placeholder node for a widget.
  *
  * The returned node has type "__widget__" and carries metadata that
- * the runtime uses during normalization to render the real canvas
+ * the runtime uses during normalization to render the widget's
  * tree with the widget's current state.
  *
  * Standard widget options (a11y, eventRate) are automatically merged

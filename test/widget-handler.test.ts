@@ -246,9 +246,9 @@ describe("dispatchThroughWidgets", () => {
     expect(emitted.scope).toEqual(["form"]);
   });
 
-  test("direct-target fallback for events targeting a canvas widget", () => {
+  test("direct-target fallback for events targeting a widget", () => {
     const entry = makeEntry(counterDef(), { max: 5 }, { count: 0 });
-    // Canvas press event where the canvas widget IS the target
+    // Canvas press event where the widget IS the target
     const registry = registryWith([["main\u0000picker", entry]]);
     const ev: Event = {
       kind: "widget",
@@ -309,7 +309,7 @@ describe("dispatchThroughWidgets", () => {
     expect(result.event).toBeNull();
   });
 
-  test("same canvas widget ids in different windows stay separate", () => {
+  test("same widget ids in different windows stay separate", () => {
     const left = makeEntry(counterDef(), { max: 5 }, { count: 0 });
     const right = makeEntry(counterDef(), { max: 5 }, { count: 4 });
     const registry = registryWith([
@@ -481,7 +481,7 @@ describe("deriveRegistry", () => {
     expect(registry.size).toBe(0);
   });
 
-  test("extracts entries from nodes with canvas widget meta", () => {
+  test("extracts entries from nodes with widget meta", () => {
     const def = counterDef();
     const child: UINode = Object.freeze({
       id: "stars",

@@ -372,7 +372,7 @@ function render(id: string, _props: ColorPickerProps, state: ColorPickerState): 
   });
 }
 
-// -- Canvas widget definition -------------------------------------------------
+// -- Widget definition -------------------------------------------------
 
 const colorPickerDef: WidgetDef<ColorPickerState, ColorPickerProps> = {
   init: () => ({ hue: 0.0, saturation: 1.0, value: 1.0, drag: "none" }),
@@ -380,7 +380,7 @@ const colorPickerDef: WidgetDef<ColorPickerState, ColorPickerProps> = {
   handleEvent,
 };
 
-/** Build a color picker canvas widget. */
+/** Build a color picker widget. */
 export function colorPickerWidget(id: string): UINode {
   return buildWidget(colorPickerDef, id, {});
 }

@@ -28,7 +28,7 @@ The examples deliberately use different API patterns so you can compare:
 - **Hybrid** -- inline handlers for widget events, update() for
   subscriptions and async results.
   Used by: Todo, Notes, Clock.
-- **Canvas widgets** -- reusable `CanvasWidgetDef` components in `widgets/`.
+- **Custom widgets** -- reusable `WidgetDef` components in `widgets/`.
   Used by: RatePlushie (StarRating, ThemeToggle), ColorPicker (ColorPickerWidget).
 
 All styles are interchangeable. Pick whichever reads best for your

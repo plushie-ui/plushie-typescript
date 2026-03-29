@@ -171,7 +171,7 @@ function render(id: string, props: StarRatingProps, state: StarState): UINode {
   });
 }
 
-// -- Canvas widget definition -------------------------------------------------
+// -- Widget definition -------------------------------------------------
 
 const starRatingDef: WidgetDef<StarState, StarRatingProps> = {
   init: () => ({ hover: null }),
@@ -179,7 +179,7 @@ const starRatingDef: WidgetDef<StarState, StarRatingProps> = {
   handleEvent,
 };
 
-/** Build a star rating canvas widget. */
+/** Build a star rating widget. */
 export function starRating(id: string, props: StarRatingProps): UINode {
   return buildWidget(starRatingDef, id, props);
 }
