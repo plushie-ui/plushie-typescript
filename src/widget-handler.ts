@@ -5,7 +5,7 @@
  * manage internal state (hover, focus, animation), and transform raw
  * canvas events into semantic widget events via `handleEvent`.
  *
- * ## Defining a canvas widget
+ * ## Defining a widget
  *
  * ```ts
  * import { type WidgetDef, buildWidget } from 'plushie'
@@ -32,7 +32,7 @@
  * registry derivation after each render cycle.
  *
  * Events flow through the scope chain before reaching `update`.
- * Each canvas widget in the chain gets a chance to handle the event:
+ * Each widget in the chain gets a chance to handle the event:
  * `ignored` passes through, `consumed` stops the chain, and
  * `emit` replaces the event with a WidgetEvent and continues.
  * The runtime fills in `id`, `scope`, and `windowId` automatically from the
@@ -43,10 +43,10 @@
 
 import type { Event, Subscription, UINode, WidgetEvent } from "./types.js";
 
-// -- Canvas widget definition ------------------------------------------------
+// -- Widget definition ------------------------------------------------
 
 /**
- * Result of a canvas widget's event handler.
+ * Result of a widget's event handler.
  *
  * - `ignored` -- not handled, continue to next handler in scope chain
  * - `consumed` -- captured, suppress event
@@ -60,7 +60,7 @@ export type EventAction =
   | { readonly type: "emit"; readonly kind: string; readonly data: unknown };
 
 /**
- * Definition of a canvas widget's behaviour.
+ * Definition of a widget's behaviour.
  *
  * `State` is the widget's internal state (managed by the runtime).
  * `Props` is the widget's input from the parent view function.
@@ -90,7 +90,7 @@ export interface WidgetDef<State, Props> {
 
 // -- Metadata keys -----------------------------------------------------------
 
-/** Metadata key marking a node as a canvas widget placeholder. */
+/** Metadata key marking a node as a widget placeholder. */
 const META_KEY = "__widget_handler__";
 
 /** Metadata key carrying the widget's encoded props. */
@@ -113,7 +113,7 @@ export interface WidgetOpts {
 }
 
 /**
- * Build a placeholder node for a canvas widget.
+ * Build a placeholder node for a widget.
  *
  * The returned node has type "canvas" and carries metadata that
  * the runtime uses during normalization to render the real canvas
@@ -152,7 +152,7 @@ export function buildWidget<State, Props>(
 // -- Registry ----------------------------------------------------------------
 
 /**
- * A registry entry for a canvas widget instance. Stores type-erased
+ * A registry entry for a widget instance. Stores type-erased
  * state and pre-bound closures so the registry can be heterogeneous.
  */
 export interface RegistryEntry {
@@ -170,7 +170,7 @@ export interface RegistryEntry {
   readonly def: unknown;
 }
 
-/** The canvas widget registry: maps window-local widget keys to entries. */
+/** The widget registry: maps window-local widget keys to entries. */
 export type Registry = ReadonlyMap<string, RegistryEntry>;
 
 function widgetKey(windowId: string, widgetId: string): string {
@@ -192,7 +192,7 @@ function splitWidgetKey(key: string): { readonly windowId: string; readonly widg
 function requiredWindowId(event: Event): string {
   const windowId = extractWindowId(event);
   if (windowId === null) {
-    throw new Error("Canvas widget events must include windowId.");
+    throw new Error("Widget events must include windowId.");
   }
   return windowId;
 }
@@ -225,7 +225,7 @@ export function makeEntry<State, Props>(
 // -- Normalization support ---------------------------------------------------
 
 /**
- * Check if a node is a canvas widget placeholder (has canvas widget metadata).
+ * Check if a node is a widget placeholder (has widget metadata).
  */
 export function isPlaceholder(node: UINode): boolean {
   return node.meta !== undefined && META_KEY in node.meta;
@@ -241,7 +241,7 @@ export function getStandardProps(node: UINode): Readonly<Record<string, unknown>
 }
 
 /**
- * Render a canvas widget placeholder using the registry.
+ * Render a widget placeholder using the registry.
  *
  * Returns the rendered UINode and an updated registry entry,
  * or null if the node isn't a placeholder.
@@ -258,7 +258,7 @@ export function renderPlaceholder(
   }
 
   if (!windowId) {
-    throw new Error(`Canvas widget "${localId}" must be rendered inside a window node.`);
+    throw new Error(`Widget "${localId}" must be rendered inside a window node.`);
   }
 
   const def = node.meta[META_KEY] as WidgetDef<unknown, unknown>;
@@ -302,8 +302,8 @@ export function renderPlaceholder(
 /**
  * Derive the registry from a normalized tree.
  *
- * Walks the tree and extracts canvas widget metadata from nodes.
- * Returns a fresh registry with entries for all canvas widgets
+ * Walks the tree and extracts widget metadata from nodes.
+ * Returns a fresh registry with entries for all widgets
  * found in the tree.
  */
 export function deriveRegistry(tree: UINode | null): Map<string, RegistryEntry> {
@@ -322,7 +322,7 @@ function collectEntries(
 
   if (node.meta && META_KEY in node.meta && PROPS_KEY in node.meta && STATE_KEY in node.meta) {
     if (!currentWindowId) {
-      throw new Error(`Canvas widget "${node.id}" must be rendered inside a window node.`);
+      throw new Error(`Widget "${node.id}" must be rendered inside a window node.`);
     }
 
     const def = node.meta[META_KEY] as WidgetDef<unknown, unknown>;
@@ -425,7 +425,7 @@ function buildHandlerChain(
  * interception context.
  *
  * For widget events with scope: the innermost scope element is the
- * canvas widget's local ID; remaining elements are the parent scope.
+ * widget's local ID; remaining elements are the parent scope.
  * For non-widget events (timers): split the registered widget_id
  * on "/" to derive id/scope.
  */
@@ -485,7 +485,7 @@ function normalizeEmitData(data: unknown): Readonly<Record<string, unknown>> {
 }
 
 /**
- * Route an event through canvas widget handlers in the scope chain.
+ * Route an event through widget handlers in the scope chain.
  *
  * Returns `{ event, registry }` where event is null if consumed,
  * or the (possibly transformed) event if it should reach `update`.
@@ -576,11 +576,11 @@ function walkChain(
 
 // -- Widget-scoped subscriptions ---------------------------------------------
 
-/** Namespace prefix for canvas widget subscription tags. */
+/** Namespace prefix for widget subscription tags. */
 const CW_TAG_PREFIX = "__cw:";
 
 /**
- * Collect subscriptions from all canvas widgets in the registry.
+ * Collect subscriptions from all widgets in the registry.
  *
  * Each subscription's tag is namespaced with the window-local widget key
  * so the runtime can route timer events back to the correct widget.
@@ -596,13 +596,13 @@ export function collectSubscriptions(registry: ReadonlyMap<string, RegistryEntry
   return result;
 }
 
-/** Namespace a subscription's tag for a canvas widget. */
+/** Namespace a subscription's tag for a widget. */
 function namespaceTag(sub: Subscription, widgetId: string): Subscription {
   const key = JSON.stringify({ key: widgetId, tag: sub.tag });
   return { ...sub, tag: CW_TAG_PREFIX + key };
 }
 
-/** Check if a subscription tag is namespaced for a canvas widget. */
+/** Check if a subscription tag is namespaced for a widget. */
 export function isWidgetTag(tag: string): boolean {
   return tag.startsWith(CW_TAG_PREFIX);
 }
@@ -634,12 +634,12 @@ export function parseWidgetTag(
 }
 
 /**
- * Route a timer event to the correct canvas widget.
+ * Route a timer event to the correct widget.
  *
  * If the timer tag is namespaced, look up the widget, create a
  * TimerEvent with the inner tag, dispatch through the widget's
  * handler, and return the result. Emitted events are dispatched
- * through the scope chain so parent canvas widgets can intercept.
+ * through the scope chain so parent widgets can intercept.
  *
  * Returns `{ event, registry }` where event is null if handled
  * internally, or the emitted event if it should reach `update`.
@@ -694,7 +694,7 @@ export function handleWidgetTimer(
         value: null,
         data: normalizeEmitData(action.data),
       };
-      // Dispatch through the scope chain so parent canvas widgets can intercept
+      // Dispatch through the scope chain so parent widgets can intercept
       return dispatchThroughWidgets(registry, emitted);
     }
   }

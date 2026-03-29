@@ -1367,10 +1367,12 @@ export class Runtime<M> {
     }
     this.state.pendingStubAcks.clear();
 
-    // Fail pending awaitAsync calls
-    for (const [tag, pending] of this.state.pendingAwaitAsync) {
+    // Resolve pending awaitAsync calls. The async tasks run in Node.js (not the
+    // renderer) and may still complete, but we clear the map so the resolve
+    // callback won't fire again when the async event arrives post-restart.
+    for (const [, pending] of this.state.pendingAwaitAsync) {
       clearTimeout(pending.timer);
-      // Resolve rather than reject: the task may still complete after restart
+      pending.resolve();
     }
     this.state.pendingAwaitAsync.clear();
 

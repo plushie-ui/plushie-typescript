@@ -42,6 +42,7 @@ test("events_widget_click_guard", () => {
     scope: [],
     value: null,
     data: null,
+    windowId: "main",
   };
   expect(isClick(event)).toBe(true);
   expect(isClick(event, "save")).toBe(true);
@@ -56,6 +57,7 @@ test("events_widget_input_guard", () => {
     scope: [],
     value: "hello",
     data: null,
+    windowId: "main",
   };
   expect(isInput(event)).toBe(true);
   expect(isInput(event, "search")).toBe(true);
@@ -70,6 +72,7 @@ test("events_widget_submit_guard", () => {
     scope: [],
     value: "query",
     data: null,
+    windowId: "main",
   };
   expect(isSubmit(event)).toBe(true);
   expect(isSubmit(event, "search")).toBe(true);
@@ -84,6 +87,7 @@ test("events_widget_toggle_guard", () => {
     scope: [],
     value: true,
     data: null,
+    windowId: "main",
   };
   expect(isToggle(event)).toBe(true);
   expect(isToggle(event, "darkMode")).toBe(true);
@@ -98,6 +102,7 @@ test("events_widget_select_guard", () => {
     scope: [],
     value: "nord",
     data: null,
+    windowId: "main",
   };
   expect(isSelect(event)).toBe(true);
   expect(isSelect(event, "themePicker")).toBe(true);
@@ -112,6 +117,7 @@ test("events_widget_slide_guard", () => {
     scope: [],
     value: 75,
     data: null,
+    windowId: "main",
   };
   expect(isSlide(event)).toBe(true);
   expect(isSlide(event, "volume")).toBe(true);
@@ -128,6 +134,7 @@ test("events_scope_sidebar_match", () => {
     scope: ["sidebar"],
     value: null,
     data: null,
+    windowId: "main",
   };
   expect(isClick(event, "save")).toBe(true);
   expect(event.scope[0]).toBe("sidebar");
@@ -141,6 +148,7 @@ test("events_scope_main_match", () => {
     scope: ["main"],
     value: null,
     data: null,
+    windowId: "main",
   };
   expect(isClick(event, "save")).toBe(true);
   expect(event.scope[0]).toBe("main");
@@ -156,6 +164,7 @@ test("events_target_reconstruction", () => {
     scope: ["form", "app"],
     value: null,
     data: null,
+    windowId: "main",
   };
   expect(target(event)).toBe("app/form/save");
 });
@@ -168,6 +177,7 @@ test("events_target_no_scope", () => {
     scope: [],
     value: null,
     data: null,
+    windowId: "main",
   };
   expect(target(event)).toBe("save");
 });
@@ -400,6 +410,7 @@ test("events_pattern_prefix_match", () => {
     scope: [],
     value: null,
     data: null,
+    windowId: "main",
   };
 
   expect(isClick(event)).toBe(true);
@@ -418,6 +429,7 @@ test("events_catch_all", () => {
     scope: [],
     value: null,
     data: null,
+    windowId: "main",
   };
 
   let result = "fallback";

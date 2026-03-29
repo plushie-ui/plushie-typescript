@@ -383,7 +383,7 @@ When a canvas contains shapes with an `interactive` field (see
 [composition patterns](composition-patterns.md#canvas-interactive-shapes)),
 the renderer handles hit testing locally and emits semantic shape
 events. These arrive as `kind: "widget"` events with `canvas_element_*` types.
-The `id` is the canvas widget ID; `data.element_id` identifies the
+The `id` is the canvas node ID; `data.element_id` identifies the
 specific shape.
 
 ```typescript

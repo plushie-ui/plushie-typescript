@@ -192,8 +192,8 @@ function normalizeNode(
 }
 
 /**
- * Normalize a rendered canvas widget node. The node's ID is already
- * the scoped ID. Children are normalized with the scoped ID as their
+ * Normalize a rendered widget node. The node's ID is already the
+ * scoped ID. Children are normalized with the scoped ID as their
  * scope prefix.
  */
 function normalizeRenderedWidget(

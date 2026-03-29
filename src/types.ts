@@ -139,7 +139,10 @@ export interface WidgetEvent extends EventBase {
     | "sensor_resize"
     // Diagnostic
     | "diagnostic"
-    | string; // Allow unrecognized types to pass through
+    // Allow unrecognized types from native widgets / future protocol versions.
+    // The `& {}` preserves autocomplete for the literal types above; plain
+    // `| string` would collapse the entire union to `string`.
+    | (string & {});
   readonly id: string;
   readonly windowId: string;
   readonly scope: readonly string[];

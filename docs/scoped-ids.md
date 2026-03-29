@@ -117,7 +117,7 @@ if (isCanvasElementClick(event) && event.id === 'handle' && event.scope[0] === '
 }
 ```
 
-This means canvas elements, canvas widgets, and regular widgets all
+This means canvas elements, custom widgets, and built-in widgets all
 use the same scoping and event dispatch model.
 
 ## Dynamic lists

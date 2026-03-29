@@ -18,9 +18,8 @@ import { COMMAND } from "./types.js";
 import { withHandlersMeta } from "./ui/handlers.js";
 
 /**
- * Supported property types for extension widget props.
+ * Supported property types for native widget props.
  *
- * Mirrors the Elixir SDK's extension prop types:
  * - Primitives: "string", "number", "boolean"
  * - Plushie types: "color", "length", "padding", "alignment", "font", "style"
  * - Generic: "any"
@@ -39,9 +38,9 @@ export type NativeWidgetPropType =
   | "any"
   | { readonly list: NativeWidgetPropType };
 
-/** Configuration for defining an extension widget. */
+/** Configuration for defining a native (Rust-backed) widget. */
 export interface NativeWidgetConfig {
-  /** Wire type name for the extension (e.g., "sparkline", "color_wheel"). */
+  /** Wire type name for the widget (e.g., "sparkline", "color_wheel"). */
   readonly type: string;
   /** Declared props with their types. Values are validated at build time. */
   readonly props?: Readonly<Record<string, NativeWidgetPropType>>;
@@ -49,18 +48,18 @@ export interface NativeWidgetConfig {
   readonly events?: readonly string[];
   /** If true, the widget accepts children (container widget). */
   readonly container?: boolean;
-  /** Command names this extension supports (native_widget only). */
+  /** Command names this widget supports. */
   readonly commands?: readonly string[];
   /**
-   * Path to the Rust crate for native widget extensions (relative to project root).
-   * Required for `npx plushie build` to include this extension in the custom binary.
+   * Path to the Rust crate (relative to project root).
+   * Required for `npx plushie build` to include this widget in the custom binary.
    * The crate must implement the `WidgetExtension` trait from `plushie_ext`.
    */
   readonly rustCrate?: string;
   /**
-   * Rust constructor expression for registering the extension.
+   * Rust constructor expression for registering the widget.
    * Called in the generated main.rs via `.extension(constructor)`.
-   * Example: `"MyExtension::new()"` or `"sparkline::SparklineExtension::new()"`
+   * Example: `"MyWidget::new()"` or `"sparkline::SparklineWidget::new()"`
    */
   readonly rustConstructor?: string;
 }
@@ -75,9 +74,9 @@ function handlerPropName(eventType: string): string {
 }
 
 /**
- * Define an extension widget builder.
+ * Define a native widget builder.
  *
- * Returns a function that creates UINodes with the extension's wire
+ * Returns a function that creates UINodes with the widget's wire
  * type and registers event handlers using the same mechanism as
  * built-in widgets.
  *
@@ -159,10 +158,10 @@ export function nativeWidgetConfigKey(config: Pick<NativeWidgetConfig, "type">):
 }
 
 /**
- * Generate Command constructor functions for an extension's declared commands.
+ * Generate Command constructor functions for a native widget's declared commands.
  *
  * Each command becomes a function that takes a node ID and optional payload,
- * returning a Command that the runtime sends as an extension_command message.
+ * returning a Command that the runtime sends as an extension_command wire message.
  *
  * ```ts
  * const gaugeConfig = {
