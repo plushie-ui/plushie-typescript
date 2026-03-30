@@ -14,8 +14,8 @@ type Model = { count: number };
 
 // -- Handlers -----------------------------------------------------------------
 
-const increment = (s: Model): Model => ({ ...s, count: s.count + 1 });
-const decrement = (s: Model): Model => ({ ...s, count: s.count - 1 });
+const inc = (s: Model): Model => ({ ...s, count: s.count + 1 });
+const dec = (s: Model): Model => ({ ...s, count: s.count - 1 });
 
 // -- App ----------------------------------------------------------------------
 
@@ -32,8 +32,8 @@ export default app<Model>({
         text("count", `Count: ${s.count}`),
 
         row({ spacing: 8 }, [
-          button("increment", "+", { onClick: increment as Handler<unknown> }),
-          button("decrement", "-", { onClick: decrement as Handler<unknown> }),
+          button("inc", "+", { onClick: inc as Handler<unknown> }),
+          button("dec", "-", { onClick: dec as Handler<unknown> }),
         ]),
       ]),
     ]) as WindowNode,

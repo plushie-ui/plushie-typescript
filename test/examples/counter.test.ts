@@ -25,8 +25,8 @@ describe("counter example", () => {
 
   test("view has increment and decrement buttons", () => {
     const tree = normalize(counter.config.view({ count: 0 } as never) as UINode);
-    const inc = findById(tree, "increment");
-    const dec = findById(tree, "decrement");
+    const inc = findById(tree, "inc");
+    const dec = findById(tree, "dec");
     expect(inc).not.toBeNull();
     expect(inc!.type).toBe("button");
     expect(dec).not.toBeNull();
