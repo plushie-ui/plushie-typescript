@@ -184,7 +184,7 @@ test("subscriptions_on_key_press_construct", () => {
 });
 
 test("subscriptions_set_max_rate", () => {
-  const sub = Subscription.maxRate(Subscription.onMouseMove("mouse"), 30);
+  const sub = Subscription.maxRate(Subscription.onPointerMove("mouse"), 30);
   expect(sub.maxRate).toBe(30);
 });
 
@@ -205,21 +205,21 @@ test("subscriptions_on_window_resize", () => {
   expect(sub.tag).toBe("winResize");
 });
 
-test("subscriptions_on_mouse_button", () => {
-  const sub = Subscription.onMouseButton("mouseBtn");
-  expect(sub.type).toBe("on_mouse_button");
+test("subscriptions_on_pointer_button", () => {
+  const sub = Subscription.onPointerButton("mouseBtn");
+  expect(sub.type).toBe("on_pointer_button");
   expect(sub.tag).toBe("mouseBtn");
 });
 
-test("subscriptions_on_mouse_scroll", () => {
-  const sub = Subscription.onMouseScroll("scroll");
-  expect(sub.type).toBe("on_mouse_scroll");
+test("subscriptions_on_pointer_scroll", () => {
+  const sub = Subscription.onPointerScroll("scroll");
+  expect(sub.type).toBe("on_pointer_scroll");
   expect(sub.tag).toBe("scroll");
 });
 
-test("subscriptions_on_touch", () => {
-  const sub = Subscription.onTouch("touch");
-  expect(sub.type).toBe("on_touch");
+test("subscriptions_on_pointer_touch", () => {
+  const sub = Subscription.onPointerTouch("touch");
+  expect(sub.type).toBe("on_pointer_touch");
   expect(sub.tag).toBe("touch");
 });
 

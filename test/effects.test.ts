@@ -1,105 +1,109 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { COMMAND, Effects } from "../src/index.js";
+import { COMMAND, Effect } from "../src/index.js";
 
 beforeEach(() => {
-  Effects._resetIdCounter();
+  Effect._resetIdCounter();
 });
 
-describe("Effects", () => {
-  test("fileOpen creates an effect command with monotonic ID", () => {
-    const cmd = Effects.fileOpen({ title: "Pick a file" });
+describe("Effect", () => {
+  test("fileOpen creates an effect command with tag and monotonic wire ID", () => {
+    const cmd = Effect.fileOpen("import", { title: "Pick a file" });
     expect(cmd[COMMAND]).toBe(true);
     expect(cmd.type).toBe("effect");
     expect(cmd.payload["kind"]).toBe("file_open");
+    expect(cmd.payload["tag"]).toBe("import");
     expect(cmd.payload["id"]).toBe("ef_1");
     expect(cmd.payload["timeout"]).toBe(120_000);
     expect((cmd.payload["payload"] as Record<string, unknown>)["title"]).toBe("Pick a file");
   });
 
-  test("IDs are monotonically increasing", () => {
-    const a = Effects.fileOpen();
-    const b = Effects.clipboardRead();
+  test("wire IDs are monotonically increasing", () => {
+    const a = Effect.fileOpen("a");
+    const b = Effect.clipboardRead("b");
     expect(a.payload["id"]).toBe("ef_1");
     expect(b.payload["id"]).toBe("ef_2");
   });
 
   test("fileOpenMultiple creates the right kind", () => {
-    const cmd = Effects.fileOpenMultiple();
+    const cmd = Effect.fileOpenMultiple("multi");
     expect(cmd.payload["kind"]).toBe("file_open_multiple");
+    expect(cmd.payload["tag"]).toBe("multi");
     expect(cmd.payload["timeout"]).toBe(120_000);
   });
 
   test("fileSave includes defaultName in payload", () => {
-    const cmd = Effects.fileSave({ defaultName: "report.pdf" });
+    const cmd = Effect.fileSave("save", { defaultName: "report.pdf" });
     const payload = cmd.payload["payload"] as Record<string, unknown>;
     expect(payload["defaultName"]).toBe("report.pdf");
   });
 
   test("directorySelect creates the right kind", () => {
-    const cmd = Effects.directorySelect({ title: "Choose folder" });
+    const cmd = Effect.directorySelect("dir", { title: "Choose folder" });
     expect(cmd.payload["kind"]).toBe("directory_select");
+    expect(cmd.payload["tag"]).toBe("dir");
   });
 
   test("directorySelectMultiple creates the right kind", () => {
-    const cmd = Effects.directorySelectMultiple();
+    const cmd = Effect.directorySelectMultiple("dirs");
     expect(cmd.payload["kind"]).toBe("directory_select_multiple");
   });
 
   test("clipboardRead has 5s timeout", () => {
-    const cmd = Effects.clipboardRead();
+    const cmd = Effect.clipboardRead("clip");
     expect(cmd.payload["kind"]).toBe("clipboard_read");
     expect(cmd.payload["timeout"]).toBe(5_000);
   });
 
   test("clipboardWrite includes text", () => {
-    const cmd = Effects.clipboardWrite("hello");
+    const cmd = Effect.clipboardWrite("copy", "hello");
     const payload = cmd.payload["payload"] as Record<string, unknown>;
     expect(payload["text"]).toBe("hello");
   });
 
   test("clipboardReadHtml has 5s timeout", () => {
-    const cmd = Effects.clipboardReadHtml();
+    const cmd = Effect.clipboardReadHtml("html-read");
     expect(cmd.payload["kind"]).toBe("clipboard_read_html");
     expect(cmd.payload["timeout"]).toBe(5_000);
   });
 
   test("clipboardWriteHtml includes html and optional altText", () => {
-    const cmd = Effects.clipboardWriteHtml("<b>hi</b>", "hi");
+    const cmd = Effect.clipboardWriteHtml("html-write", "<b>hi</b>", "hi");
     const payload = cmd.payload["payload"] as Record<string, unknown>;
     expect(payload["html"]).toBe("<b>hi</b>");
     expect(payload["altText"]).toBe("hi");
   });
 
   test("clipboardWriteHtml omits altText when not provided", () => {
-    const cmd = Effects.clipboardWriteHtml("<b>hi</b>");
+    const cmd = Effect.clipboardWriteHtml("html-write", "<b>hi</b>");
     const payload = cmd.payload["payload"] as Record<string, unknown>;
     expect(payload["html"]).toBe("<b>hi</b>");
     expect(payload["altText"]).toBeUndefined();
   });
 
   test("clipboardClear creates the right kind", () => {
-    const cmd = Effects.clipboardClear();
+    const cmd = Effect.clipboardClear("clear");
     expect(cmd.payload["kind"]).toBe("clipboard_clear");
   });
 
   test("clipboardReadPrimary creates the right kind", () => {
-    const cmd = Effects.clipboardReadPrimary();
+    const cmd = Effect.clipboardReadPrimary("primary");
     expect(cmd.payload["kind"]).toBe("clipboard_read_primary");
   });
 
   test("clipboardWritePrimary includes text", () => {
-    const cmd = Effects.clipboardWritePrimary("selected text");
+    const cmd = Effect.clipboardWritePrimary("primary-write", "selected text");
     const payload = cmd.payload["payload"] as Record<string, unknown>;
     expect(payload["text"]).toBe("selected text");
   });
 
-  test("notification includes title, body, and optional fields", () => {
-    const cmd = Effects.notification("Alert", "Something happened", {
+  test("notification includes tag, title, body, and optional fields", () => {
+    const cmd = Effect.notification("notify", "Alert", "Something happened", {
       icon: "warning",
       urgency: "critical",
       sound: "ding",
     });
     expect(cmd.payload["kind"]).toBe("notification");
+    expect(cmd.payload["tag"]).toBe("notify");
     expect(cmd.payload["timeout"]).toBe(5_000);
     const payload = cmd.payload["payload"] as Record<string, unknown>;
     expect(payload["title"]).toBe("Alert");
@@ -110,12 +114,12 @@ describe("Effects", () => {
   });
 
   test("commands are frozen", () => {
-    const cmd = Effects.fileOpen();
+    const cmd = Effect.fileOpen("frozen");
     expect(Object.isFrozen(cmd)).toBe(true);
   });
 
   test("custom timeout overrides default", () => {
-    const cmd = Effects.fileOpen({ timeout: 300_000 });
+    const cmd = Effect.fileOpen("custom", { timeout: 300_000 });
     expect(cmd.payload["timeout"]).toBe(300_000);
   });
 });

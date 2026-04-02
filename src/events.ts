@@ -7,7 +7,7 @@
  * assertions.
  *
  * Widget-level guards (`isClick`, `isInput`, etc.) optionally accept
- * a widget ID to narrow further. Broader guards (`isKey`, `isMouse`,
+ * a widget ID to narrow further. Broader guards (`isKey`, `isPointer`,
  * etc.) match an entire event category.
  *
  * @example
@@ -33,21 +33,20 @@
 
 import type {
   AsyncEvent,
-  CanvasInteractionData,
-  CanvasMoveData,
-  CanvasScrollData,
+  DragData,
   EffectEvent,
   Event,
   ExtensionCommandErrorEvent,
   ImeEvent,
   KeyEvent,
+  KeyPressData,
   ModifiersEvent,
-  MouseEvent,
-  SensorResizeData,
+  PointerData,
+  ResizeData,
+  ScrolledData,
   StreamEvent,
   SystemEvent,
   TimerEvent,
-  TouchEvent,
   WidgetEvent,
   WindowEvent,
 } from "./types.js";
@@ -127,16 +126,6 @@ export function isModifiers(event: Event): event is ModifiersEvent {
   return event.kind === "modifiers";
 }
 
-/** Narrows to a mouse event (move, button, scroll). */
-export function isMouse(event: Event): event is MouseEvent {
-  return event.kind === "mouse";
-}
-
-/** Narrows to a touch event (press, move, lift, lost). */
-export function isTouch(event: Event): event is TouchEvent {
-  return event.kind === "touch";
-}
-
 /** Narrows to an input method editor (IME) event. */
 export function isIme(event: Event): event is ImeEvent {
   return event.kind === "ime";
@@ -147,62 +136,94 @@ export function isWindow(event: Event): event is WindowEvent {
   return event.kind === "window";
 }
 
-// Canvas interaction types
-const CANVAS_TYPES = new Set(["canvas_press", "canvas_release", "canvas_move", "canvas_scroll"]);
+// Pointer event types (unified: covers canvas, pointer_area, and sensor)
+const POINTER_TYPES = new Set([
+  "press",
+  "release",
+  "move",
+  "scroll",
+  "enter",
+  "exit",
+  "double_click",
+]);
 
 /**
- * Narrows to a canvas interaction event (press, release, move, scroll on the canvas surface).
+ * Narrows to a unified pointer event (press, release, move, scroll,
+ * enter, exit, double_click). These replace the old canvas_* and
+ * mouse_* event types.
  *
- * All canvas interaction events carry at least `data.x` and `data.y`.
- * Press/release events also carry `data.button`. Scroll events carry
- * `data.delta_x` and `data.delta_y`.
+ * Events with spatial data (press, release, move, scroll, double_click)
+ * carry `PointerData` in the `data` field. Simple events (enter, exit)
+ * may have null data. Use a second check on `event.type` to narrow to
+ * a specific pointer event with guaranteed data shape.
  */
-export function isCanvas(
+export function isPointer(
   event: Event,
   id?: string,
 ): event is WidgetEvent & {
-  readonly type: "canvas_press" | "canvas_release" | "canvas_move" | "canvas_scroll";
-  readonly data: CanvasInteractionData | CanvasMoveData | CanvasScrollData;
+  readonly type: "press" | "release" | "move" | "scroll" | "enter" | "exit" | "double_click";
 } {
   return (
     event.kind === "widget" &&
-    CANVAS_TYPES.has((event as WidgetEvent).type) &&
+    POINTER_TYPES.has((event as WidgetEvent).type) &&
     (id === undefined || (event as WidgetEvent).id === id)
   );
 }
 
-// Mouse area types
-const MOUSE_AREA_TYPES = new Set([
-  "mouse_right_press",
-  "mouse_right_release",
-  "mouse_middle_press",
-  "mouse_middle_release",
-  "mouse_double_click",
-  "mouse_enter",
-  "mouse_exit",
-  "mouse_move",
-  "mouse_scroll",
-]);
-
-/** Narrows to a mouse area event (right click, double click, enter, exit, etc.). */
-export function isMouseArea(
+/**
+ * Narrows to a pointer press event with typed pointer data.
+ * The data field is guaranteed to contain coordinates, button, and pointer type.
+ */
+export function isPress(
   event: Event,
   id?: string,
-): event is WidgetEvent & {
-  readonly type:
-    | "mouse_right_press"
-    | "mouse_right_release"
-    | "mouse_middle_press"
-    | "mouse_middle_release"
-    | "mouse_double_click"
-    | "mouse_enter"
-    | "mouse_exit"
-    | "mouse_move"
-    | "mouse_scroll";
-} {
+): event is WidgetEvent & { readonly type: "press"; readonly data: PointerData } {
   return (
     event.kind === "widget" &&
-    MOUSE_AREA_TYPES.has((event as WidgetEvent).type) &&
+    (event as WidgetEvent).type === "press" &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
+}
+
+/**
+ * Narrows to a pointer release event with typed pointer data.
+ */
+export function isRelease(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & { readonly type: "release"; readonly data: PointerData } {
+  return (
+    event.kind === "widget" &&
+    (event as WidgetEvent).type === "release" &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
+}
+
+/**
+ * Narrows to a pointer move event with typed pointer data.
+ */
+export function isMove(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & { readonly type: "move"; readonly data: PointerData } {
+  return (
+    event.kind === "widget" &&
+    (event as WidgetEvent).type === "move" &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
+}
+
+/**
+ * Narrows to a pointer scroll event with typed pointer data
+ * (includes delta_x, delta_y).
+ */
+export function isScroll(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & { readonly type: "scroll"; readonly data: PointerData } {
+  return (
+    event.kind === "widget" &&
+    (event as WidgetEvent).type === "scroll" &&
     (id === undefined || (event as WidgetEvent).id === id)
   );
 }
@@ -224,21 +245,57 @@ export function isPane(
   );
 }
 
-/** Narrows to a sensor resize event with typed width/height data. */
-export function isSensor(
+/** Narrows to a resize event with typed width/height data. */
+export function isResize(
   event: Event,
   id?: string,
-): event is WidgetEvent & { readonly type: "sensor_resize"; readonly data: SensorResizeData } {
+): event is WidgetEvent & { readonly type: "resize"; readonly data: ResizeData } {
   return (
     event.kind === "widget" &&
-    (event as WidgetEvent).type === "sensor_resize" &&
+    (event as WidgetEvent).type === "resize" &&
     (id === undefined || (event as WidgetEvent).id === id)
   );
 }
 
-/** Narrows to an effect response event, optionally matching a request ID. */
-export function isEffect(event: Event, requestId?: string): event is EffectEvent {
-  return event.kind === "effect" && (requestId === undefined || event.requestId === requestId);
+/** Narrows to a drag event with typed coordinate/delta data. */
+export function isDrag(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & { readonly type: "drag"; readonly data: DragData } {
+  return (
+    event.kind === "widget" &&
+    (event as WidgetEvent).type === "drag" &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
+}
+
+/** Narrows to a scrolled event (scrollable viewport position changed). */
+export function isScrolled(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & { readonly type: "scrolled"; readonly data: ScrolledData } {
+  return (
+    event.kind === "widget" &&
+    (event as WidgetEvent).type === "scrolled" &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
+}
+
+/** Narrows to a widget-scoped key_press event with typed key/modifiers data. */
+export function isWidgetKeyPress(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & { readonly type: "key_press"; readonly data: KeyPressData } {
+  return (
+    event.kind === "widget" &&
+    (event as WidgetEvent).type === "key_press" &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
+}
+
+/** Narrows to an effect response event, optionally matching a tag. */
+export function isEffect(event: Event, tag?: string): event is EffectEvent {
+  return event.kind === "effect" && (tag === undefined || event.tag === tag);
 }
 
 /** Narrows to a system event (animation frame, theme change, etc.), optionally matching a type. */
@@ -268,9 +325,21 @@ export function isStream(event: Event, tag?: string): event is StreamEvent {
 
 /**
  * Reconstruct the full scoped ID path from a widget event.
- * e.g. { id: "save", scope: ["form", "app"] } -> "app/form/save"
+ *
+ * Strips the window_id from the scope chain (it's the outermost
+ * ancestor, always at the end of the reversed scope list). The
+ * window_id is already available as `event.windowId`.
+ *
+ * e.g. { id: "save", scope: ["form", "main"], windowId: "main" } -> "form/save"
  */
 export function target(event: WidgetEvent): string {
-  if (event.scope.length === 0) return event.id;
-  return [...event.scope].reverse().join("/") + "/" + event.id;
+  // Filter out the window_id from scope (last element in reversed list)
+  const scope =
+    event.windowId &&
+    event.scope.length > 0 &&
+    event.scope[event.scope.length - 1] === event.windowId
+      ? event.scope.slice(0, -1)
+      : event.scope;
+  if (scope.length === 0) return event.id;
+  return [...scope].reverse().join("/") + "/" + event.id;
 }

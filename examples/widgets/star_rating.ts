@@ -97,9 +97,9 @@ function handleEvent(event: Event, state: StarState): readonly [EventAction, Sta
   return [{ type: "consumed" }, state];
 }
 
-// -- Render -------------------------------------------------------------------
+// -- View ---------------------------------------------------------------------
 
-function render(id: string, props: StarRatingProps, state: StarState): UINode {
+function view(id: string, props: StarRatingProps, state: StarState): UINode {
   const rating = props.rating ?? 0;
   const isReadonly = props.readonly ?? false;
   const scale = props.scale ?? 1.0;
@@ -175,7 +175,7 @@ function render(id: string, props: StarRatingProps, state: StarState): UINode {
 
 const starRatingDef: WidgetDef<StarState, StarRatingProps> = {
   init: () => ({ hover: null }),
-  render,
+  view,
   handleEvent,
 };
 

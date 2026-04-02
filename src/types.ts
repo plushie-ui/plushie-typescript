@@ -68,8 +68,6 @@ export type EventKind =
   | "widget"
   | "key"
   | "modifiers"
-  | "mouse"
-  | "touch"
   | "ime"
   | "window"
   | "effect"
@@ -98,45 +96,33 @@ export interface WidgetEvent extends EventBase {
     | "option_hovered"
     | "open"
     | "close"
-    | "scroll"
     | "sort"
     | "key_binding"
-    // Canvas element events
-    | "canvas_element_enter"
-    | "canvas_element_leave"
-    | "canvas_element_click"
-    | "canvas_element_drag"
-    | "canvas_element_drag_end"
-    | "canvas_element_focused"
-    | "canvas_element_blurred"
-    | "canvas_focused"
-    | "canvas_blurred"
-    | "canvas_group_focused"
-    | "canvas_group_blurred"
-    | "canvas_element_key_press"
-    | "canvas_element_key_release"
-    // Canvas interaction events (press/release/move/scroll on canvas surface)
-    | "canvas_press"
-    | "canvas_release"
-    | "canvas_move"
-    | "canvas_scroll"
-    // Mouse area events
-    | "mouse_right_press"
-    | "mouse_right_release"
-    | "mouse_middle_press"
-    | "mouse_middle_release"
-    | "mouse_double_click"
-    | "mouse_enter"
-    | "mouse_exit"
-    | "mouse_move"
-    | "mouse_scroll"
+    // Pointer interaction events (press/release/move/scroll on any interactive surface)
+    | "press"
+    | "release"
+    | "move"
+    | "scroll"
+    | "enter"
+    | "exit"
+    | "double_click"
+    | "resize"
+    // Generic focus/drag events (canvas elements, focusable widgets)
+    | "focused"
+    | "blurred"
+    | "drag"
+    | "drag_end"
+    | "key_press"
+    | "key_release"
+    // Scrollable viewport events
+    | "scrolled"
     // Pane grid events
     | "pane_resized"
     | "pane_dragged"
     | "pane_clicked"
     | "pane_focus_cycle"
-    // Sensor events
-    | "sensor_resize"
+    // Transition animation events
+    | "transition_complete"
     // Diagnostic
     | "diagnostic"
     // Allow unrecognized types from native widgets / future protocol versions.
@@ -156,39 +142,44 @@ export interface WidgetEvent extends EventBase {
 // Type guards in events.ts use them to narrow `data` so callers get
 // typed field access without manual casts.
 
-/** Data for canvas_press and canvas_release events. */
-export interface CanvasInteractionData {
-  readonly x: number;
-  readonly y: number;
-  readonly button: string;
+/** Pointer type for unified pointer events. */
+export type PointerType = "mouse" | "touch" | "pen";
+
+/** Pointer button for press/release/double_click events. */
+export type PointerButton = "left" | "right" | "middle" | "back" | "forward";
+
+/**
+ * Data for pointer events (press, release, move, scroll, double_click).
+ *
+ * Position (`x`, `y`) is present on widget pointer events (canvas,
+ * pointer_area) but absent on subscription button press/release events
+ * where cursor position isn't tracked.
+ */
+export interface PointerData {
+  /** Cursor x position. Present on widget events; absent on subscription button events. */
+  readonly x?: number;
+  /** Cursor y position. Present on widget events; absent on subscription button events. */
+  readonly y?: number;
+  readonly button?: PointerButton;
+  readonly pointer?: PointerType;
+  readonly finger?: number;
+  readonly modifiers?: Readonly<Modifiers>;
+  /** Scroll delta (horizontal). Present on scroll events. */
+  readonly delta_x?: number;
+  /** Scroll delta (vertical). Present on scroll events. */
+  readonly delta_y?: number;
   readonly [key: string]: unknown;
 }
 
-/** Data for canvas_move events. */
-export interface CanvasMoveData {
-  readonly x: number;
-  readonly y: number;
-  readonly [key: string]: unknown;
-}
-
-/** Data for canvas_scroll events. */
-export interface CanvasScrollData {
-  readonly x: number;
-  readonly y: number;
-  readonly delta_x: number;
-  readonly delta_y: number;
-  readonly [key: string]: unknown;
-}
-
-/** Data for sensor_resize events. */
-export interface SensorResizeData {
+/** Data for resize events (sensor). */
+export interface ResizeData {
   readonly width: number;
   readonly height: number;
   readonly [key: string]: unknown;
 }
 
-/** Data for scroll events (scrollable widget). */
-export interface ScrollData {
+/** Data for scrolled events (scrollable viewport position). */
+export interface ScrolledData {
   readonly absolute_x: number;
   readonly absolute_y: number;
   readonly relative_x: number;
@@ -196,17 +187,17 @@ export interface ScrollData {
   readonly [key: string]: unknown;
 }
 
-/** Data for canvas_element_drag events. */
-export interface CanvasElementDragData {
+/** Data for drag events (canvas elements, draggable widgets). */
+export interface DragData {
   readonly x: number;
   readonly y: number;
-  readonly dx: number;
-  readonly dy: number;
+  readonly delta_x: number;
+  readonly delta_y: number;
   readonly [key: string]: unknown;
 }
 
-/** Data for canvas_element_key_press events. */
-export interface CanvasElementKeyPressData {
+/** Data for widget-scoped key_press events. */
+export interface KeyPressData {
   readonly key: string;
   readonly modifiers: Readonly<Record<string, unknown>>;
   /** Text produced by the key press, or null for non-printable keys. */
@@ -214,8 +205,8 @@ export interface CanvasElementKeyPressData {
   readonly [key: string]: unknown;
 }
 
-/** Data for canvas_element_key_release events. */
-export interface CanvasElementKeyReleaseData {
+/** Data for widget-scoped key_release events. */
+export interface KeyReleaseData {
   readonly key: string;
   readonly modifiers: Readonly<Record<string, unknown>>;
   readonly [key: string]: unknown;
@@ -254,32 +245,6 @@ export interface Modifiers {
   readonly command: boolean;
 }
 
-export interface MouseEvent extends EventBase {
-  readonly kind: "mouse";
-  readonly type: "moved" | "entered" | "left" | "pressed" | "released" | "scrolled";
-  readonly x: number;
-  readonly y: number;
-  readonly button: string | null;
-  readonly deltaX: number;
-  readonly deltaY: number;
-  readonly tag: string;
-  readonly captured: boolean;
-  /** Window that the cursor was in when the event fired, or null for global events. */
-  readonly windowId: string | null;
-}
-
-export interface TouchEvent extends EventBase {
-  readonly kind: "touch";
-  readonly type: "pressed" | "moved" | "lifted" | "lost";
-  readonly fingerId: number;
-  readonly x: number;
-  readonly y: number;
-  readonly tag: string;
-  readonly captured: boolean;
-  /** Window that the touch occurred in, or null for global events. */
-  readonly windowId: string | null;
-}
-
 export interface ImeEvent extends EventBase {
   readonly kind: "ime";
   readonly type: "opened" | "preedit" | "commit" | "closed";
@@ -312,7 +277,8 @@ export interface WindowEvent extends EventBase {
 
 export interface EffectEvent extends EventBase {
   readonly kind: "effect";
-  readonly requestId: string;
+  /** The tag provided when creating the effect command. */
+  readonly tag: string;
   readonly status: "ok" | "cancelled" | "error";
   readonly result: unknown;
   readonly error: string | null;
@@ -359,8 +325,6 @@ export type Event =
   | WidgetEvent
   | KeyEvent
   | ModifiersEvent
-  | MouseEvent
-  | TouchEvent
   | ImeEvent
   | WindowEvent
   | EffectEvent

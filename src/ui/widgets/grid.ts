@@ -13,10 +13,8 @@ import { encodeA11y, encodeLength } from "../types.js";
 export interface GridProps {
   /** Unique widget identifier. */
   id?: string;
-  /** Number of columns (alternative to columnCount). */
-  columns?: number;
   /** Number of columns in the grid. */
-  columnCount?: number;
+  columns?: number;
   /** Spacing between cells in pixels. */
   spacing?: number;
   /** Width of the grid. */
@@ -40,7 +38,6 @@ export function Grid(props: GridProps): UINode {
   const children = props.children ?? [];
   const p: Record<string, unknown> = {};
   putIf(p, props.columns, "columns");
-  putIf(p, props.columnCount, "column_count");
   putIf(p, props.spacing, "spacing");
   putIf(p, props.width, "width", encodeLength);
   putIf(p, props.height, "height", encodeLength);

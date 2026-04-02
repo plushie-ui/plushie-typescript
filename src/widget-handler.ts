@@ -15,7 +15,7 @@
  *
  * const starRating: WidgetDef<StarState, StarProps> = {
  *   init: () => ({ hover: null }),
- *   render: (id, props, state) => canvas(id, {}, []),
+ *   view: (id, props, state) => canvas(id, {}, []),
  *   handleEvent: (event, state) => [{ type: 'ignored' }, state],
  * }
  *
@@ -27,9 +27,9 @@
  *
  * `buildWidget` creates a placeholder node tagged with metadata.
  * During tree normalization, the runtime detects the tag, looks up the
- * widget's state from the registry, calls `render`, and recursively
+ * widget's state from the registry, calls `view`, and recursively
  * normalizes the output. The normalized tree carries metadata for
- * registry derivation after each render cycle.
+ * registry derivation after each view cycle.
  *
  * Events flow through the scope chain before reaching `update`.
  * Each widget in the chain gets a chance to handle the event:
@@ -94,8 +94,8 @@ export interface WidgetDef<State, Props> {
    */
   readonly init?: (() => State) | undefined;
 
-  /** Render the widget to a UINode tree. */
-  readonly render: (id: string, props: Props, state: State) => UINode;
+  /** Produce the widget's UINode tree. */
+  readonly view: (id: string, props: Props, state: State) => UINode;
 
   /**
    * Handle an event. Returns the action and (possibly updated) state.
@@ -141,12 +141,12 @@ export interface WidgetOpts {
  * Build a placeholder node for a widget.
  *
  * The returned node has type "__widget__" and carries metadata that
- * the runtime uses during normalization to render the widget's
- * tree with the widget's current state.
+ * the runtime uses during normalization to call the widget's `view`
+ * function with its current state.
  *
  * Standard widget options (a11y, eventRate) are automatically merged
  * into the top-level rendered node during normalization. Widget
- * authors do not need to forward these manually from their render
+ * authors do not need to forward these manually from their view
  * callback.
  */
 export function buildWidget<State, Props>(
@@ -181,8 +181,8 @@ export function buildWidget<State, Props>(
  * state and pre-bound closures so the registry can be heterogeneous.
  */
 export interface RegistryEntry {
-  /** Render the widget given its scoped ID. Returns a UINode tree. */
-  readonly render: (id: string) => UINode;
+  /** Produce the widget's UINode tree given its scoped ID. */
+  readonly view: (id: string) => UINode;
   /** Handle an event. Returns the action and an updated entry. Null for render-only widgets. */
   readonly handleEvent: ((event: Event) => readonly [EventAction, RegistryEntry]) | null;
   /** Collect subscriptions for this widget instance. */
@@ -233,7 +233,7 @@ export function makeEntry<State, Props>(
 ): RegistryEntry {
   const hasHandler = typeof def.handleEvent === "function";
   return {
-    render: (id: string) => def.render(id, props, state),
+    view: (id: string) => def.view(id, props, state),
     handleEvent: hasHandler
       ? (ev: Event) => {
           const [action, newState] = def.handleEvent!(ev, state);
@@ -304,7 +304,7 @@ export function renderPlaceholder(
   }
 
   // Render with the local (pre-scoped) ID
-  const rendered = entry.render(localId);
+  const rendered = entry.view(localId);
 
   // Attach metadata to the rendered node for registry derivation
   const widgetMeta = Object.freeze({

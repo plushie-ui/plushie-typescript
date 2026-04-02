@@ -1,7 +1,16 @@
 // Re-export tree node utilities.
 export { autoId, createNode, resetAutoId } from "../tree/index.js";
 // Re-export build utilities.
-export { containerNode, extractHandlers, leafNode, putIf } from "./build.js";
+export type { AnimationDescriptor, AnimationProps } from "./build.js";
+export {
+  containerNode,
+  extractHandlers,
+  isAnimationDescriptor,
+  leafNode,
+  mergeAnimationProps,
+  putIf,
+  withAnimation,
+} from "./build.js";
 // Re-export handler utilities.
 export type { HandlerEntry } from "./handlers.js";
 export { clearHandlers, drainHandlers, registerHandler } from "./handlers.js";
@@ -72,8 +81,6 @@ export type { KeyedColumnProps } from "./widgets/keyed_column.js";
 export { KeyedColumn, keyedColumn } from "./widgets/keyed_column.js";
 export type { MarkdownProps } from "./widgets/markdown.js";
 export { Markdown, markdown } from "./widgets/markdown.js";
-export type { MouseAreaProps } from "./widgets/mouse_area.js";
-export { MouseArea, mouseArea } from "./widgets/mouse_area.js";
 export type { OverlayProps } from "./widgets/overlay.js";
 // Layout containers
 export { Overlay, overlay } from "./widgets/overlay.js";
@@ -84,6 +91,8 @@ export type { PickListProps } from "./widgets/pick_list.js";
 export { PickList, pickList } from "./widgets/pick_list.js";
 export type { PinProps } from "./widgets/pin.js";
 export { Pin, pin } from "./widgets/pin.js";
+export type { PointerAreaProps } from "./widgets/pointer_area.js";
+export { PointerArea, pointerArea } from "./widgets/pointer_area.js";
 export type { ProgressBarProps } from "./widgets/progress_bar.js";
 export { ProgressBar, progressBar } from "./widgets/progress_bar.js";
 export type { QrCodeProps } from "./widgets/qr_code.js";
@@ -112,7 +121,7 @@ export type { StackProps } from "./widgets/stack.js";
 export { Stack, stack } from "./widgets/stack.js";
 export type { SvgProps } from "./widgets/svg.js";
 export { Svg, svg } from "./widgets/svg.js";
-export type { TableProps } from "./widgets/table.js";
+export type { TableColumn, TableProps, TableRow } from "./widgets/table.js";
 export { Table, table } from "./widgets/table.js";
 export type { TextProps } from "./widgets/text.js";
 export { Text, text } from "./widgets/text.js";

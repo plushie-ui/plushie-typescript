@@ -12,7 +12,7 @@ import {
   easeOutQuad,
   interpolate,
   linear,
-  spring,
+  springEase,
   startAnimation,
 } from "../src/index.js";
 
@@ -58,10 +58,10 @@ describe("easing functions", () => {
   });
 
   test("spring overshoots then settles", () => {
-    expect(spring(0)).toBe(0);
-    expect(spring(1)).toBe(1);
+    expect(springEase(0)).toBe(0);
+    expect(springEase(1)).toBe(1);
     // Mid-animation should overshoot past 1
-    const mid = spring(0.5);
+    const mid = springEase(0.5);
     expect(mid).toBeGreaterThan(0.9);
   });
 
@@ -74,7 +74,7 @@ describe("easing functions", () => {
       easeInQuad,
       easeOutQuad,
       easeInOutQuad,
-      spring,
+      springEase,
     ];
     for (const fn of fns) {
       expect(fn(0)).toBeCloseTo(0, 5);

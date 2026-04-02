@@ -108,14 +108,21 @@ export function sendAfter(delayMs: number, event: unknown): Command {
   return cmd("send_after", { delay: delayMs, event });
 }
 
-/** Focus a widget by its scoped ID path. */
+/** Focus a widget by its scoped ID path. Supports `"window#path"`. */
 export function focus(widgetId: string): Command {
-  return cmd("focus", { target: widgetId });
+  return cmd("focus", targetPayload(widgetId));
 }
 
-/** Focus a specific element within a canvas by its element ID. */
+/** Focus a specific element within a canvas. Supports `"window#canvas"`. */
 export function focusElement(canvasId: string, elementId: string): Command {
-  return cmd("widget_op", { op: "focus_element", target: canvasId, element_id: elementId });
+  const { windowId, path } = parseTarget(canvasId);
+  const payload: Record<string, unknown> = {
+    op: "focus_element",
+    target: path,
+    element_id: elementId,
+  };
+  if (windowId !== undefined) payload["window_id"] = windowId;
+  return cmd("widget_op", payload);
 }
 
 /** Move focus to the next focusable widget. */
@@ -128,29 +135,29 @@ export function focusPrevious(): Command {
   return cmd("focus_previous");
 }
 
-/** Select all text in a widget. */
+/** Select all text in a widget. Supports `"window#path"`. */
 export function selectAll(widgetId: string): Command {
-  return cmd("select_all", { target: widgetId });
+  return cmd("select_all", targetPayload(widgetId));
 }
 
-/** Scroll a scrollable widget to an absolute offset. */
+/** Scroll a scrollable widget to an absolute offset. Supports `"window#path"`. */
 export function scrollTo(widgetId: string, offsetX: number, offsetY: number): Command {
-  return cmd("scroll_to", { target: widgetId, offset_x: offsetX, offset_y: offsetY });
+  return cmd("scroll_to", targetPayload(widgetId, { offset_x: offsetX, offset_y: offsetY }));
 }
 
-/** Scroll a scrollable widget by a relative amount. */
+/** Scroll a scrollable widget by a relative amount. Supports `"window#path"`. */
 export function scrollBy(widgetId: string, x: number, y: number): Command {
-  return cmd("scroll_by", { target: widgetId, offset_x: x, offset_y: y });
+  return cmd("scroll_by", targetPayload(widgetId, { offset_x: x, offset_y: y }));
 }
 
-/** Snap a scrollable to a relative position (0.0 - 1.0). */
+/** Snap a scrollable to a relative position (0.0 - 1.0). Supports `"window#path"`. */
 export function snapTo(widgetId: string, x: number, y: number): Command {
-  return cmd("snap_to", { target: widgetId, x, y });
+  return cmd("snap_to", targetPayload(widgetId, { x, y }));
 }
 
-/** Snap a scrollable to the end of its content. */
+/** Snap a scrollable to the end of its content. Supports `"window#path"`. */
 export function snapToEnd(widgetId: string): Command {
-  return cmd("snap_to_end", { target: widgetId });
+  return cmd("snap_to_end", targetPayload(widgetId));
 }
 
 /** Close a window by ID. */
@@ -175,24 +182,24 @@ export function announce(text: string): Command {
 
 // -- Text editing -----------------------------------------------------------
 
-/** Move the text cursor to the front of the input. */
+/** Move the text cursor to the front of the input. Supports `"window#path"`. */
 export function moveCursorToFront(widgetId: string): Command {
-  return cmd("move_cursor_to_front", { target: widgetId });
+  return cmd("move_cursor_to_front", targetPayload(widgetId));
 }
 
-/** Move the text cursor to the end of the input. */
+/** Move the text cursor to the end of the input. Supports `"window#path"`. */
 export function moveCursorToEnd(widgetId: string): Command {
-  return cmd("move_cursor_to_end", { target: widgetId });
+  return cmd("move_cursor_to_end", targetPayload(widgetId));
 }
 
-/** Move the text cursor to a specific position. */
+/** Move the text cursor to a specific position. Supports `"window#path"`. */
 export function moveCursorTo(widgetId: string, position: number): Command {
-  return cmd("move_cursor_to", { target: widgetId, position });
+  return cmd("move_cursor_to", targetPayload(widgetId, { position }));
 }
 
-/** Select a range of text in the input. */
+/** Select a range of text in the input. Supports `"window#path"`. */
 export function selectRange(widgetId: string, start: number, end: number): Command {
-  return cmd("select_range", { target: widgetId, start, end });
+  return cmd("select_range", targetPayload(widgetId, { start, end }));
 }
 
 // -- Window operations ------------------------------------------------------
@@ -527,4 +534,29 @@ export function treeHash(tag: string): Command {
  */
 export function done(value: unknown, mapper: (v: unknown) => unknown): Command {
   return cmd("done", { value, mapper });
+}
+
+// -- Helpers ------------------------------------------------------------------
+
+/**
+ * Parse a widget ID that may include a window qualifier.
+ * "main#form/email" -> { windowId: "main", path: "form/email" }
+ * "form/email"      -> { windowId: undefined, path: "form/email" }
+ */
+function parseTarget(widgetId: string): {
+  readonly windowId: string | undefined;
+  readonly path: string;
+} {
+  const sep = widgetId.indexOf("#");
+  if (sep > 0) {
+    return { windowId: widgetId.slice(0, sep), path: widgetId.slice(sep + 1) };
+  }
+  return { windowId: undefined, path: widgetId };
+}
+
+function targetPayload(widgetId: string, extra?: Record<string, unknown>): Record<string, unknown> {
+  const { windowId, path } = parseTarget(widgetId);
+  const payload: Record<string, unknown> = { target: path, ...extra };
+  if (windowId !== undefined) payload["window_id"] = windowId;
+  return payload;
 }

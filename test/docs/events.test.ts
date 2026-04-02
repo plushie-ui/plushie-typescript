@@ -1,21 +1,20 @@
 import { expect, test } from "vitest";
 import {
   isAsync,
-  isCanvas,
   isClick,
   isEffect,
   isInput,
   isKey,
   isModifiers,
-  isMouse,
+  isPointer,
+  isPress,
+  isResize,
   isSelect,
-  isSensor,
   isSlide,
   isStream,
   isSubmit,
   isTimer,
   isToggle,
-  isTouch,
   isWindow,
   target,
 } from "../../src/index.js";
@@ -24,10 +23,8 @@ import type {
   EffectEvent,
   KeyEvent,
   ModifiersEvent,
-  MouseEvent,
   StreamEvent,
   TimerEvent,
-  TouchEvent,
   WidgetEvent,
   WindowEvent,
 } from "../../src/types.js";
@@ -223,44 +220,6 @@ test("events_key_press_escape_guard", () => {
   expect(event.key).toBe("Escape");
 });
 
-// -- Mouse events --
-
-test("events_mouse_moved_guard", () => {
-  const event: MouseEvent = {
-    kind: "mouse",
-    type: "moved",
-    x: 100,
-    y: 200,
-    button: null,
-    deltaX: 0,
-    deltaY: 0,
-    tag: "mouse",
-    captured: false,
-    windowId: null,
-  };
-  expect(isMouse(event)).toBe(true);
-  expect(event.x).toBe(100);
-  expect(event.y).toBe(200);
-});
-
-// -- Touch events --
-
-test("events_touch_pressed_guard", () => {
-  const event: TouchEvent = {
-    kind: "touch",
-    type: "pressed",
-    fingerId: 0,
-    x: 50,
-    y: 75,
-    tag: "touch",
-    captured: false,
-    windowId: null,
-  };
-  expect(isTouch(event)).toBe(true);
-  expect(event.x).toBe(50);
-  expect(event.y).toBe(75);
-});
-
 // -- Modifiers events --
 
 test("events_modifiers_changed_guard", () => {
@@ -304,41 +263,40 @@ test("events_window_resized_guard", () => {
 
 // -- Canvas events --
 
-test("events_canvas_press_guard", () => {
+test("events_pointer_press_guard", () => {
   const event: WidgetEvent = {
     kind: "widget",
-    type: "canvas_press",
+    type: "press",
     id: "drawArea",
     windowId: "main",
     scope: [],
     value: null,
-    data: { x: 42, y: 100, button: "left" },
+    data: { x: 42, y: 100, button: "left", pointer: "mouse" },
   };
-  expect(isCanvas(event)).toBe(true);
-  expect(isCanvas(event, "drawArea")).toBe(true);
-  // After narrowing, data.x and data.y are typed as number
-  if (isCanvas(event)) {
+  expect(isPointer(event)).toBe(true);
+  expect(isPointer(event, "drawArea")).toBe(true);
+  expect(isPress(event, "drawArea")).toBe(true);
+  if (isPress(event)) {
     expect(event.data.x).toBe(42);
     expect(event.data.y).toBe(100);
   }
 });
 
-// -- Sensor events --
+// -- Resize events --
 
-test("events_sensor_resize_guard", () => {
+test("events_resize_guard", () => {
   const event: WidgetEvent = {
     kind: "widget",
-    type: "sensor_resize",
+    type: "resize",
     id: "contentArea",
     windowId: "main",
     scope: [],
     value: null,
     data: { width: 800, height: 600 },
   };
-  expect(isSensor(event)).toBe(true);
-  expect(isSensor(event, "contentArea")).toBe(true);
-  // After narrowing, data.width and data.height are typed as number
-  if (isSensor(event)) {
+  expect(isResize(event)).toBe(true);
+  expect(isResize(event, "contentArea")).toBe(true);
+  if (isResize(event)) {
     expect(event.data.width).toBe(800);
     expect(event.data.height).toBe(600);
   }
@@ -389,7 +347,7 @@ test("events_stream_value_guard", () => {
 test("events_effect_ok_guard", () => {
   const event: EffectEvent = {
     kind: "effect",
-    requestId: "ef_1234",
+    tag: "import",
     status: "ok",
     result: { path: "/tmp/notes.txt" },
     error: null,
@@ -401,7 +359,7 @@ test("events_effect_ok_guard", () => {
 test("events_effect_cancelled_guard", () => {
   const event: EffectEvent = {
     kind: "effect",
-    requestId: "ef_1234",
+    tag: "import",
     status: "cancelled",
     result: null,
     error: null,

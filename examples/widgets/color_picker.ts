@@ -19,7 +19,7 @@ import {
   rect,
   stroke,
 } from "../../src/canvas/index.js";
-import { isCanvas } from "../../src/events.js";
+import { isMove, isPress, isRelease } from "../../src/events.js";
 import type { Event, EventAction, UINode, WidgetDef } from "../../src/index.js";
 import { buildWidget } from "../../src/index.js";
 import { Canvas } from "../../src/ui/widgets/canvas.js";
@@ -140,11 +140,13 @@ function handleEvent(
   event: Event,
   state: ColorPickerState,
 ): readonly [EventAction, ColorPickerState] {
-  // Canvas press/move/release for drag interaction.
-  // isCanvas() narrows the event to WidgetEvent with typed data (x, y, etc.)
-  if (isCanvas(event) && event.type === "canvas_press") {
-    const { x, y } = event.data;
-    if ("button" in event.data && event.data.button === "left") {
+  // Pointer press/move/release for drag interaction.
+  // isPress/isMove/isRelease narrow to WidgetEvent with typed PointerData.
+  // Widget pointer events from canvas always include coordinates.
+  if (isPress(event)) {
+    const x = event.data.x ?? 0;
+    const y = event.data.y ?? 0;
+    if (event.data.button === "left") {
       const dx = x - CX;
       const dy = y - CY;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -161,8 +163,9 @@ function handleEvent(
     return [{ type: "consumed" }, state];
   }
 
-  if (isCanvas(event) && event.type === "canvas_move") {
-    const { x, y } = event.data;
+  if (isMove(event)) {
+    const x = event.data.x ?? 0;
+    const y = event.data.y ?? 0;
     if (state.drag === "ring") {
       const newState = { ...state, hue: hueFromPoint(x - CX, y - CY) };
       return [{ type: "emit", kind: "change", data: hsvData(newState) }, newState];
@@ -174,13 +177,13 @@ function handleEvent(
     return [{ type: "consumed" }, state];
   }
 
-  if (isCanvas(event) && event.type === "canvas_release") {
+  if (isRelease(event)) {
     return [{ type: "update_state" }, { ...state, drag: "none" as const }];
   }
 
   // Keyboard navigation for hue cursor
-  if (event.kind === "widget" && event.type === "canvas_element_key_press") {
-    const elementId = event.data?.["element_id"] as string | undefined;
+  if (event.kind === "widget" && event.type === "key_press") {
+    const elementId = event.id;
     const key = event.data?.["key"] as string | undefined;
     const mods = (event.data?.["modifiers"] ?? {}) as Record<string, boolean>;
 
@@ -347,9 +350,9 @@ function cursorShapes(state: ColorPickerState): CanvasShape[] {
   ];
 }
 
-// -- Render -------------------------------------------------------------------
+// -- View ---------------------------------------------------------------------
 
-function render(id: string, _props: ColorPickerProps, state: ColorPickerState): UINode {
+function view(id: string, _props: ColorPickerProps, state: ColorPickerState): UINode {
   const allShapes: unknown[] = [
     ...ringShapes(),
     ...svHueShapes(state.hue),
@@ -376,7 +379,7 @@ function render(id: string, _props: ColorPickerProps, state: ColorPickerState): 
 
 const colorPickerDef: WidgetDef<ColorPickerState, ColorPickerProps> = {
   init: () => ({ hue: 0.0, saturation: 1.0, value: 1.0, drag: "none" }),
-  render,
+  view,
   handleEvent,
 };
 

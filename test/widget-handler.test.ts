@@ -26,7 +26,7 @@ interface CounterProps {
 function counterDef(): WidgetDef<CounterState, CounterProps> {
   return {
     init: () => ({ count: 0 }),
-    render: (id, props, state) =>
+    view: (id, props, state) =>
       Object.freeze({
         id,
         type: "canvas",
@@ -53,7 +53,7 @@ function counterDef(): WidgetDef<CounterState, CounterProps> {
 function consumingDef(): WidgetDef<object, object> {
   return {
     init: () => ({}),
-    render: (id) =>
+    view: (id) =>
       Object.freeze({
         id,
         type: "canvas",
@@ -67,7 +67,7 @@ function consumingDef(): WidgetDef<object, object> {
 function ignoringDef(): WidgetDef<object, object> {
   return {
     init: () => ({}),
-    render: (id) =>
+    view: (id) =>
       Object.freeze({
         id,
         type: "canvas",
@@ -81,7 +81,7 @@ function ignoringDef(): WidgetDef<object, object> {
 function updateStateDef(): WidgetDef<{ hover: boolean }, object> {
   return {
     init: () => ({ hover: false }),
-    render: (id) =>
+    view: (id) =>
       Object.freeze({
         id,
         type: "canvas",
@@ -135,7 +135,7 @@ describe("buildWidget", () => {
 
   test("stateless widget (no init) gets empty state", () => {
     const statelessDef: WidgetDef<object, { label: string }> = {
-      render: (id, props) =>
+      view: (id, props) =>
         Object.freeze({
           id,
           type: "text",
@@ -145,7 +145,7 @@ describe("buildWidget", () => {
       handleEvent: (_event, state) => [{ type: "emit", kind: "open" }, state],
     };
     const entry = makeEntry(statelessDef, { label: "hi" }, {});
-    const rendered = entry.render("card");
+    const rendered = entry.view("card");
     expect(rendered.type).toBe("text");
     expect(entry.state).toEqual({});
   });
@@ -173,7 +173,7 @@ describe("makeEntry", () => {
   test("render delegates to def.render", () => {
     const def = counterDef();
     const entry = makeEntry(def, { max: 5 }, { count: 3 });
-    const node = entry.render("my-counter");
+    const node = entry.view("my-counter");
     expect(node.id).toBe("my-counter");
     expect(node.props).toEqual({ max: 5, count: 3 });
   });
@@ -252,7 +252,7 @@ describe("dispatchThroughWidgets", () => {
   test("emit with value routes to WidgetEvent.value", () => {
     const valueDef: WidgetDef<object, object> = {
       init: () => ({}),
-      render: (id) =>
+      view: (id) =>
         Object.freeze({
           id,
           type: "canvas",
@@ -276,7 +276,7 @@ describe("dispatchThroughWidgets", () => {
   test("emit with data routes to WidgetEvent.data", () => {
     const dataDef: WidgetDef<object, object> = {
       init: () => ({}),
-      render: (id) =>
+      view: (id) =>
         Object.freeze({
           id,
           type: "canvas",
@@ -320,7 +320,7 @@ describe("dispatchThroughWidgets", () => {
     const registry = registryWith([["main\u0000picker", entry]]);
     const ev: Event = {
       kind: "widget",
-      type: "canvas_press",
+      type: "press",
       id: "picker",
       windowId: "main",
       scope: [],
@@ -337,7 +337,7 @@ describe("dispatchThroughWidgets", () => {
 
     const innerDef: WidgetDef<object, object> = {
       init: () => ({}),
-      render: (id) =>
+      view: (id) =>
         Object.freeze({
           id,
           type: "canvas",
@@ -352,7 +352,7 @@ describe("dispatchThroughWidgets", () => {
 
     const outerDef: WidgetDef<object, object> = {
       init: () => ({}),
-      render: (id) =>
+      view: (id) =>
         Object.freeze({
           id,
           type: "canvas",
@@ -402,7 +402,7 @@ describe("dispatchThroughWidgets", () => {
 
     const crashDef: WidgetDef<object, object> = {
       init: () => ({}),
-      render: (id) =>
+      view: (id) =>
         Object.freeze({
           id,
           type: "canvas",
@@ -431,7 +431,7 @@ describe("widget subscriptions", () => {
   test("collectSubscriptions gathers from all widgets", () => {
     const def: WidgetDef<object, object> = {
       init: () => ({}),
-      render: (id) =>
+      view: (id) =>
         Object.freeze({
           id,
           type: "canvas",
@@ -480,7 +480,7 @@ describe("handleWidgetTimer", () => {
   test("routes timer to widget handler", () => {
     const timerDef: WidgetDef<{ ticks: number }, object> = {
       init: () => ({ ticks: 0 }),
-      render: (id) =>
+      view: (id) =>
         Object.freeze({
           id,
           type: "canvas",
@@ -510,7 +510,7 @@ describe("handleWidgetTimer", () => {
   test("timer emit dispatches through scope chain", () => {
     const emittingDef: WidgetDef<object, object> = {
       init: () => ({}),
-      render: (id) =>
+      view: (id) =>
         Object.freeze({
           id,
           type: "canvas",

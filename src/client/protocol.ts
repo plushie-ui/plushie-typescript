@@ -18,8 +18,6 @@ import type {
   KeyEvent,
   Modifiers,
   ModifiersEvent,
-  MouseEvent as PlushieMouseEvent,
-  TouchEvent as PlushieTouchEvent,
   SystemEvent,
   WidgetEvent,
   WindowEvent,
@@ -545,28 +543,23 @@ export function decodeEvent(raw: WireMessage): Event {
     } as SystemEvent;
   }
 
-  // Widget events: all widget-scoped events (standard, canvas, mouse area,
-  // pane, sensor) are decoded into WidgetEvent with data maps.
+  // Widget events: all widget-scoped events (standard, pointer, pane, etc.)
+  // are decoded into WidgetEvent with data maps.
   if (isWidgetFamily(family)) {
     return decodeWidgetEvent(raw, family, data);
   }
 
-  // Keyboard events
+  // Key events: dual dispatch. With non-empty id -> WidgetEvent (scoped
+  // to a widget, e.g. canvas element). Without id -> global KeyEvent.
   if (family === "key_press" || family === "key_release") {
+    const id = str(raw, "id");
+    if (id !== "") {
+      return decodeWidgetEvent(raw, family, data);
+    }
     return decodeKeyEvent(raw, family, data);
   }
   if (family === "modifiers_changed") {
     return decodeModifiersEvent(raw);
-  }
-
-  // Mouse events
-  if (isMouseFamily(family)) {
-    return decodeMouseEvent(raw, family, data);
-  }
-
-  // Touch events
-  if (isTouchFamily(family)) {
-    return decodeTouchEvent(raw, family, data);
   }
 
   // IME events
@@ -582,6 +575,11 @@ export function decodeEvent(raw: WireMessage): Event {
   // System events
   if (isSystemFamily(family)) {
     return decodeSystemEvent(raw, family, data);
+  }
+
+  // Subscription pointer events (iced-native families converted to unified WidgetEvents)
+  if (isSubscriptionPointerFamily(family)) {
+    return decodeSubscriptionPointerEvent(raw, family);
   }
 
   // The renderer and SDK are lock-step; an unrecognized family is a protocol
@@ -611,43 +609,29 @@ const WIDGET_FAMILIES = new Set([
   "close",
   "key_binding",
   "sort",
+  // Unified pointer events
+  "press",
+  "release",
+  "move",
   "scroll",
-  // Canvas element events
-  "canvas_element_enter",
-  "canvas_element_leave",
-  "canvas_element_click",
-  "canvas_element_drag",
-  "canvas_element_drag_end",
-  "canvas_element_focused",
-  "canvas_element_blurred",
-  "canvas_element_key_press",
-  "canvas_element_key_release",
-  "canvas_focused",
-  "canvas_blurred",
-  "canvas_group_focused",
-  "canvas_group_blurred",
-  // Canvas interaction events
-  "canvas_press",
-  "canvas_release",
-  "canvas_move",
-  "canvas_scroll",
-  // Mouse area events
-  "mouse_right_press",
-  "mouse_right_release",
-  "mouse_middle_press",
-  "mouse_middle_release",
-  "mouse_double_click",
-  "mouse_enter",
-  "mouse_exit",
-  "mouse_move",
-  "mouse_scroll",
+  "enter",
+  "exit",
+  "double_click",
+  "resize",
+  // Scrollable viewport events
+  "scrolled",
+  // Generic focus/drag events
+  "focused",
+  "blurred",
+  "drag",
+  "drag_end",
   // Pane events
   "pane_resized",
   "pane_dragged",
   "pane_clicked",
   "pane_focus_cycle",
-  // Sensor events
-  "sensor_resize",
+  // Animation
+  "transition_complete",
   // Diagnostic
   "diagnostic",
 ]);
@@ -723,77 +707,141 @@ function decodeModifiersEvent(raw: WireMessage): ModifiersEvent {
   };
 }
 
-// -- Mouse events ---------------------------------------------------------
+// -- Subscription pointer events -------------------------------------------
+//
+// Subscription pointer events use iced-native wire families (cursor_moved,
+// button_pressed, etc.) distinct from widget pointer events (press, move,
+// etc.). Both represent the same physical action at different abstraction
+// levels. The SDK converts both to unified WidgetEvent types.
 
-const MOUSE_FAMILIES = new Set([
+const SUBSCRIPTION_POINTER_FAMILIES = new Set([
   "cursor_moved",
   "cursor_entered",
   "cursor_left",
   "button_pressed",
   "button_released",
   "wheel_scrolled",
+  "finger_pressed",
+  "finger_moved",
+  "finger_lifted",
+  "finger_lost",
 ]);
 
-function isMouseFamily(family: string): boolean {
-  return MOUSE_FAMILIES.has(family);
+function isSubscriptionPointerFamily(family: string): boolean {
+  return SUBSCRIPTION_POINTER_FAMILIES.has(family);
 }
 
-function decodeMouseEvent(
-  raw: WireMessage,
-  family: string,
-  data: WireMessage | null,
-): PlushieMouseEvent {
-  const typeMap: Record<string, PlushieMouseEvent["type"]> = {
-    cursor_moved: "moved",
-    cursor_entered: "entered",
-    cursor_left: "left",
-    button_pressed: "pressed",
-    button_released: "released",
-    wheel_scrolled: "scrolled",
-  };
-  return {
-    kind: "mouse",
-    type: typeMap[family] ?? "moved",
-    x: data ? num(data, "x") : 0,
-    y: data ? num(data, "y") : 0,
-    button: typeof raw["value"] === "string" ? raw["value"] : null,
-    deltaX: data ? num(data, "delta_x") : 0,
-    deltaY: data ? num(data, "delta_y") : 0,
-    tag: str(raw, "tag"),
-    captured: bool(raw, "captured"),
-    windowId: optionalWindowId(raw),
-  };
-}
+function decodeSubscriptionPointerEvent(raw: WireMessage, family: string): WidgetEvent {
+  const windowId = optionalWindowId(raw) ?? "";
+  const id = windowId || "__global__";
+  const data = obj(raw, "data");
 
-// -- Touch events ---------------------------------------------------------
+  switch (family) {
+    case "cursor_moved":
+      return {
+        kind: "widget",
+        type: "move",
+        id,
+        windowId,
+        scope: [],
+        value: null,
+        data: {
+          x: data ? num(data, "x") : 0,
+          y: data ? num(data, "y") : 0,
+          pointer: "mouse",
+          modifiers: parseModifiers(raw["modifiers"]),
+        },
+      };
 
-const TOUCH_FAMILIES = new Set(["finger_pressed", "finger_moved", "finger_lifted", "finger_lost"]);
+    case "cursor_entered":
+      return {
+        kind: "widget",
+        type: "enter",
+        id,
+        windowId,
+        scope: [],
+        value: null,
+        data: null,
+      };
 
-function isTouchFamily(family: string): boolean {
-  return TOUCH_FAMILIES.has(family);
-}
+    case "cursor_left":
+      return {
+        kind: "widget",
+        type: "exit",
+        id,
+        windowId,
+        scope: [],
+        value: null,
+        data: null,
+      };
 
-function decodeTouchEvent(
-  raw: WireMessage,
-  family: string,
-  data: WireMessage | null,
-): PlushieTouchEvent {
-  const typeMap: Record<string, PlushieTouchEvent["type"]> = {
-    finger_pressed: "pressed",
-    finger_moved: "moved",
-    finger_lifted: "lifted",
-    finger_lost: "lost",
-  };
-  return {
-    kind: "touch",
-    type: typeMap[family] ?? "pressed",
-    fingerId: data ? num(data, "id") : 0,
-    x: data ? num(data, "x") : 0,
-    y: data ? num(data, "y") : 0,
-    tag: str(raw, "tag"),
-    captured: bool(raw, "captured"),
-    windowId: optionalWindowId(raw),
-  };
+    case "button_pressed":
+    case "button_released":
+      return {
+        kind: "widget",
+        type: family === "button_pressed" ? "press" : "release",
+        id,
+        windowId,
+        scope: [],
+        value: null,
+        data: {
+          button: typeof raw["value"] === "string" ? raw["value"] : "left",
+          pointer: "mouse",
+          modifiers: parseModifiers(raw["modifiers"]),
+        },
+      };
+
+    case "wheel_scrolled":
+      return {
+        kind: "widget",
+        type: "scroll",
+        id,
+        windowId,
+        scope: [],
+        value: null,
+        data: {
+          delta_x: data ? num(data, "delta_x") : 0,
+          delta_y: data ? num(data, "delta_y") : 0,
+          unit: data ? str(data, "unit") : "line",
+          pointer: "mouse",
+          x: 0,
+          y: 0,
+          modifiers: parseModifiers(raw["modifiers"]),
+        },
+      };
+
+    case "finger_pressed":
+    case "finger_moved":
+    case "finger_lifted":
+    case "finger_lost": {
+      const typeMap: Record<string, string> = {
+        finger_pressed: "press",
+        finger_moved: "move",
+        finger_lifted: "release",
+        finger_lost: "release",
+      };
+      return {
+        kind: "widget",
+        type: typeMap[family]! as WidgetEvent["type"],
+        id,
+        windowId,
+        scope: [],
+        value: null,
+        data: {
+          pointer: "touch",
+          finger: data ? num(data, "id") : 0,
+          x: data ? num(data, "x") : 0,
+          y: data ? num(data, "y") : 0,
+          button: "left",
+          ...(family === "finger_lost" ? { lost: true } : {}),
+        },
+      };
+    }
+
+    default:
+      // Should not reach here since the set check already matched
+      throw new Error(`Unhandled subscription pointer family: ${family}`);
+  }
 }
 
 // -- IME events -----------------------------------------------------------

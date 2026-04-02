@@ -47,7 +47,6 @@ import type {
   EffectEvent,
   Event,
   Handler,
-  MouseEvent as PlushieMouseEvent,
   Subscription,
   UpdateResult,
   WidgetEvent,
@@ -90,7 +89,7 @@ interface RuntimeState<M> {
   windowProps: Map<string, Record<string, unknown>>;
   asyncTasks: Map<string, { controller: AbortController; nonce: number }>;
   pendingTimers: Map<string, ReturnType<typeof setTimeout>>;
-  pendingEffects: Map<string, ReturnType<typeof setTimeout>>;
+  pendingEffects: Map<string, { tag: string; timer: ReturnType<typeof setTimeout> }>;
   pendingStubAcks: Map<string, { resolve: () => void; reject: (err: Error) => void }>;
   pendingAwaitAsync: Map<string, { resolve: () => void; timer: ReturnType<typeof setTimeout> }>;
   pendingInteract: Map<
@@ -377,8 +376,8 @@ export class Runtime<M> {
     this.state.pendingTimers.clear();
 
     // Cancel all effect timeouts
-    for (const [, timer] of this.state.pendingEffects) {
-      clearTimeout(timer);
+    for (const [, pending] of this.state.pendingEffects) {
+      clearTimeout(pending.timer);
     }
     this.state.pendingEffects.clear();
 
@@ -587,15 +586,12 @@ export class Runtime<M> {
   }
 
   private isCoalescable(event: Event): string | null {
-    if (event.kind === "mouse" && (event as PlushieMouseEvent).type === "moved")
-      return "mouse:moved";
     if (event.kind === "widget") {
       const we = event as WidgetEvent;
       switch (we.type) {
-        case "sensor_resize":
-        case "canvas_move":
-        case "mouse_move":
-        case "mouse_scroll":
+        case "move":
+        case "scroll":
+        case "resize":
         case "pane_resized": {
           // Use the full scoped path (scope reversed + id) so widgets with the
           // same local id in different scopes don't collide. Example: form/sensor
@@ -670,6 +666,10 @@ export class Runtime<M> {
   // =======================================================================
 
   private renderAndSync(forceSnapshot: boolean): void {
+    // Save registry before view in case we need to revert on error.
+    // A view error must not leave the handler registry reflecting an
+    // update the tree never rendered.
+    const registryBefore = this.state.widgetHandlerRegistry;
     try {
       const viewResult = this.config.view(this.state.model as never);
       this.validateRootWindows(viewResult);
@@ -711,6 +711,8 @@ export class Runtime<M> {
       // Sync windows
       this.syncWindows(tree);
     } catch (error) {
+      // Revert widget handler registry to prevent state-tree desync
+      this.state.widgetHandlerRegistry = registryBefore;
       this.handleUpdateError(error);
     }
   }
@@ -1209,9 +1211,21 @@ export class Runtime<M> {
 
   private executeEffect(cmd: Command): void {
     const id = cmd.payload["id"] as string;
+    const tag = cmd.payload["tag"] as string;
     const kind = cmd.payload["kind"] as string;
     const payload = (cmd.payload["payload"] as Record<string, unknown>) ?? {};
     const timeout = (cmd.payload["timeout"] as number | undefined) ?? 30_000;
+
+    // One effect per tag: cancel any existing pending effect with the same tag.
+    // The response for the old wire ID will be ignored since we remove it from
+    // the pending map.
+    for (const [existingId, pending] of this.state.pendingEffects) {
+      if (pending.tag === tag) {
+        clearTimeout(pending.timer);
+        this.state.pendingEffects.delete(existingId);
+        break;
+      }
+    }
 
     this.send(encodeEffect(this.sessionId, id, kind, payload));
 
@@ -1220,30 +1234,29 @@ export class Runtime<M> {
       this.state.pendingEffects.delete(id);
       this.handleEvent({
         kind: "effect",
-        requestId: id,
+        tag,
         status: "error",
         result: null,
         error: "timeout",
       });
     }, timeout);
-    this.state.pendingEffects.set(id, timer);
+    this.state.pendingEffects.set(id, { tag, timer });
   }
 
   private handleEffectResponse(response: DecodedResponse): void {
     if (response.type !== "effect_response") return;
     const id = response.id;
 
-    // Cancel timeout
-    const timer = this.state.pendingEffects.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      this.state.pendingEffects.delete(id);
-    }
+    // Look up tag and cancel timeout
+    const pending = this.state.pendingEffects.get(id);
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    this.state.pendingEffects.delete(id);
 
-    // Dispatch as event
+    // Dispatch as event with the user's tag
     this.handleEvent({
       kind: "effect",
-      requestId: id,
+      tag: pending.tag,
       status: response.status as "ok" | "cancelled" | "error",
       result: response.result,
       error: typeof response.error === "string" ? response.error : null,
@@ -1386,11 +1399,11 @@ export class Runtime<M> {
     this.state.pendingAwaitAsync.clear();
 
     // Flush pending effects with error events
-    for (const [id, timer] of this.state.pendingEffects) {
-      clearTimeout(timer);
+    for (const [, pending] of this.state.pendingEffects) {
+      clearTimeout(pending.timer);
       this.dispatchEvent({
         kind: "effect",
-        requestId: id,
+        tag: pending.tag,
         status: "error",
         result: null,
         error: "renderer_restarted",

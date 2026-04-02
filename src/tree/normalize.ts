@@ -160,6 +160,9 @@ function normalizeNode(
   // Auto-ID nodes and window nodes don't create scope boundaries.
   const childScope = isAutoId(id) || type === "window" ? scope : scopedId;
 
+  // Validate child count for widgets with strict child requirements
+  validateChildCount(id, type, node.children.length);
+
   // Normalize children recursively
   const children = node.children.map((child) =>
     normalizeNode(child, childScope, currentWindowId, ctx),
@@ -223,6 +226,35 @@ function normalizeRenderedWidget(
     props,
     children,
   };
+}
+
+// Widget types that accept at most one child.
+const SINGLE_CHILD_TYPES = new Set([
+  "container",
+  "tooltip",
+  "pointer_area",
+  "scrollable",
+  "themer",
+  "floating",
+  "responsive",
+  "pin",
+  "sensor",
+  "window",
+]);
+
+/**
+ * Validate child count for widgets with strict requirements.
+ * Overlay requires exactly 2 children. Single-child wrappers
+ * (container, tooltip, scrollable, etc.) accept at most 1.
+ */
+function validateChildCount(id: string, type: string, count: number): void {
+  if (type === "overlay") {
+    if (count !== 2) {
+      throw new Error(`overlay "${id}" requires exactly 2 children, got ${count}`);
+    }
+  } else if (SINGLE_CHILD_TYPES.has(type) && count > 1) {
+    throw new Error(`${type} "${id}" accepts at most 1 child, got ${count}`);
+  }
 }
 
 /** Resolve a11y ID references (labelled_by, described_by, error_message) relative to scope. */

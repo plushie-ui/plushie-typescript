@@ -55,57 +55,59 @@ import * as Subscription from "./subscription.js";
 // Event type guards.
 export {
   isAsync,
-  isCanvas,
   isClick,
+  isDrag,
   isEffect,
   isExtensionCommandError,
   isIme,
   isInput,
   isKey,
   isModifiers,
-  isMouse,
-  isMouseArea,
+  isMove,
   isPane,
+  isPointer,
+  isPress,
+  isRelease,
+  isResize,
+  isScroll,
+  isScrolled,
   isSelect,
-  isSensor,
   isSlide,
   isStream,
   isSubmit,
   isSystem,
   isTimer,
   isToggle,
-  isTouch,
   isWidget,
+  isWidgetKeyPress,
   isWindow,
   target,
 } from "./events.js";
 // Core types.
 export type {
   AsyncEvent,
-  CanvasElementDragData,
-  CanvasElementKeyPressData,
-  CanvasElementKeyReleaseData,
-  CanvasInteractionData,
-  CanvasMoveData,
-  CanvasScrollData,
   Command as CommandType,
   DeepReadonly,
+  DragData,
   EffectEvent,
   Event,
   ExtensionCommandErrorEvent,
   Handler,
   ImeEvent,
   KeyEvent,
+  KeyPressData,
+  KeyReleaseData,
   Modifiers,
   ModifiersEvent,
-  MouseEvent,
-  ScrollData,
-  SensorResizeData,
+  PointerButton,
+  PointerData,
+  PointerType,
+  ResizeData,
+  ScrolledData,
   StreamEvent,
   Subscription as SubscriptionType,
   SystemEvent,
   TimerEvent,
-  TouchEvent,
   UINode,
   UpdateResult,
   WidgetEvent,
@@ -114,12 +116,28 @@ export type {
 export { COMMAND } from "./types.js";
 export { Subscription };
 
-// Effects as a namespace-style object.
-import * as Effects from "./effects.js";
+// Effect as a namespace-style object (singular, matches Command).
+import * as Effect from "./effect.js";
 
-export type { AdvanceResult, Animation, EasingFn } from "./animation.js";
-
-// Animation functions.
+export type {
+  CubicBezier,
+  Easing,
+  EasingName,
+  SequenceDescriptor,
+  SequenceOpts,
+  SequenceStep,
+  SpringDescriptor,
+  SpringOpts,
+  SpringPreset,
+  TransitionDescriptor,
+  TransitionOpts,
+} from "./animation/index.js";
+// Renderer-side animation descriptors.
+export { cubicBezier, loop, sequence, spring, transition } from "./animation/index.js";
+export { ANIMATION_DESCRIPTOR } from "./animation/transition.js";
+// SDK-side tween animation types.
+export type { AdvanceResult, Animation, EasingFn } from "./animation/tween.js";
+// SDK-side tween animation functions.
 export {
   advanceAnimation,
   animationFinished,
@@ -133,10 +151,11 @@ export {
   easeOutQuad,
   interpolate,
   linear,
-  spring,
+  springEase,
   startAnimation,
-} from "./animation.js";
-export { Effects };
+} from "./animation/tween.js";
+export { withAnimation } from "./ui/build.js";
+export { Effect };
 
 // Selection state.
 import * as Selection from "./selection.js";

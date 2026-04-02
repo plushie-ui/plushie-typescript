@@ -267,4 +267,43 @@ describe("Command", () => {
     expect(cmd.type).toBe("widget_op");
     expect(cmd.payload).toEqual({ op: "announce", text: "File saved" });
   });
+
+  // -- Window-qualified selectors --
+
+  test("focus() without window qualifier", () => {
+    const cmd = Command.focus("form/email");
+    expect(cmd.payload["target"]).toBe("form/email");
+    expect(cmd.payload["window_id"]).toBeUndefined();
+  });
+
+  test("focus() with window qualifier", () => {
+    const cmd = Command.focus("main#form/email");
+    expect(cmd.payload["target"]).toBe("form/email");
+    expect(cmd.payload["window_id"]).toBe("main");
+  });
+
+  test("scrollTo() with window qualifier", () => {
+    const cmd = Command.scrollTo("editor#content", 0, 100);
+    expect(cmd.payload["target"]).toBe("content");
+    expect(cmd.payload["window_id"]).toBe("editor");
+    expect(cmd.payload["offset_y"]).toBe(100);
+  });
+
+  test("selectAll() with window qualifier", () => {
+    const cmd = Command.selectAll("main#editor");
+    expect(cmd.payload["target"]).toBe("editor");
+    expect(cmd.payload["window_id"]).toBe("main");
+  });
+
+  test("moveCursorToEnd() with window qualifier", () => {
+    const cmd = Command.moveCursorToEnd("main#input");
+    expect(cmd.payload["target"]).toBe("input");
+    expect(cmd.payload["window_id"]).toBe("main");
+  });
+
+  test("# at position 0 is not a window qualifier", () => {
+    const cmd = Command.focus("#orphan");
+    expect(cmd.payload["target"]).toBe("#orphan");
+    expect(cmd.payload["window_id"]).toBeUndefined();
+  });
 });

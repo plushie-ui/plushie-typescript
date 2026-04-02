@@ -428,17 +428,18 @@ describe("decodeEvent", () => {
     }
   });
 
-  test("decodes canvas_element_click event", () => {
+  test("decodes focused event", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
-      family: "canvas_element_click",
-      id: "canvas_1",
+      family: "focused",
+      id: "canvas_1/element_1",
       window_id: "main",
-      data: { element_id: "bar-jan", x: 25, y: 150, button: "left" },
     });
     if (event.kind === "widget") {
-      expect(event.type).toBe("canvas_element_click");
+      expect(event.type).toBe("focused");
+      expect(event.id).toBe("element_1");
+      expect(event.scope).toEqual(["canvas_1"]);
     }
   });
 
@@ -495,9 +496,9 @@ describe("decodeEvent", () => {
     }
   });
 
-  // -- Mouse events --
+  // -- Subscription pointer events (iced-native families -> WidgetEvent) --
 
-  test("decodes cursor_moved event", () => {
+  test("decodes cursor_moved subscription event as move WidgetEvent", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
@@ -505,16 +506,19 @@ describe("decodeEvent", () => {
       tag: "mouse",
       data: { x: 100.5, y: 200.3 },
       captured: false,
+      window_id: "main",
     });
-    expect(event.kind).toBe("mouse");
-    if (event.kind === "mouse") {
-      expect(event.type).toBe("moved");
-      expect(event.x).toBeCloseTo(100.5);
-      expect(event.y).toBeCloseTo(200.3);
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("move");
+      expect(event.id).toBe("main");
+      expect(event.scope).toEqual([]);
+      expect(event.data?.["x"]).toBeCloseTo(100.5);
+      expect(event.data?.["pointer"]).toBe("mouse");
     }
   });
 
-  test("decodes button_pressed event", () => {
+  test("decodes button_pressed subscription event as press WidgetEvent", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
@@ -522,14 +526,17 @@ describe("decodeEvent", () => {
       tag: "mouse",
       value: "left",
       captured: false,
+      window_id: "main",
     });
-    if (event.kind === "mouse") {
-      expect(event.type).toBe("pressed");
-      expect(event.button).toBe("left");
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("press");
+      expect(event.data?.["button"]).toBe("left");
+      expect(event.data?.["pointer"]).toBe("mouse");
     }
   });
 
-  test("decodes wheel_scrolled event", () => {
+  test("decodes wheel_scrolled subscription event as scroll WidgetEvent", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
@@ -538,15 +545,15 @@ describe("decodeEvent", () => {
       data: { delta_x: 0, delta_y: -3, unit: "line" },
       captured: false,
     });
-    if (event.kind === "mouse") {
-      expect(event.type).toBe("scrolled");
-      expect(event.deltaY).toBe(-3);
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("scroll");
+      expect(event.data?.["delta_y"]).toBe(-3);
+      expect(event.data?.["unit"]).toBe("line");
     }
   });
 
-  // -- Touch events --
-
-  test("decodes finger_pressed event", () => {
+  test("decodes finger_pressed subscription event as touch press WidgetEvent", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
@@ -554,11 +561,45 @@ describe("decodeEvent", () => {
       tag: "touch",
       data: { id: 1, x: 50, y: 100 },
       captured: false,
+      window_id: "main",
     });
-    expect(event.kind).toBe("touch");
-    if (event.kind === "touch") {
-      expect(event.type).toBe("pressed");
-      expect(event.fingerId).toBe(1);
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("press");
+      expect(event.data?.["pointer"]).toBe("touch");
+      expect(event.data?.["finger"]).toBe(1);
+      expect(event.data?.["x"]).toBe(50);
+    }
+  });
+
+  test("decodes cursor_entered as enter WidgetEvent", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "cursor_entered",
+      tag: "mouse",
+      captured: false,
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("enter");
+    }
+  });
+
+  test("decodes finger_lost as release with lost flag", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "finger_lost",
+      tag: "touch",
+      data: { id: 2, x: 0, y: 0 },
+      captured: false,
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("release");
+      expect(event.data?.["lost"]).toBe(true);
+      expect(event.data?.["pointer"]).toBe("touch");
     }
   });
 
@@ -611,40 +652,40 @@ describe("decodeEvent", () => {
     }
   });
 
-  // -- Mouse area events --
+  // -- Unified pointer events --
 
-  test("decodes mouse_right_press event", () => {
+  test("decodes press event with pointer data", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
-      family: "mouse_right_press",
+      family: "press",
       id: "area/context",
       window_id: "main",
+      data: { x: 50, y: 100, button: "right", pointer: "mouse" },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
-      expect(event.type).toBe("mouse_right_press");
+      expect(event.type).toBe("press");
       expect(event.id).toBe("context");
       expect(event.scope).toEqual(["area"]);
+      expect(event.data?.["x"]).toBe(50);
+      expect(event.data?.["button"]).toBe("right");
     }
   });
 
-  // -- Canvas events --
-
-  test("decodes canvas_press event", () => {
+  test("decodes move event", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
-      family: "canvas_press",
-      id: "my_canvas",
+      family: "move",
+      id: "canvas",
       window_id: "main",
-      data: { x: 50, y: 100, button: "left" },
+      data: { x: 50, y: 100, pointer: "mouse" },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
-      expect(event.type).toBe("canvas_press");
+      expect(event.type).toBe("move");
       expect(event.data?.["x"]).toBe(50);
-      expect(event.data?.["button"]).toBe("left");
     }
   });
 
@@ -665,20 +706,20 @@ describe("decodeEvent", () => {
     }
   });
 
-  // -- Sensor events --
+  // -- Resize events --
 
-  test("decodes sensor_resize event", () => {
+  test("decodes resize event", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
-      family: "sensor_resize",
+      family: "resize",
       id: "container/sensor_1",
       window_id: "main",
       data: { width: 320, height: 240 },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
-      expect(event.type).toBe("sensor_resize");
+      expect(event.type).toBe("resize");
       expect(event.id).toBe("sensor_1");
       expect(event.scope).toEqual(["container"]);
       expect(event.data?.["width"]).toBe(320);
@@ -728,38 +769,51 @@ describe("decodeEvent", () => {
     }
   });
 
-  // -- Canvas element key events --
+  // -- Widget-scoped key events (dual dispatch) --
 
-  test("decodes canvas_element_key_press event", () => {
+  test("decodes key_press with id as widget event", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
-      family: "canvas_element_key_press",
+      family: "key_press",
       id: "canvas_1/element_1",
       window_id: "main",
       data: { key: "ArrowRight", modifiers: { ctrl: false, shift: false, alt: false } },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
-      expect(event.type).toBe("canvas_element_key_press");
+      expect(event.type).toBe("key_press");
       expect(event.id).toBe("element_1");
       expect(event.scope).toEqual(["canvas_1"]);
     }
   });
 
-  test("decodes canvas_element_key_release event", () => {
+  test("decodes key_release with id as widget event", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
-      family: "canvas_element_key_release",
+      family: "key_release",
       id: "canvas_1",
       window_id: "main",
       data: { key: "Escape" },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
-      expect(event.type).toBe("canvas_element_key_release");
+      expect(event.type).toBe("key_release");
     }
+  });
+
+  test("decodes key_press without id as global key event", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "key_press",
+      tag: "keys",
+      modifiers: { ctrl: false, shift: false, alt: false, logo: false, command: false },
+      data: { key: "a" },
+      captured: false,
+    });
+    expect(event.kind).toBe("key");
   });
 
   // -- Strict decode --

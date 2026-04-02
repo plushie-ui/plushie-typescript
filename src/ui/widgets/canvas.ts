@@ -11,10 +11,10 @@ import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
 // Handler event type (matches wire family) and wire prop suffix (matches renderer prop).
 const CANVAS_EVENTS: Record<string, { readonly eventType: string; readonly wireProp: string }> = {
-  onPress: { eventType: "canvas_press", wireProp: "press" },
-  onRelease: { eventType: "canvas_release", wireProp: "release" },
-  onMove: { eventType: "canvas_move", wireProp: "move" },
-  onScroll: { eventType: "canvas_scroll", wireProp: "scroll" },
+  onPress: { eventType: "press", wireProp: "press" },
+  onRelease: { eventType: "release", wireProp: "release" },
+  onMove: { eventType: "move", wireProp: "move" },
+  onScroll: { eventType: "scroll", wireProp: "scroll" },
 };
 
 /** Props for the Canvas widget. */

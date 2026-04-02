@@ -15,18 +15,18 @@ import {
   KeyedColumn,
   keyedColumn,
   Markdown,
-  MouseArea,
   markdown,
-  mouseArea,
   Overlay,
   overlay,
   PaneGrid,
   PickList,
   Pin,
+  PointerArea,
   ProgressBar,
   paneGrid,
   pickList,
   pin,
+  pointerArea,
   progressBar,
   QrCode,
   qrCode,
@@ -448,7 +448,7 @@ describe("Scrollable", () => {
     expect(node.props["onScroll"]).toBeUndefined();
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("scroll");
+    expect(handlers[0]!.eventType).toBe("scrolled");
   });
 
   test("boolean onScroll sets wire prop without handler", () => {
@@ -580,7 +580,7 @@ describe("Table", () => {
   });
 
   test("encodes sortBy as sort_by and sortOrder as sort_order", () => {
-    const node = table("tbl2", [{ key: "x" }], [{}], { sortBy: "x", sortOrder: "asc" });
+    const node = table("tbl2", [{ key: "x", label: "X" }], [{}], { sortBy: "x", sortOrder: "asc" });
     expect(node.props["sort_by"]).toBe("x");
     expect(node.props["sort_order"]).toBe("asc");
   });
@@ -641,42 +641,46 @@ describe("Tooltip", () => {
 });
 
 // ---------------------------------------------------------------------------
-// MouseArea
+// PointerArea
 // ---------------------------------------------------------------------------
 
-describe("MouseArea", () => {
-  test("creates mouse_area with children", () => {
-    const node = MouseArea({ id: "ma", children: [text("content")] });
-    expect(node.type).toBe("mouse_area");
+describe("PointerArea", () => {
+  test("creates pointer_area with children", () => {
+    const node = PointerArea({ id: "ma", children: [text("content")] });
+    expect(node.type).toBe("pointer_area");
     expect(node.children).toHaveLength(1);
   });
 
   test("function handler registers and sets wire prop", () => {
     const handler = (s: unknown) => s;
-    const node = MouseArea({ id: "ma2", onRightPress: handler, children: [] });
-    expect(node.props["on_right_press"]).toBe(true);
-    expect(node.props["onRightPress"]).toBeUndefined();
+    const node = PointerArea({ id: "ma2", onPress: handler, children: [] });
+    expect(node.props["on_press"]).toBe(true);
+    expect(node.props["onPress"]).toBeUndefined();
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("mouse_right_press");
+    expect(handlers[0]!.eventType).toBe("click");
   });
 
-  test("boolean handler sets wire prop without registering", () => {
-    const node = MouseArea({ id: "ma3", onDoubleClick: true, children: [] });
+  test("boolean-only props set wire prop without registering", () => {
+    const node = PointerArea({
+      id: "ma3",
+      onDoubleClick: true,
+      onRightPress: true,
+      onEnter: true,
+      children: [],
+    });
     expect(node.props["on_double_click"]).toBe(true);
+    expect(node.props["on_right_press"]).toBe(true);
+    expect(node.props["on_enter"]).toBe(true);
     expect(drainHandlers()).toHaveLength(0);
   });
 
-  test("multiple handlers registered correctly", () => {
+  test("multiple handler-capable props registered correctly", () => {
     const h = (s: unknown) => s;
-    mouseArea({ id: "ma4", onEnter: h, onExit: h, onMove: h }, []);
+    pointerArea({ id: "ma4", onPress: h, onMove: h, onScroll: h }, []);
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(3);
-    expect(handlers.map((e) => e.eventType).sort()).toEqual([
-      "mouse_enter",
-      "mouse_exit",
-      "mouse_move",
-    ]);
+    expect(handlers.map((e) => e.eventType).sort()).toEqual(["click", "move", "scroll"]);
   });
 });
 
@@ -698,7 +702,7 @@ describe("Sensor", () => {
     expect(node.props["onResize"]).toBeUndefined();
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("sensor_resize");
+    expect(handlers[0]!.eventType).toBe("resize");
   });
 
   test("boolean onResize sets wire prop without handler", () => {
@@ -750,7 +754,7 @@ describe("Canvas", () => {
     expect(node.props["onPress"]).toBeUndefined();
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("canvas_press");
+    expect(handlers[0]!.eventType).toBe("press");
   });
 
   test("boolean handler sets wire prop without registering", () => {

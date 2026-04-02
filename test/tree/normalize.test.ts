@@ -110,7 +110,7 @@ describe("normalize", () => {
   test("mixed scoping: named and auto children", () => {
     const named = node("submit", "button", { label: "Go" });
     const auto = node("auto:text:5", "text", { content: "Info" });
-    const parent = node("form", "container", {}, [named, auto]);
+    const parent = node("form", "column", {}, [named, auto]);
     const result = normalize(parent);
     expect(result.children[0]!.id).toBe("form/submit");
     expect(result.children[1]!.id).toBe("auto:text:5");
@@ -126,7 +126,7 @@ describe("normalize", () => {
   test("throws on duplicate sibling IDs", () => {
     const child1 = node("btn", "button");
     const child2 = node("btn", "button");
-    const parent = node("auto:root", "container", {}, [child1, child2]);
+    const parent = node("auto:root", "column", {}, [child1, child2]);
     expect(() => normalize(parent)).toThrow(/Duplicate sibling ID/);
   });
 
@@ -143,5 +143,55 @@ describe("normalize", () => {
     expect(wire.id).toBe("root");
     expect(wire.props).toEqual({ spacing: 8 });
     expect("meta" in wire).toBe(false);
+  });
+
+  // -- Child count validation --
+
+  test("throws when overlay has fewer than 2 children", () => {
+    const overlay = node("popup", "overlay", {}, [node("anchor", "button")]);
+    expect(() => normalize(overlay)).toThrow(/overlay "popup" requires exactly 2 children, got 1/);
+  });
+
+  test("throws when overlay has more than 2 children", () => {
+    const overlay = node("popup", "overlay", {}, [
+      node("a", "button"),
+      node("b", "button"),
+      node("c", "button"),
+    ]);
+    expect(() => normalize(overlay)).toThrow(/overlay "popup" requires exactly 2 children, got 3/);
+  });
+
+  test("overlay with exactly 2 children passes validation", () => {
+    const overlay = node("popup", "overlay", {}, [
+      node("anchor", "button"),
+      node("content", "column"),
+    ]);
+    expect(() => normalize(overlay)).not.toThrow();
+  });
+
+  test("throws when single-child wrapper has multiple children", () => {
+    for (const type of [
+      "container",
+      "tooltip",
+      "scrollable",
+      "themer",
+      "floating",
+      "responsive",
+      "pin",
+      "sensor",
+      "window",
+    ]) {
+      const wrapper = node("w", type, {}, [node("a", "button"), node("b", "button")]);
+      expect(() => normalize(wrapper)).toThrow(
+        new RegExp(`${type} "w" accepts at most 1 child, got 2`),
+      );
+    }
+  });
+
+  test("single-child wrappers accept 0 or 1 children", () => {
+    for (const type of ["container", "tooltip", "scrollable", "themer"]) {
+      expect(() => normalize(node("w", type, {}, []))).not.toThrow();
+      expect(() => normalize(node("w", type, {}, [node("a", "button")]))).not.toThrow();
+    }
   });
 });

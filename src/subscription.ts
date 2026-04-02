@@ -73,19 +73,19 @@ export function onKeyRelease(tag: string, opts?: SubOpts): Subscription {
   return sub("on_key_release", tag, opts);
 }
 
-/** Subscribe to mouse move events. */
-export function onMouseMove(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_mouse_move", tag, opts);
+/** Subscribe to pointer move events (mouse cursor, touch, pen). */
+export function onPointerMove(tag: string, opts?: SubOpts): Subscription {
+  return sub("on_pointer_move", tag, opts);
 }
 
-/** Subscribe to mouse button events. */
-export function onMouseButton(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_mouse_button", tag, opts);
+/** Subscribe to pointer button press/release events. */
+export function onPointerButton(tag: string, opts?: SubOpts): Subscription {
+  return sub("on_pointer_button", tag, opts);
 }
 
-/** Subscribe to mouse scroll events. */
-export function onMouseScroll(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_mouse_scroll", tag, opts);
+/** Subscribe to pointer scroll events. */
+export function onPointerScroll(tag: string, opts?: SubOpts): Subscription {
+  return sub("on_pointer_scroll", tag, opts);
 }
 
 /** Subscribe to window close requests. */
@@ -118,9 +118,9 @@ export function onThemeChange(tag: string, opts?: SubOpts): Subscription {
   return sub("on_theme_change", tag, opts);
 }
 
-/** Subscribe to touch events. */
-export function onTouch(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_touch", tag, opts);
+/** Subscribe to touch pointer events. */
+export function onPointerTouch(tag: string, opts?: SubOpts): Subscription {
+  return sub("on_pointer_touch", tag, opts);
 }
 
 /** Subscribe to IME events. */

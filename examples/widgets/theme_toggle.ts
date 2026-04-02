@@ -127,9 +127,9 @@ function subscriptions(_props: ThemeToggleProps, state: ThemeToggleState): Subsc
   return [];
 }
 
-// -- Render -------------------------------------------------------------------
+// -- View ---------------------------------------------------------------------
 
-function render(id: string, _props: ThemeToggleProps, state: ThemeToggleState): UINode {
+function view(id: string, _props: ThemeToggleProps, state: ThemeToggleState): UINode {
   const progress = state.progress;
   const eased = smoothstep(progress);
   const thumbX = lerp(TRACK_H / 2, TRACK_W - TRACK_H / 2, eased);
@@ -188,7 +188,7 @@ function render(id: string, _props: ThemeToggleProps, state: ThemeToggleState): 
 
 const themeToggleDef: WidgetDef<ThemeToggleState, ThemeToggleProps> = {
   init: () => ({ progress: 0.0, target: 0.0 }),
-  render,
+  view,
   handleEvent,
   subscriptions,
 };

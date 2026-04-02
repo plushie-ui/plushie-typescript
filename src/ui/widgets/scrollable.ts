@@ -9,7 +9,7 @@ import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.
 import type { A11y, Anchor, Color, Direction, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
-const _SCROLLABLE_HANDLERS = { onScroll: "scroll" } as const;
+const _SCROLLABLE_HANDLERS = { onScroll: "scrolled" } as const;
 
 /** Props for the Scrollable widget. */
 export interface ScrollableProps {
@@ -53,7 +53,7 @@ export function Scrollable(props: ScrollableProps): UINode {
   const id = props.id ?? autoId("scrollable");
   const children = props.children ?? [];
   const handlerProps: Record<string, string> = {};
-  if (typeof props.onScroll === "function") handlerProps["onScroll"] = "scroll";
+  if (typeof props.onScroll === "function") handlerProps["onScroll"] = "scrolled";
   const { clean, meta } = extractHandlers(id, props, handlerProps);
 
   const p: Record<string, unknown> = {};

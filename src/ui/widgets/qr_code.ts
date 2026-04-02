@@ -22,7 +22,7 @@ export interface QrCodeProps {
   /** Color of the QR code cells (foreground). */
   cellColor?: Color;
   /** Background color behind the QR code cells. */
-  backgroundColor?: Color;
+  background?: Color;
   /** Accessible label for the QR code. */
   alt?: string;
   /** Extended accessible description. */
@@ -37,7 +37,7 @@ export function QrCode(props: QrCodeProps): UINode {
   putIf(p, props.cellSize, "cell_size");
   putIf(p, props.errorCorrection, "error_correction");
   putIf(p, props.cellColor, "cell_color", encodeColor);
-  putIf(p, props.backgroundColor, "background_color", encodeColor);
+  putIf(p, props.background, "background", encodeColor);
   putIf(p, props.alt, "alt");
   putIf(p, props.description, "description");
   putIf(p, props.a11y, "a11y", encodeA11y);

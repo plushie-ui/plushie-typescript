@@ -15,8 +15,8 @@ describe("Subscription", () => {
     expect(sub.tag).toBe("keys");
   });
 
-  test("onMouseMove() accepts maxRate", () => {
-    const sub = Subscription.onMouseMove("mouse", { maxRate: 30 });
+  test("onPointerMove() accepts maxRate", () => {
+    const sub = Subscription.onPointerMove("mouse", { maxRate: 30 });
     expect(sub.maxRate).toBe(30);
   });
 
@@ -49,7 +49,7 @@ describe("Subscription", () => {
   test("forWindow() scopes a list of subscriptions", () => {
     const subs = Subscription.forWindow("editor", [
       Subscription.onKeyPress("keys"),
-      Subscription.onMouseMove("mouse", { maxRate: 60 }),
+      Subscription.onPointerMove("mouse", { maxRate: 60 }),
     ]);
     expect(subs).toHaveLength(2);
     expect(subs[0]!.windowId).toBe("editor");

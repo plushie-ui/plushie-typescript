@@ -51,7 +51,7 @@ export function easeInOutQuad(t: number): number {
 }
 
 /** Spring easing with overshoot. Damped sine approximation. */
-export function spring(t: number): number {
+export function springEase(t: number): number {
   if (t === 0) return 0;
   if (t === 1) return 1;
   const c4 = (2 * Math.PI) / 3;

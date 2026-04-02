@@ -75,4 +75,30 @@ describe("target", () => {
   test("handles deeply scoped events", () => {
     expect(target(toggle)).toBe("list/todo_1/check");
   });
+
+  test("strips window_id from scope end", () => {
+    const event: WidgetEvent = {
+      kind: "widget",
+      type: "click",
+      id: "save",
+      scope: ["form", "main"],
+      value: null,
+      data: null,
+      windowId: "main",
+    };
+    expect(target(event)).toBe("form/save");
+  });
+
+  test("preserves scope when window_id does not match last element", () => {
+    const event: WidgetEvent = {
+      kind: "widget",
+      type: "click",
+      id: "save",
+      scope: ["form", "panel"],
+      value: null,
+      data: null,
+      windowId: "main",
+    };
+    expect(target(event)).toBe("panel/form/save");
+  });
 });
