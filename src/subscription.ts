@@ -1,5 +1,5 @@
 /**
- * Subscriptions -- declarative event source registrations.
+ * Subscriptions: declarative event source registrations.
  *
  * Subscriptions tell the runtime which global events the app wants to
  * receive (keyboard, mouse, window lifecycle, animation frames, etc.).

@@ -1,5 +1,5 @@
 /**
- * QR Code -- renders a QR code from a data string.
+ * QR Code: renders a QR code from a data string.
  *
  * @module
  */

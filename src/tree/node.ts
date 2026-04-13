@@ -2,7 +2,7 @@ import type { UINode } from "../types.js";
 
 /**
  * Internal: create a UINode. Handlers are stored separately from
- * wire props -- they never leave the TypeScript side.
+ * wire props; they never leave the TypeScript side.
  */
 export function createNode(
   id: string,

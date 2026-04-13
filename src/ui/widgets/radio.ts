@@ -1,5 +1,5 @@
 /**
- * Radio button -- one-of-many selection.
+ * Radio button: one-of-many selection.
  *
  * @module
  */

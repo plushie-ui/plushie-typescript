@@ -1,5 +1,5 @@
 /**
- * Table -- data table with sortable columns.
+ * Table: data table with sortable columns.
  *
  * @module
  */

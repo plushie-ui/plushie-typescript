@@ -2,8 +2,8 @@
 
 Plushie provides primitives, not pre-built composites. There is no
 `TabBar` widget, no `Modal` widget, no `Card` widget. Instead, you
-compose the same building blocks -- `Row`, `Column`, `Container`,
-`Stack`, `Button`, `Text`, `Rule`, `MouseArea`, `Space` -- with
+compose the same building blocks (`Row`, `Column`, `Container`,
+`Stack`, `Button`, `Text`, `Rule`, `MouseArea`, `Space`) with
 `StyleMap` to build any UI pattern you need.
 
 This guide shows how. Every pattern is copy-pasteable.

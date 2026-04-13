@@ -5,7 +5,7 @@
  * a module-level collector. After view() returns, the runtime reads
  * and clears the collector to build the handler dispatch map.
  *
- * Handlers are NOT included in UINode props -- they never touch the
+ * Handlers are NOT included in UINode props; they never touch the
  * wire. They're stored TypeScript-side only.
  *
  * @module

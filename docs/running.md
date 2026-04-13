@@ -2,7 +2,7 @@
 
 Plushie's **renderer** draws windows and handles input. Your
 TypeScript code (the **host**) manages state and builds the UI tree.
-They talk over a wire protocol -- locally through a pipe, remotely
+They talk over a wire protocol: locally through a pipe, remotely
 over SSH, or through any transport you provide. This guide covers
 all the ways to connect them.
 
@@ -134,7 +134,7 @@ not the server). How you get it there depends on your project:
 | Your project uses | Renderer needed | How to get it |
 |---|---|---|
 | Built-in widgets only | Precompiled | `npx plushie download` or GitHub release |
-| Pure TypeScript extensions | Precompiled | Same -- composites don't need a custom build |
+| Pure TypeScript extensions | Precompiled | Same (composites don't need a custom build) |
 | Native Rust extensions | Custom build | Build targeting your laptop's architecture |
 
 The server doesn't need the renderer at all. It only needs your
@@ -149,7 +149,7 @@ Plushie handles these without losing your model state.
 
 If the renderer crashes (segfault, GPU error, out of memory), the
 host detects it and restarts automatically with exponential backoff.
-Your model state is preserved -- the new renderer receives fresh
+Your model state is preserved; the new renderer receives fresh
 settings, a full snapshot of the current UI, and re-synced
 subscriptions and windows. The user sees a brief flicker, then the
 UI is back.
@@ -165,7 +165,7 @@ The host retries up to 5 times with exponential backoff:
 | 5 | 1600ms |
 
 If all retries fail, the runtime logs troubleshooting steps and
-stops. The rest of your application is unaffected -- only the plushie
+stops. The rest of your application is unaffected; only the plushie
 process exits. A successful connection resets the retry counter, so
 intermittent crashes get a fresh budget each time.
 
@@ -221,7 +221,7 @@ tells the renderer to buffer these and deliver at a controlled
 frequency. Discrete events like clicks and key presses are never
 rate-limited.
 
-Rate limiting is useful locally too -- a dashboard doesn't need 1000
+Rate limiting is useful locally too; a dashboard doesn't need 1000
 mouse move updates per second even on a fast machine.
 
 ### Global default
@@ -231,7 +231,7 @@ Set `defaultEventRate` in your app's settings:
 ```typescript
 app({
   settings: {
-    defaultEventRate: 60,   // 60 events/sec -- good for most cases
+    defaultEventRate: 60,   // 60 events/sec (good for most cases)
   },
   // ...
 })
@@ -286,7 +286,7 @@ states) and accepting that model updates lag by the round-trip time.
 For advanced use cases, the `Transport` interface lets you bridge any
 I/O mechanism to plushie. Write an adapter that speaks the Transport
 interface, and plushie handles the rest. Most projects don't need
-this -- the built-in local and SSH transports cover the common cases.
+this; the built-in local and SSH transports cover the common cases.
 
 ### The Transport interface
 
@@ -525,7 +525,7 @@ protocol layer doesn't know about widget types.
 
 ## Next steps
 
-- [Getting started](getting-started.md) -- setup, first app
-- [Commands and subscriptions](commands.md) -- event rate limiting details
-- [Testing](testing.md) -- three-backend test framework
-- [Native widgets](native-widgets.md) -- custom widgets
+- [Getting started](getting-started.md): setup, first app
+- [Commands and subscriptions](commands.md): event rate limiting details
+- [Testing](testing.md): three-backend test framework
+- [Native widgets](native-widgets.md): custom widgets

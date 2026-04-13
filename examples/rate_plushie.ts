@@ -341,7 +341,7 @@ export default app<Model>({
       return { ...state, darkMode: Boolean(event.value) };
     }
 
-    // Review form inputs -- clear errors on change
+    // Review form inputs: clear errors on change
     if (isInput(event, "review-name")) {
       const errors = { ...state.errors };
       delete errors.name;

@@ -46,7 +46,7 @@ export class SocketTransport implements Transport {
   private connect(address: string): void {
     // Determine if it's a TCP address (host:port) or Unix socket path.
     // A bare ":port" means localhost. Paths with colons (e.g. /tmp/plushie.sock)
-    // are treated as Unix sockets -- TCP requires at least one char before the colon.
+    // are treated as Unix sockets; TCP requires at least one char before the colon.
     const colonIdx = address.lastIndexOf(":");
     const looksLikeTcp =
       colonIdx > 0 && !address.startsWith("/") && /^\d+$/.test(address.slice(colonIdx + 1));

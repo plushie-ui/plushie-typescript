@@ -80,7 +80,7 @@ export function mergeAnimationProps(
 
 /**
  * Add a prop to the accumulator only if the value is not undefined.
- * This mirrors the Elixir `put_if/3` pattern -- undefined props are
+ * This mirrors the Elixir `put_if/3` pattern; undefined props are
  * omitted from the wire message entirely.
  */
 export function putIf(

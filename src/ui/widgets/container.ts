@@ -1,5 +1,5 @@
 /**
- * Container widget -- generic box with styling, background, border, shadow.
+ * Container widget: generic box with styling, background, border, shadow.
  *
  * @module
  */

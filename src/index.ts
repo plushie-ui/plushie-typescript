@@ -1,13 +1,13 @@
 /**
- * plushie -- Native desktop GUI framework for TypeScript.
+ * plushie: Native desktop GUI framework for TypeScript.
  *
  * This is the main entry point. It provides:
  *
- * - {@link app} -- create an application definition (init/view/update)
- * - {@link Command} -- pure-data side effects (async, focus, scroll, exit, etc.)
- * - {@link Subscription} -- declarative event sources (timers, key/mouse events)
- * - Event type guards -- `isClick`, `isTimer`, `isAsync`, etc. for narrowing events
- * - Core types -- `UINode`, `Event`, `Handler`, `DeepReadonly`, etc.
+ * - {@link app}: create an application definition (init/view/update)
+ * - {@link Command}: pure-data side effects (async, focus, scroll, exit, etc.)
+ * - {@link Subscription}: declarative event sources (timers, key/mouse events)
+ * - Event type guards: `isClick`, `isTimer`, `isAsync`, etc. for narrowing events
+ * - Core types: `UINode`, `Event`, `Handler`, `DeepReadonly`, etc.
  *
  * Widget builders live in the `plushie/ui` subpath export.
  * Testing helpers live in `plushie/testing`.

@@ -269,7 +269,7 @@ export class PooledTransport implements Transport {
   }
 
   close(): void {
-    // Don't close the pool -- just unregister the session
+    // Don't close the pool; just unregister the session
     void this.pool.unregister(this.sessionId);
   }
 }

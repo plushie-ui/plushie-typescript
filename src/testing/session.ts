@@ -433,7 +433,7 @@ export class TestSession<M> {
 
   /**
    * Find a widget by ID, throwing if not found.
-   * Use this when the widget must exist -- a missing widget is a test failure.
+   * Use this when the widget must exist; a missing widget is a test failure.
    */
   async findOrThrow(selector: string): Promise<Element> {
     const el = await this.find(selector);

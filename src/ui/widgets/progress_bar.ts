@@ -1,5 +1,5 @@
 /**
- * Progress bar -- displays progress within a range.
+ * Progress bar: displays progress within a range.
  *
  * @module
  */

@@ -135,7 +135,7 @@ export function defineNativeWidget(
         continue;
       }
 
-      // Regular prop -- include in wire props
+      // Regular prop; include in wire props
       props[key] = value;
     }
 

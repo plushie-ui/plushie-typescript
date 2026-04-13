@@ -1,5 +1,5 @@
 /**
- * Image display -- renders a raster image from a file path or handle.
+ * Image display: renders a raster image from a file path or handle.
  *
  * @module
  */

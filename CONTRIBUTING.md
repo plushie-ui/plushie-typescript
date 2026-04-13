@@ -12,7 +12,7 @@ pnpm preflight         # verify everything works
 
 Requires Node.js 20+ and pnpm. The project uses
 [mise](https://mise.jdx.dev/) for tool version management but it is
-not required -- any recent Node.js and pnpm will work.
+not required; any recent Node.js and pnpm will work.
 
 ## Preflight
 
@@ -24,11 +24,11 @@ pnpm preflight
 
 This runs, in order:
 
-1. **Lint** (`pnpm lint`) -- Biome linter and formatter check
-2. **Type check** (`pnpm check`) -- `tsc --noEmit` with strict settings
-3. **Build** (`pnpm build`) -- tsup (ESM + CJS + declarations)
-4. **Test** (`pnpm test`) -- vitest, all unit and integration tests
-5. **Docs** (`pnpm docs:check`) -- TypeDoc API reference (warnings as errors)
+1. **Lint** (`pnpm lint`): Biome linter and formatter check
+2. **Type check** (`pnpm check`): `tsc --noEmit` with strict settings
+3. **Build** (`pnpm build`): tsup (ESM + CJS + declarations)
+4. **Test** (`pnpm test`): vitest, all unit and integration tests
+5. **Docs** (`pnpm docs:check`): TypeDoc API reference (warnings as errors)
 
 Preflight mirrors CI. If it passes locally, CI will pass.
 
@@ -57,9 +57,9 @@ Key style points:
 - **Semicolons required**
 - **100-character line width**
 - **Bracket notation** for wire protocol keys (`result["type"]` not
-  `result.type`) -- this makes it explicit which keys are wire format
+  `result.type`); this makes it explicit which keys are wire format
   strings vs TypeScript property access
-- **Non-null assertions** are allowed (`!`) -- the type system can't
+- **Non-null assertions** are allowed (`!`); the type system can't
   always prove non-nullity in array/map access patterns
 - **No `as any`** in production code. Tests may use it sparingly for
   mocking, but prefer proper typing.
@@ -69,12 +69,12 @@ Key style points:
 The project enables every useful strict flag:
 
 - `strict` (includes strictNullChecks, strictFunctionTypes, etc.)
-- `noUncheckedIndexedAccess` -- array/map access returns `T | undefined`
-- `exactOptionalPropertyTypes` -- `undefined` is not assignable to
+- `noUncheckedIndexedAccess`: array/map access returns `T | undefined`
+- `exactOptionalPropertyTypes`: `undefined` is not assignable to
   optional properties
-- `noPropertyAccessFromIndexSignature` -- forces bracket notation for
+- `noPropertyAccessFromIndexSignature`: forces bracket notation for
   index signatures
-- `verbatimModuleSyntax` -- import/export must match module system
+- `verbatimModuleSyntax`: import/export must match module system
 
 These catch real bugs. Do not relax them.
 
@@ -208,18 +208,18 @@ when there is clear value.
 
 - Branch from `main`
 - Run `pnpm preflight` before pushing
-- Keep PRs focused -- one concern per PR
+- Keep PRs focused: one concern per PR
 - Include tests for new functionality
 - Update docs if user-facing behavior changes
 
 CI runs on every PR: lint, type check, build, binary download, test,
-API docs -- across Node.js 20 and 22.
+API docs, across Node.js 20 and 22.
 
 ## Binary management
 
 The plushie binary is downloaded automatically on `npm install` via
 the postinstall script (`scripts/postinstall.mjs`). The script is
-non-fatal -- if the download fails, `npm install` still succeeds and
+non-fatal: if the download fails, `npm install` still succeeds and
 the user can run `npx plushie download` manually.
 
 The postinstall is skipped when:
@@ -251,7 +251,7 @@ npm with provenance attestation.
 
 [TypeDoc](https://typedoc.org/) generates API reference from TSDoc
 comments. Run `pnpm docs` to generate locally (output in `api-docs/`,
-gitignored). All public exports should have TSDoc comments -- the
+gitignored). All public exports should have TSDoc comments; the
 `pnpm docs:check` step enforces this by treating warnings as errors.
 
 ## Architecture decisions

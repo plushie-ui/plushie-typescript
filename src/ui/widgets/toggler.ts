@@ -1,5 +1,5 @@
 /**
- * Toggler widget -- on/off switch.
+ * Toggler widget: on/off switch.
  *
  * @module
  */

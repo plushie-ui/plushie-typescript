@@ -1,5 +1,5 @@
 /**
- * Rule -- horizontal or vertical divider line.
+ * Rule: horizontal or vertical divider line.
  *
  * @module
  */

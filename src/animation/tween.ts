@@ -1,7 +1,7 @@
 /**
  * Animation helpers: easing functions, interpolation, and animation lifecycle.
  *
- * Animations are pure data -- create one with {@link createAnimation},
+ * Animations are pure data; create one with {@link createAnimation},
  * start it with {@link startAnimation}, and advance it each frame with
  * {@link advanceAnimation}. The runtime never mutates an animation;
  * each step returns a new value.

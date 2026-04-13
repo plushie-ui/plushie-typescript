@@ -1,7 +1,7 @@
 /**
- * TextInput widget -- single-line text input field.
+ * TextInput widget: single-line text input field.
  *
- * Always requires an explicit ID (stateful widget -- auto-IDs would
+ * Always requires an explicit ID (stateful widget; auto-IDs would
  * break cursor position on re-render).
  *
  * @module

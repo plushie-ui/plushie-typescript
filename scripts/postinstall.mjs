@@ -8,7 +8,7 @@
  *   - PLUSHIE_BINARY_PATH is set (user has their own binary)
  *   - Running in CI without explicit opt-in (CI=true and PLUSHIE_DOWNLOAD_IN_CI is not set)
  *
- * Failures are non-fatal -- the script logs a message and exits 0 so that
+ * Failures are non-fatal; the script logs a message and exits 0 so that
  * npm install never fails because of a download issue. Users can always
  * run `npx plushie download` manually.
  */

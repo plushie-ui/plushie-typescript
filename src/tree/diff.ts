@@ -8,7 +8,7 @@
  * ## Patch ordering
  *
  * Operations are emitted in safe application order:
- * 1. Removals (descending child index) -- clears the way
+ * 1. Removals (descending child index): clears the way
  * 2. Updates (with indices adjusted for prior removals)
  * 3. Inserts (ascending child index)
  *

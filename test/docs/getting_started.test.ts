@@ -36,7 +36,7 @@ test("getting_started_counter_decrement", () => {
 });
 
 test("getting_started_counter_unknown_event", () => {
-  // Unknown events should be ignored -- model stays unchanged
+  // Unknown events should be ignored; model stays unchanged
   const model: Model = { count: 0 };
   expect(model.count).toBe(0);
 });

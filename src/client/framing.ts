@@ -97,13 +97,13 @@ export function decodePackets(buffer: Uint8Array): DecodePacketsResult {
     const size = view.getUint32(0, false); // big-endian
 
     if (size > MAX_MESSAGE_SIZE) {
-      // Corrupt or malicious frame -- skip to end to avoid infinite loop.
+      // Corrupt or malicious frame; skip to end to avoid infinite loop.
       // Callers should treat this as a protocol error.
       break;
     }
 
     if (offset + HEADER_SIZE + size > buffer.byteLength) {
-      // Incomplete frame -- need more data.
+      // Incomplete frame; need more data.
       break;
     }
 
@@ -158,7 +158,7 @@ export interface DecodeLinesResult {
 export function decodeLines(buffer: string): DecodeLinesResult {
   const parts = buffer.split("\n");
   if (parts.length === 1) {
-    // No newline found -- entire buffer is a partial line.
+    // No newline found; entire buffer is a partial line.
     return { lines: [], remaining: buffer };
   }
   const remaining = parts.pop()!;

@@ -1,44 +1,20 @@
 # plushie
 
 Native desktop GUI framework for TypeScript, powered by
-[iced](https://github.com/iced-rs/iced). Build native desktop apps
-with TypeScript -- no webview, no Electron.
+[iced](https://github.com/iced-rs/iced). **[Pre-1.0](#status)**
 
-## Features
+Build native desktop apps with TypeScript - no webview, no Electron.
+Write your entire application in TypeScript (state, events, UI) and
+get native windows on Linux, macOS, and Windows. The
+[renderer](https://github.com/plushie-ui/plushie-rust) is built on
+[Iced](https://github.com/iced-rs/iced) and ships as a precompiled
+binary, no Rust toolchain required.
 
-- **38 built-in widget types** -- buttons, text inputs, sliders,
-  tables, markdown, canvas, and more.
-  [Layout guide](docs/layout.md)
-- **22 built-in themes** -- light, dark, dracula, nord, solarized,
-  gruvbox, catppuccin, tokyo night, kanagawa, and more. Custom
-  palettes and per-widget style overrides.
-  [Theming guide](docs/theming.md)
-- **JSX and function API** -- PascalCase JSX components or camelCase
-  function calls. Both produce the same tree.
-- **Type-safe widgets and events** -- every prop is typed, every
-  event kind has a type guard.
-  [Events guide](docs/events.md)
-- **Three-tier testing** -- mock (sub-ms), headless (real rendering),
-  windowed (real windows). All through the real binary.
-  [Testing guide](docs/testing.md)
-- **Multi-window** -- declare window nodes in your widget tree;
-  the framework manages open/close/update automatically.
-  [App config guide](docs/app-behaviour.md)
-- **Platform effects** -- native file dialogs, clipboard, OS
-  notifications.
-  [Effects guide](docs/effects.md)
-- **Accessibility** -- screen reader support via accesskit.
-  [Accessibility guide](docs/accessibility.md)
-- **Canvas** -- shape primitives, interactive shapes, path commands,
-  transforms, gradients.
-- **Hot reload** -- edit code, see changes instantly. Model preserved.
-- **Custom widgets** -- compose existing widgets or build native Rust
-  widgets with the `WidgetExtension` trait.
-  [Native widgets guide](docs/native-widgets.md)
-- **WASM** -- run in the browser with WasmTransport.
-- **SEA** -- bundle as a standalone executable.
-- **Remote rendering** -- Unix socket, TCP, SSH via SocketTransport.
-  [Running guide](docs/running.md)
+SDKs are also available for
+[Elixir](https://github.com/plushie-ui/plushie-elixir),
+[Gleam](https://github.com/plushie-ui/plushie-gleam),
+[Python](https://github.com/plushie-ui/plushie-python), and
+[Ruby](https://github.com/plushie-ui/plushie-ruby).
 
 ## Quick start
 
@@ -82,84 +58,75 @@ Run it:
 npx plushie run counter.tsx
 ```
 
-This is one of [9 examples](examples/README.md) included in the repo, from a
-minimal counter to a full widget catalog. Edit them while the GUI is
-running and see changes instantly. For complete project demos,
-including native Rust extensions, see the
+The repo includes [several examples](examples/README.md) you can try.
+Edit them while the GUI is running and see changes instantly. For
+complete project demos, including native Rust extensions, see the
 [plushie-demos](https://github.com/plushie-ui/plushie-demos/tree/main/typescript)
-repository.
+repo.
 
-## Architecture
+To add Plushie to your own project, see the
+[getting started guide](docs/getting-started.md),
+or browse the [docs](docs/) for all guides and references.
 
-Widget events use **inline pure-function handlers**. The runtime
-injects the current state as the first argument -- no closures over
-mutable state:
+## How it works
 
-```ts
-const increment = (state: Model): Model => ({
-  ...state,
-  count: state.count + 1,
-})
-```
+Your TypeScript application and the renderer run as two OS processes
+that exchange messages. Think of it like talking to a database,
+except the database is a GPU-accelerated GUI toolkit. The SDK builds
+UI trees and handles events; the renderer draws native windows and
+captures input.
 
-Non-widget events (timers, async results, subscriptions) fall through
-to an optional `update()` function:
+The SDK diffs each new tree against the previous one and sends only
+the changes. If the renderer crashes, Plushie restarts it and
+re-syncs your state.
 
-```ts
-app({
-  init: { count: 0, time: '' },
-  subscriptions: () => [Subscription.every(1000, 'tick')],
-  update(state, event) {
-    if (isTimer(event, 'tick')) {
-      return { ...state, time: new Date().toLocaleTimeString() }
-    }
-    return state
-  },
-  view: (s) => ...
-})
-```
+The same protocol works over a local pipe, a Unix socket, TCP, SSH,
+or any bidirectional byte stream. Your code doesn't need to change.
 
-Both inline handlers and pure-update style work with the same
-runtime. Use whichever fits.
+## Features
 
-## Widgets
+- **Elm architecture** - init, update, view. State lives in
+  TypeScript, pure functions, predictable updates
+- **JSX and function API** - PascalCase JSX components or camelCase
+  function calls, both produce the same tree
+- **Type-safe widgets and events** - every prop is typed, every
+  event kind has a type guard
+- **Built-in widgets** - layout, input, display, and interactive
+  widgets out of the box
+- **Canvas** - shapes, paths, gradients, transforms, and
+  interactive elements for custom 2D drawing
+- **Themes** - dark, light, nord, catppuccin, tokyo night, and
+  more, with custom palettes and per-widget style overrides
+- **Animation** - renderer-side transitions, springs, and
+  sequences with no wire traffic per frame
+- **Multi-window** - declare windows in your view; the framework
+  manages the rest
+- **Platform effects** - native file dialogs, clipboard, OS
+  notifications
+- **Accessibility** - keyboard navigation, screen readers, and
+  focus management via [AccessKit](https://accesskit.dev)
+- **Custom widgets** - compose existing widgets in pure TypeScript,
+  draw on the canvas, or extend with native Rust
+- **Hot reload** - edit code, see changes instantly with full
+  state preservation
+- **Remote rendering** - app on a server or embedded device,
+  renderer on a display machine over SSH or any byte stream
+- **WASM** - run in the browser with WasmTransport
+- **SEA** - bundle as a standalone executable with no runtime
+  dependencies
 
-**Layout**: column, row, container, overlay, scrollable, stack,
-grid, keyed_column, responsive, pin, floating
+## Testing and automation
 
-**Display**: text, rich_text, markdown, image, svg, progress_bar,
-qr_code, rule, space
+All testing runs through the real plushie binary - no TypeScript
+mocks. Interact like a user: click, type, find elements, assert on
+text. Three interchangeable backends:
 
-**Input**: button, text_input, text_editor, checkbox, radio,
-toggler, slider, vertical_slider, pick_list, combo_box
-
-**Complex**: table, pane_grid, tooltip, mouse_area, sensor, themer,
-window, canvas
-
-All widgets have both a camelCase function API (`button("save", "Save")`)
-and a PascalCase JSX component (`<Button id="save">Save</Button>`).
-
-## Commands
-
-Side effects are pure data. Return them from handlers or `update()`:
-
-```ts
-// Async work
-Command.async(async (signal) => {
-  const res = await fetch(url, { signal })
-  return res.json()
-}, 'fetchResult')
-
-// Widget ops
-Command.focus('form/email')
-
-// Batching
-Command.batch([Command.focus('input'), Command.scrollTo('list', 0, 0)])
-```
-
-## Testing
-
-All testing runs through the real plushie binary -- no TypeScript mocks.
+- **Mock** - sub-millisecond tests, no display server
+- **Headless** - real rendering via
+  [tiny-skia](https://github.com/linebender/tiny-skia), supports
+  screenshots for pixel regression in CI
+- **Windowed** - real windows with GPU rendering, platform effects,
+  real input
 
 ```ts
 import { testWith } from 'plushie/testing'
@@ -174,43 +141,16 @@ test('increments on click', async ({ session }) => {
 })
 ```
 
-Three backends, selectable via environment variable:
-
-- **mock** -- sub-millisecond, no rendering (default)
-- **headless** -- real rendering, no display server
-- **windowed** -- real iced windows (needs display/Xvfb)
-
 ```sh
 PLUSHIE_TEST_BACKEND=headless pnpm test
 ```
 
-## Documentation
+## Status
 
-- [Getting started](docs/getting-started.md) -- setup and first app
-- [Tutorial](docs/tutorial.md) -- build a todo app step by step
-- [App configuration](docs/app-behaviour.md) -- init, update, view, subscriptions, multi-window
-- [Events](docs/events.md) -- every event type with examples
-- [Commands](docs/commands.md) -- async, focus, scroll, window ops, effects, subscriptions
-- [Layout](docs/layout.md) -- sizing, padding, spacing, alignment
-- [Scoped IDs](docs/scoped-ids.md) -- hierarchical widget identity
-- [Effects](docs/effects.md) -- file dialogs, clipboard, notifications
-- [Theming](docs/theming.md) -- built-in themes, custom palettes, StyleMap
-- [Testing](docs/testing.md) -- unit tests, integration tests, three backends
-- [Running](docs/running.md) -- local, remote, WASM, SEA, binary management
-- [Composition patterns](docs/composition-patterns.md) -- tab bars, modals, cards
-- [Accessibility](docs/accessibility.md) -- a11y props, roles, screen readers
-- [Native widgets](docs/native-widgets.md) -- custom widgets, Rust extensions
-- [Builder internals](docs/builder-internals.md) -- how the SDK works under the hood
-- [Examples](examples/README.md) -- all example apps
-
-## Links
-
-| | |
-|---|---|
-| TypeScript SDK | [github.com/plushie-ui/plushie-typescript](https://github.com/plushie-ui/plushie-typescript) |
-| Elixir SDK | [github.com/plushie-ui/plushie-elixir](https://github.com/plushie-ui/plushie-elixir) |
-| Renderer | [github.com/plushie-ui/plushie-rust](https://github.com/plushie-ui/plushie-rust) |
-| Demo projects | [github.com/plushie-ui/plushie-demos](https://github.com/plushie-ui/plushie-demos) |
+Pre-1.0. The core works (built-in widgets, event system, themes,
+multi-window, testing framework, accessibility) but the API is
+still evolving. Pin to an exact version and read the
+[CHANGELOG](CHANGELOG.md) when upgrading.
 
 ## License
 

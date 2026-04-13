@@ -14,7 +14,7 @@ plushie-renderer 0.5.0.
 - **App framework** with inline pure-function event handlers and optional
   `update()` fallback. JSX and function API for widget construction.
   `DeepReadonly<M>` model type prevents accidental mutation.
-- **38 widget builders** -- layout (column, row, container, scrollable,
+- **38 widget builders**: layout (column, row, container, scrollable,
   stack, overlay, grid, keyed_column, responsive, pin, floating),
   display (text, rich_text, markdown, image, svg, progress_bar, qr_code,
   rule, space), input (button, text_input, text_editor, checkbox, radio,
@@ -33,7 +33,7 @@ plushie-renderer 0.5.0.
   detection.
 - **Coalescable event buffering** for high-frequency events via
   queueMicrotask.
-- **Command system** -- async (with AbortSignal), stream
+- **Command system**: async (with AbortSignal), stream
   (AsyncIterable), cancel, sendAfter, batch, exit, focus, scroll,
   select, cursor, announce, focusElement, window ops, image ops,
   pane ops, extension commands, queries, effects.
@@ -41,9 +41,9 @@ plushie-renderer 0.5.0.
   detection, and timer management.
 - **Three-tier testing framework** (mock, headless, windowed) via real
   plushie binary. Session pool for multiplexed test sessions.
-- **Platform effects** -- file dialogs, clipboard, notifications with
+- **Platform effects**: file dialogs, clipboard, notifications with
   per-kind timeouts.
-- **State helpers** -- animation (8 easing functions), selection
+- **State helpers**: animation (8 easing functions), selection
   (single/multi/range), undo/redo with coalescing, navigation routing,
   data query pipeline (filter, search, sort, paginate).
 - **WASM renderer support** via WasmTransport for browser deployment.
@@ -56,9 +56,9 @@ plushie-renderer 0.5.0.
   extensions. Build-time functions isolated for browser compatibility.
 - **.plushie script** parser and runner for automated testing.
 - **Binary download** from GitHub releases with SHA256 verification.
-- **CLI** -- download, build, dev, run, stdio, inspect, connect,
+- **CLI**: download, build, dev, run, stdio, inspect, connect,
   script, replay. Supports `--bin-file` and `--wasm-dir` flags.
-- **Postinstall binary download** -- automatic on `npm install`.
+- **Postinstall binary download**: automatic on `npm install`.
 - **TypeDoc API reference** generation with warnings-as-errors.
 - **Biome** linter and formatter.
 - **GitHub Actions CI** and tag-triggered release workflow.

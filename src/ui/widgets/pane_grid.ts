@@ -1,5 +1,5 @@
 /**
- * Pane grid -- resizable tiled panes.
+ * Pane grid: resizable tiled panes.
  *
  * @module
  */

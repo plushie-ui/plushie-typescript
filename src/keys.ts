@@ -384,7 +384,7 @@ export const ZoomOut = "ZoomOut";
  * resolution in test helpers.
  */
 const ALL_KEYS: readonly string[] = [
-  // Single characters (a-z) are valid as bare strings -- iced uses
+  // Single characters (a-z) are valid as bare strings; iced uses
   // lowercased logical keys for single printable chars. These are
   // not listed here; resolveKey handles them as a special case.
   Accept,

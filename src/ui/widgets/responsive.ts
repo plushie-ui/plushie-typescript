@@ -1,5 +1,5 @@
 /**
- * Responsive container -- adapts layout based on available space.
+ * Responsive container: adapts layout based on available space.
  *
  * @module
  */

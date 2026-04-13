@@ -1,5 +1,5 @@
 /**
- * Grid layout -- arranges children in a grid.
+ * Grid layout: arranges children in a grid.
  *
  * @module
  */

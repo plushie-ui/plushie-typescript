@@ -8,7 +8,7 @@
  *
  * Named containers (non-auto, non-window) scope their children's IDs
  * by prefixing with `parentId/`. Auto-ID nodes (id starts with "auto:")
- * and window nodes (type "window") never create scopes -- children
+ * and window nodes (type "window") never create scopes; children
  * inherit the parent's scope unchanged.
  *
  * @module
@@ -168,7 +168,7 @@ function normalizeNode(
     normalizeNode(child, childScope, currentWindowId, ctx),
   );
 
-  // Reject duplicate sibling IDs -- they cause undefined behavior in
+  // Reject duplicate sibling IDs; they cause undefined behavior in
   // widget caching, event routing, and tree diffing.
   if (children.length > 1) {
     const ids = new Set<string>();

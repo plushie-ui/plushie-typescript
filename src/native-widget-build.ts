@@ -116,7 +116,7 @@ export function checkExtensionVersions(
       match = content.match(/plushie-ext\s*=\s*\{[^}]*version\s*=\s*"([^"]+)"/);
     }
     if (!match) {
-      // Try: plushie-ext = { path = "path", ... } -- read version from target
+      // Try: plushie-ext = { path = "path", ... }; read version from target
       const pathMatch = content.match(/plushie-ext\s*=\s*\{[^}]*path\s*=\s*"([^"]+)"/);
       if (pathMatch) {
         const targetCargoPath = nodePath.resolve(ext.rustCrate!, pathMatch[1]!, "Cargo.toml");
@@ -163,7 +163,7 @@ export function generateCargoToml(config: NativeWidgetBuildConfig): string {
 
   const buildDir = nodePath.resolve("node_modules", ".plushie", "build");
 
-  // Plushie dependencies -- use local source if available, otherwise crates.io
+  // Plushie dependencies: use local source if available, otherwise crates.io
   let plushieExtDep: string;
   let plushieRendererDep: string;
 

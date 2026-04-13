@@ -1,5 +1,5 @@
 /**
- * Button widget -- clickable button with a text label.
+ * Button widget: clickable button with a text label.
  *
  * @module
  */

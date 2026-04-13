@@ -1,5 +1,5 @@
 /**
- * Window widget -- top-level native window node.
+ * Window widget: top-level native window node.
  *
  * Window nodes are detected by the runtime for window lifecycle
  * management (open/close/update). They must appear at the root

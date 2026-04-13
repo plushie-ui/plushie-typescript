@@ -36,7 +36,7 @@ export function jsx(
 
 /**
  * JSX element creation with static children (production runtime).
- * Same as jsx -- the distinction is for React optimizations we don't need.
+ * Same as jsx; the distinction is for React optimizations we don't need.
  */
 export function jsxs(
   type: (props: Record<string, unknown>) => UINode,

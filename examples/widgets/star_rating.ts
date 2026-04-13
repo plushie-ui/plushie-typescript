@@ -93,7 +93,7 @@ function handleEvent(event: Event, state: StarState): readonly [EventAction, Sta
     }
   }
 
-  // All other events consumed -- StarRating only surfaces "select".
+  // All other events consumed; StarRating only surfaces "select".
   return [{ type: "consumed" }, state];
 }
 

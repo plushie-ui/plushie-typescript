@@ -1,5 +1,5 @@
 /**
- * Combo box -- searchable dropdown with free-form text input.
+ * Combo box: searchable dropdown with free-form text input.
  *
  * @module
  */

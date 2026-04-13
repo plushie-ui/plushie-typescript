@@ -4,19 +4,19 @@
  * CLI entry point for the plushie SDK.
  *
  * Commands:
- *   plushie download        -- download the precompiled binary
- *   plushie download --wasm -- download the WASM renderer
- *   plushie build           -- build plushie from Rust source
- *   plushie build --wasm    -- build WASM renderer via wasm-pack
- *   plushie dev <app>       -- run an app with file watching
- *   plushie run <app>       -- run an app
- *   plushie stdio <app>     -- run in stdio transport mode (for plushie --exec)
- *   plushie inspect <app>   -- print the initial view tree as JSON
- *   plushie connect <addr>  -- connect to a plushie --listen instance
- *   plushie script          -- run .plushie test scripts
- *   plushie replay <file>   -- replay a .plushie script with real windows
- *   plushie --help          -- print usage
- *   plushie --version       -- print version
+ *   plushie download        :  download the precompiled binary
+ *   plushie download --wasm :  download the WASM renderer
+ *   plushie build           :  build plushie from Rust source
+ *   plushie build --wasm    :  build WASM renderer via wasm-pack
+ *   plushie dev <app>       :  run an app with file watching
+ *   plushie run <app>       :  run an app
+ *   plushie stdio <app>     :  run in stdio transport mode (for plushie --exec)
+ *   plushie inspect <app>   :  print the initial view tree as JSON
+ *   plushie connect <addr>  :  connect to a plushie --listen instance
+ *   plushie script          :  run .plushie test scripts
+ *   plushie replay <file>   :  replay a .plushie script with real windows
+ *   plushie --help          :  print usage
+ *   plushie --version       :  print version
  *
  * @module
  */
@@ -208,7 +208,7 @@ async function handleDownload(
 
   if (artifacts.includes("bin")) {
     // Block precompiled download when native extensions are configured.
-    // The stock binary doesn't include native extensions -- users must
+    // The stock binary doesn't include native extensions; users must
     // build a custom binary with `npx plushie build` instead.
     const extConfigPath = resolve("plushie.extensions.json");
     if (existsSync(extConfigPath)) {
@@ -227,7 +227,7 @@ async function handleDownload(
           return;
         }
       } catch {
-        // Config exists but can't be parsed -- let it through, build will catch it
+        // Config exists but can't be parsed; let it through, build will catch it
       }
     }
     await handleDownloadBinary(force, resolvedBinFile);
@@ -354,7 +354,7 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
     if (handleExtensionBuild(sourcePath, extConfigPath, isRelease)) {
       return; // Extension build handled it
     }
-    // No native extensions found -- fall through to stock build
+    // No native extensions found; fall through to stock build
   }
 
   if (wantWasm) {
@@ -477,7 +477,7 @@ function handleExtensionBuild(
     const extensions = raw.extensions ?? [];
     const nativeExts = extensions.filter((e) => e.rustCrate);
     if (nativeExts.length === 0) {
-      return false; // No native extensions -- caller should do stock build
+      return false; // No native extensions; caller should do stock build
     }
     const buildConfig: Record<string, unknown> = { extensions, sourcePath, release };
     if (raw.binaryName !== undefined) buildConfig["binaryName"] = raw.binaryName;

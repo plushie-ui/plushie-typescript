@@ -1,5 +1,5 @@
 /**
- * Markdown display -- renders parsed markdown content.
+ * Markdown display: renders parsed markdown content.
  *
  * @module
  */

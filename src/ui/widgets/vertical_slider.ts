@@ -1,5 +1,5 @@
 /**
- * Vertical slider -- vertical range input.
+ * Vertical slider: vertical range input.
  *
  * @module
  */

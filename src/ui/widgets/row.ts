@@ -1,5 +1,5 @@
 /**
- * Row layout widget -- arranges children horizontally.
+ * Row layout widget: arranges children horizontally.
  *
  * @module
  */

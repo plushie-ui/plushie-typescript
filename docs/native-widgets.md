@@ -9,9 +9,10 @@ For complete working examples with Rust extensions, see the
 repository:
 
 - [gauge-demo](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/gauge-demo)
-  -- native gauge widget with extension commands (`set_value`, `animate_to`)
-- [sparkline-dashboard](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/sparkline-dashboard)
-  -- render-only canvas sparkline with timer-driven live data
+:
+  native gauge widget with extension commands (`set_value`, `animate_to`)
+- [sparkline-dashboard](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/sparkline-dashboard):
+  render-only canvas sparkline with timer-driven live data
 
 ## Quick start
 
@@ -144,7 +145,7 @@ they're just functions that return UINodes. Use
 `defineNativeWidget` only when you need handler registration,
 command generation, or Rust build integration.
 
-### Stateful widgets -- pure-TypeScript widgets with internal state
+### Stateful widgets: pure-TypeScript widgets with internal state
 
 Use `WidgetDef` for widgets that manage their own internal state and
 transform low-level events into semantic events. No Rust code needed.
@@ -153,14 +154,14 @@ native widgets (Rust-backed).
 
 Stateful widgets have three capabilities that composite widgets do not:
 
-- **Internal state** -- initialized by `init`, managed by the runtime.
+- **Internal state**: initialized by `init`, managed by the runtime.
   The widget tree is the source of truth; state is keyed by scoped
   widget ID.
-- **Event transformation** -- `handleEvent` intercepts events at the
+- **Event transformation**: `handleEvent` intercepts events at the
   widget's scope boundary before they reach `update`. Low-level events
   become semantic events that are indistinguishable from built-in widget
   events.
-- **Widget-scoped subscriptions** -- `subscriptions` returns subscriptions
+- **Widget-scoped subscriptions**: `subscriptions` returns subscriptions
   scoped to this widget instance. Timer events route to `handleEvent`,
   not the app's `update`.
 
@@ -201,8 +202,8 @@ const view = (state: Model) => buildWidget(starRating, 'stars', { rating: 3, max
 | Action | Effect |
 |---|---|
 | `{ type: 'ignored' }` | Event passes through to `update` unchanged |
-| `{ type: 'consumed' }` | Event is suppressed -- neither the app nor other widgets see it |
-| `{ type: 'update_state' }` | Internal state updated, no output event -- triggers re-render |
+| `{ type: 'consumed' }` | Event is suppressed; neither the app nor other widgets see it |
+| `{ type: 'update_state' }` | Internal state updated, no output event (triggers re-render) |
 | `{ type: 'emit', kind, data }` | Emit a WidgetEvent; id/scope filled in by the runtime |
 
 #### Subscriptions
@@ -750,7 +751,7 @@ export const GaugeCmds = nativeWidgetCommands(gaugeConfig)
 ```
 
 ```typescript
-// src/app.tsx -- using the gauge in an app
+// src/app.tsx: using the gauge in an app
 import { app, Command, isWidget } from 'plushie'
 import { Window, Column, Row, Text, Button, Slider } from 'plushie/ui'
 import { Gauge, GaugeCmds } from './gauge.js'

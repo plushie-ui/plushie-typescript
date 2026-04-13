@@ -88,7 +88,7 @@ fix that.
 
 Each todo needs its own row with a checkbox and a delete button.
 We wrap each item in a `Container` using the todo's ID. This creates
-a **scope** -- children get unique IDs automatically without manual
+a **scope**: children get unique IDs automatically without manual
 prefixing.
 
 <!-- test: tutorial_step3_view_renders_todo_list, tutorial_step3_todo_row_structure -- keep this code block in sync with the test -->
@@ -112,7 +112,7 @@ import { Container, Row, Checkbox, Button } from 'plushie/ui'
 Each todo row has `id={todo.id}` (e.g., `"todo_1"`). Inside it,
 the checkbox has local id `"toggle"` and the button has `"delete"`.
 On the wire, these become `"list/todo_1/toggle"` and
-`"list/todo_1/delete"` -- unique across all items.
+`"list/todo_1/delete"`, unique across all items.
 
 ## Step 4: handling toggle and delete with scope
 
@@ -158,7 +158,7 @@ const addTodo = (s: Model): Model | [Model, Command] => {
 }
 ```
 
-Note the scoped path `"app/newTodo"` -- the text input is inside
+Note the scoped path `"app/newTodo"`: the text input is inside
 the `"app"` column, so its full ID is `"app/newTodo"`. Commands
 always use the full scoped path.
 
@@ -226,8 +226,8 @@ with tests in
 
 ## Next steps
 
-- [Commands](commands.md) -- async work, file dialogs, timers
-- [Scoped IDs](scoped-ids.md) -- full scoping reference
-- [Composition patterns](composition-patterns.md) -- scaling beyond
+- [Commands](commands.md): async work, file dialogs, timers
+- [Scoped IDs](scoped-ids.md): full scoping reference
+- [Composition patterns](composition-patterns.md): scaling beyond
   a single module
-- [Testing](testing.md) -- unit and integration testing
+- [Testing](testing.md): unit and integration testing

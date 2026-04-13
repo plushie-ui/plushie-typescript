@@ -1,5 +1,5 @@
 /**
- * Keyed column -- like Column but children are keyed for efficient diffing.
+ * Keyed column: like Column but children are keyed for efficient diffing.
  *
  * @module
  */

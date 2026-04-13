@@ -1,5 +1,5 @@
 /**
- * Checkbox widget -- toggle with a label.
+ * Checkbox widget: toggle with a label.
  *
  * @module
  */

@@ -1,5 +1,5 @@
 /**
- * Rich text -- display text with individually styled spans.
+ * Rich text: display text with individually styled spans.
  *
  * @module
  */

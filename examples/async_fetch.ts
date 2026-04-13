@@ -1,4 +1,4 @@
-// Async command example -- a button that triggers background work.
+// Async command example: a button that triggers background work.
 //
 // Demonstrates:
 // - Command.async() for off-thread work

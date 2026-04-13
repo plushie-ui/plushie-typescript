@@ -1,5 +1,5 @@
 /**
- * Column layout widget -- arranges children vertically.
+ * Column layout widget: arranges children vertically.
  *
  * @module
  */

@@ -48,20 +48,20 @@ import type { Event, Subscription, UINode, WidgetEvent } from "./types.js";
 /**
  * Result of a widget's event handler.
  *
- * - `ignored` -- not handled, continue to next handler in scope chain
- * - `consumed` -- captured, suppress event
- * - `update_state` -- captured, internal state change only (triggers re-render)
- * - `emit` -- captured with semantic event; runtime fills in id/scope/windowId
+ * - `ignored`: not handled, continue to next handler in scope chain
+ * - `consumed`: captured, suppress event
+ * - `update_state`: captured, internal state change only (triggers re-render)
+ * - `emit`: captured with semantic event; runtime fills in id/scope/windowId
  *
  * ## Emit value vs data
  *
- * Use `value` for scalar payloads -- the value goes into `WidgetEvent.value`,
+ * Use `value` for scalar payloads; the value goes into `WidgetEvent.value`,
  * making the emitted event indistinguishable from a built-in widget event:
  *
  *     { type: "emit", kind: "select", value: 3 }       // event.value = 3
  *     { type: "emit", kind: "toggle", value: true }     // event.value = true
  *
- * Use `data` for structured payloads -- the object goes into `WidgetEvent.data`:
+ * Use `data` for structured payloads; the object goes into `WidgetEvent.data`:
  *
  *     { type: "emit", kind: "change", data: { hue: 180 } }  // event.data.hue = 180
  */
@@ -72,9 +72,9 @@ export type EventAction =
   | {
       readonly type: "emit";
       readonly kind: string;
-      /** Scalar payload -- goes into WidgetEvent.value (like built-in widget events). */
+      /** Scalar payload: goes into WidgetEvent.value (like built-in widget events). */
       readonly value?: string | number | boolean | null;
-      /** Structured payload -- goes into WidgetEvent.data as a key/value map. */
+      /** Structured payload: goes into WidgetEvent.data as a key/value map. */
       readonly data?: unknown;
     };
 
@@ -100,7 +100,7 @@ export interface WidgetDef<State, Props> {
   /**
    * Handle an event. Returns the action and (possibly updated) state.
    *
-   * Optional. Widgets without handleEvent are transparent -- events from
+   * Optional. Widgets without handleEvent are transparent; events from
    * their children pass through to the app's update(). Widgets with
    * handleEvent are opaque by default and should return `{ type: "ignored" }`
    * explicitly to pass events through.
@@ -472,7 +472,7 @@ function resolveEmitIdentity(
     return { id, scope: [], windowId: requiredWindowId(event) };
   }
 
-  // Timer or other non-widget event -- split the registered widget ID.
+  // Timer or other non-widget event; split the registered widget ID.
   const { widgetId, windowId } = splitWidgetKey(widgetKeyValue);
   return { ...splitWidgetId(widgetId), windowId };
 }
@@ -576,7 +576,7 @@ function walkChain(
     const entry = registry.get(widgetId);
     if (!entry) continue;
 
-    // Render-only widgets (no handleEvent) are transparent -- skip them
+    // Render-only widgets (no handleEvent) are transparent; skip them
     if (!entry.handleEvent) continue;
 
     let action: EventAction;
@@ -606,7 +606,7 @@ function walkChain(
         break;
 
       case "emit": {
-        // Captured with output -- replace event and continue
+        // Captured with output; replace event and continue
         const identity = resolveEmitIdentity(currentEvent, widgetId);
         currentEvent = buildEmitEvent(action, identity);
         break;

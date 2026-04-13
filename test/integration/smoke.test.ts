@@ -364,10 +364,10 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
       transport.send(encodeSettings("", {}) as Record<string, unknown>);
       await helloPromise;
 
-      // Subscribe to key press events -- no error expected
+      // Subscribe to key press events; no error expected
       transport.send(encodeSubscribe("", "on_key_press", "keys") as Record<string, unknown>);
 
-      // Unsubscribe -- no error expected
+      // Unsubscribe; no error expected
       transport.send(encodeUnsubscribe("", "on_key_press") as Record<string, unknown>);
 
       // Send a snapshot and query to verify the session is still healthy

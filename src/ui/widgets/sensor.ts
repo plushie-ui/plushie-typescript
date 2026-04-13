@@ -1,5 +1,5 @@
 /**
- * Sensor -- detects visibility and size changes on child content.
+ * Sensor: detects visibility and size changes on child content.
  *
  * @module
  */

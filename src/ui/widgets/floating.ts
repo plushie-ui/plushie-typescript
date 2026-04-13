@@ -1,5 +1,5 @@
 /**
- * Floating -- applies transform (translate, scale) to child content.
+ * Floating: applies transform (translate, scale) to child content.
  *
  * @module
  */

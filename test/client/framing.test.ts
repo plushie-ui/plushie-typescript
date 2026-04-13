@@ -66,7 +66,7 @@ describe("decodePackets", () => {
   });
 
   test("handles incomplete header", () => {
-    // Only 3 bytes -- not enough for the 4-byte header
+    // Only 3 bytes; not enough for the 4-byte header
     const data = new Uint8Array([0, 0, 0]);
     const { messages, remaining } = decodePackets(data);
     expect(messages).toHaveLength(0);

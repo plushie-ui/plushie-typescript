@@ -2,7 +2,7 @@
  * Selection state management for lists and grids.
  *
  * Supports single, multi, and range selection modes. All operations
- * are pure -- they return new Selection values without mutation.
+ * are pure; they return new Selection values without mutation.
  *
  * @module
  */

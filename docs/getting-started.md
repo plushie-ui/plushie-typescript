@@ -9,7 +9,7 @@ TypeScript.
 - **Node.js** 20+ (install via [nodejs.org](https://nodejs.org) or
   your package manager)
 - **System libraries** for your platform (only needed for windowed
-  mode -- mock and headless testing work without them):
+  mode; mock and headless testing work without them):
   - Linux: display server headers (e.g. `libxkbcommon-dev`,
     `libwayland-dev` on Debian/Ubuntu)
   - macOS: Xcode command-line tools (`xcode-select --install`)
@@ -105,16 +105,16 @@ A native window appears with the count and two buttons.
 
 Plushie follows an Elm-inspired architecture. Your app provides:
 
-- **`init`** -- the initial model (any object).
-- **`view(state)`** -- takes the model and returns a UI tree.
+- **`init`**: the initial model (any object).
+- **`view(state)`**: takes the model and returns a UI tree.
   Plushie diffs trees and sends only patches to the renderer.
-- **`onClick`, `onInput`, etc.** -- pure-function handlers on
+- **`onClick`, `onInput`, etc.**: pure-function handlers on
   widgets. They receive the current state and return new state.
   No closures, no mutation.
-- **`update(state, event)`** (optional) -- fallback handler for
+- **`update(state, event)`** (optional): fallback handler for
   events without inline handlers (timers, async results, keyboard
   subscriptions).
-- **`subscriptions(state)`** (optional) -- returns a list of active
+- **`subscriptions(state)`** (optional): returns a list of active
   subscriptions (timers, keyboard events).
 
 See [App configuration](app-behaviour.md) for the full API.
@@ -192,16 +192,16 @@ npx plushie dev counter.tsx
 ```
 
 Edit your TypeScript file and save. The window updates instantly.
-The model is preserved -- only `view()` is re-evaluated with the
+The model is preserved; only `view()` is re-evaluated with the
 new code.
 
 ## Next steps
 
-- [Tutorial: building a todo app](tutorial.md) -- step-by-step guide
+- [Tutorial: building a todo app](tutorial.md): step-by-step guide
 - Browse the [examples](../examples/) for patterns
-- [App configuration](app-behaviour.md) -- full callback API
-- [Layout](layout.md) -- sizing and positioning widgets
-- [Commands](commands.md) -- async work, file dialogs, effects
-- [Events](events.md) -- complete event taxonomy
-- [Testing](testing.md) -- writing tests against your UI
-- [Theming](theming.md) -- custom themes and palettes
+- [App configuration](app-behaviour.md): full callback API
+- [Layout](layout.md): sizing and positioning widgets
+- [Commands](commands.md): async work, file dialogs, effects
+- [Events](events.md): complete event taxonomy
+- [Testing](testing.md): writing tests against your UI
+- [Theming](theming.md): custom themes and palettes

@@ -37,7 +37,7 @@ init: [
 ```
 
 The model can be any object. The runtime does not inspect or modify
-it -- it is fully owned by the app.
+it; it is fully owned by the app.
 
 ### view(state)
 
@@ -83,11 +83,11 @@ const addTodo = (s: Model): Model | [Model, Command] => {
 }
 ```
 
-Handlers are pure functions -- they receive the current state as their
+Handlers are pure functions: they receive the current state as their
 first argument (not captured via closure). This avoids stale state
 issues and makes handlers independently testable.
 
-### update(state, event) -- optional
+### update(state, event) (optional)
 
 Fallback handler for events without inline handlers. All non-widget
 events (timers, async results, keyboard subscriptions) go here.
@@ -125,7 +125,7 @@ Common event type guards:
 
 See [Events](events.md) for the full taxonomy.
 
-### subscriptions(state) -- optional
+### subscriptions(state) (optional)
 
 Returns a list of active subscriptions based on the current model.
 Called after every state change. The runtime diffs the list and
@@ -142,7 +142,7 @@ subscriptions: (state) => [
 Falsy values (false, null, undefined) are filtered automatically.
 Default: no subscriptions.
 
-### settings -- optional
+### settings (optional)
 
 Application-level settings sent to the renderer on startup.
 
@@ -168,7 +168,7 @@ settings: {
 | `theme` | string | -- | Built-in theme name or "system" |
 | `defaultEventRate` | number | -- | Max events/sec for coalescable events |
 
-### windowConfig(state) -- optional
+### windowConfig(state) (optional)
 
 Called when windows are opened, providing base settings that
 per-window props override.
@@ -185,7 +185,7 @@ windowConfig: (state) => ({
 }),
 ```
 
-### handleRendererExit(state, reason) -- optional
+### handleRendererExit(state, reason) (optional)
 
 Called when the renderer process exits unexpectedly. Return the model
 to use when the renderer restarts. Default: return model unchanged.

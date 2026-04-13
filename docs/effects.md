@@ -47,11 +47,11 @@ Effects.directorySelectMultiple({ title?, directory? })
 Filter format: `[['Label (*.ext)', '*.ext'], ...]`
 
 Results:
-- `fileOpen` -- `{ path: string }`
-- `fileOpenMultiple` -- `{ paths: string[] }`
-- `fileSave` -- `{ path: string }`
-- `directorySelect` -- `{ path: string }`
-- `directorySelectMultiple` -- `{ paths: string[] }`
+- `fileOpen`: `{ path: string }`
+- `fileOpenMultiple`: `{ paths: string[] }`
+- `fileSave`: `{ path: string }`
+- `directorySelect`: `{ path: string }`
+- `directorySelectMultiple`: `{ paths: string[] }`
 
 Default timeout: 120 seconds (file dialogs can stay open a long time).
 
@@ -104,11 +104,11 @@ Effects.fileOpen({ title: 'Pick a file', timeout: 300000 })
 
 The `EffectEvent` has three possible statuses:
 
-- `'ok'` -- the effect completed successfully. `event.result`
+- `'ok'`: the effect completed successfully. `event.result`
   contains the response data.
-- `'cancelled'` -- the user dismissed a dialog without selecting.
+- `'cancelled'`: the user dismissed a dialog without selecting.
   No result or error field.
-- `'error'` -- something went wrong. `event.error` contains the
+- `'error'`: something went wrong. `event.error` contains the
   reason string.
 
 ## Headless and mock modes

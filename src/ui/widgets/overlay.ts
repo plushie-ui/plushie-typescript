@@ -1,5 +1,5 @@
 /**
- * Overlay -- positions the second child as a floating overlay
+ * Overlay: positions the second child as a floating overlay
  * relative to the first child (anchor). Exactly 2 children.
  *
  * @module

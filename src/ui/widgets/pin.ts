@@ -1,5 +1,5 @@
 /**
- * Pin -- positions child at absolute coordinates within a Stack.
+ * Pin: positions child at absolute coordinates within a Stack.
  *
  * @module
  */

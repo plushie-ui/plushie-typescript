@@ -6,7 +6,7 @@ when debugging unexpected behavior or writing custom abstractions.
 
 ## UINode structure
 
-Every widget builder produces a `UINode` -- a frozen, plain object:
+Every widget builder produces a `UINode`, a frozen, plain object:
 
 ```typescript
 interface UINode {
@@ -49,7 +49,7 @@ applies here:
 - **Tree diffing doesn't compare handlers.** Only `id`, `type`,
   `props`, and `children` are diffed.
 - **The handler map is rebuilt every render.** Handler identity
-  doesn't matter -- it's overwritten unconditionally.
+  doesn't matter; it's overwritten unconditionally.
 
 ## Prop encoding
 
@@ -68,20 +68,20 @@ TypeScript:  { font: { family: 'Arial', weight: 'semi_bold' } }
 Wire:        { font: { family: 'Arial', weight: 'SemiBold' } }
 ```
 
-The `putIf` helper omits undefined props entirely -- they don't
+The `putIf` helper omits undefined props entirely; they don't
 appear on the wire.
 
 ## Tree normalization
 
 After `view()` returns a UINode tree, the runtime normalizes it:
 
-1. **Scoped IDs** -- named containers prefix their children's IDs
+1. **Scoped IDs**: named containers prefix their children's IDs
    with `parentId/`. Auto-ID and window nodes don't create scopes.
-2. **A11y resolution** -- `labelledBy`, `describedBy`, `errorMessage`
+2. **A11y resolution**: `labelledBy`, `describedBy`, `errorMessage`
    references are resolved relative to the current scope.
-3. **Validation** -- IDs containing `/` are rejected. Duplicate
+3. **Validation**: IDs containing `/` are rejected. Duplicate
    sibling IDs produce warnings.
-4. **Null/array handling** -- `null` becomes an empty container.
+4. **Null/array handling**: `null` becomes an empty container.
    Arrays are wrapped in a synthetic root.
 
 ## Tree diffing

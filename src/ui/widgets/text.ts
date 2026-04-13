@@ -1,5 +1,5 @@
 /**
- * Text widget -- display static text content.
+ * Text widget: display static text content.
  *
  * @module
  */

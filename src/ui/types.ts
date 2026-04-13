@@ -15,10 +15,10 @@
 /**
  * Size dimension: fixed pixels, fill available space, or shrink to content.
  *
- * - `number` -- exact pixel size
- * - `'fill'` -- fill available space (weight 1)
- * - `'shrink'` -- shrink to content
- * - `{ fillPortion: n }` -- fill with weight n
+ * - `number`: exact pixel size
+ * - `'fill'`: fill available space (weight 1)
+ * - `'shrink'`: shrink to content
+ * - `{ fillPortion: n }`: fill with weight n
  */
 export type Length = number | "fill" | "shrink" | { fillPortion: number };
 
@@ -37,10 +37,10 @@ export function encodeLength(value: Length): unknown {
 /**
  * Padding specification.
  *
- * - `number` -- uniform padding on all sides
- * - `[vertical, horizontal]` -- symmetric padding
- * - `[top, right, bottom, left]` -- per-side padding
- * - `{ top?, right?, bottom?, left? }` -- per-side with named fields
+ * - `number`: uniform padding on all sides
+ * - `[vertical, horizontal]`: symmetric padding
+ * - `[top, right, bottom, left]`: per-side padding
+ * - `{ top?, right?, bottom?, left? }`: per-side with named fields
  */
 export type Padding =
   | number
@@ -247,7 +247,7 @@ export function encodeColor(value: Color): string {
   const named = NAMED_COLORS[value.toLowerCase()];
   if (named !== undefined) return named;
 
-  // Already hex -- normalize short forms
+  // Already hex; normalize short forms
   if (value.startsWith("#")) {
     const h = value.slice(1);
     if (h.length === 3) {
@@ -328,9 +328,9 @@ export type FontStretch =
 /**
  * Font specification.
  *
- * - `'default'` -- system default font
- * - `'monospace'` -- system monospace font
- * - `string` -- font family name
+ * - `'default'`: system default font
+ * - `'monospace'`: system monospace font
+ * - `string`: font family name
  * - Object with family, weight, style, stretch
  */
 export type Font =
@@ -606,9 +606,9 @@ export type Anchor = "start" | "end";
 /**
  * Line height specification.
  *
- * - `number` -- relative multiplier (e.g., 1.5 = 150% of font size)
- * - `{ absolute: number }` -- absolute pixel value
- * - `{ relative: number }` -- relative multiplier (explicit form)
+ * - `number`: relative multiplier (e.g., 1.5 = 150% of font size)
+ * - `{ absolute: number }`: absolute pixel value
+ * - `{ relative: number }`: relative multiplier (explicit form)
  */
 export type LineHeight = number | { absolute: number } | { relative: number };
 

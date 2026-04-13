@@ -1,5 +1,5 @@
 /**
- * SVG display -- renders a vector image from a file path.
+ * SVG display: renders a vector image from a file path.
  *
  * @module
  */

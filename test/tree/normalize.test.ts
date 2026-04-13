@@ -139,7 +139,7 @@ describe("normalize", () => {
       meta: { route: "/dashboard", debug: true },
     };
     const wire = normalize(tree);
-    // Wire node should have id, type, props, children -- no meta
+    // Wire node should have id, type, props, children; no meta
     expect(wire.id).toBe("root");
     expect(wire.props).toEqual({ spacing: 8 });
     expect("meta" in wire).toBe(false);

@@ -546,7 +546,7 @@ export class Runtime<M> {
             // Re-dispatch the emitted event
             this.dispatchEvent(timerResult.event);
           } else {
-            // Widget handled internally -- re-render for state changes
+            // Widget handled internally; re-render for state changes
             this.renderAndSync(false);
           }
           return;
@@ -560,7 +560,7 @@ export class Runtime<M> {
       this.state.widgetHandlerRegistry = dispatchResult.registry;
 
       if (dispatchResult.event === null) {
-        // Consumed by widget handler -- re-render for state changes
+        // Consumed by widget handler; re-render for state changes
         this.renderAndSync(false);
         return;
       }
@@ -686,7 +686,7 @@ export class Runtime<M> {
       if (newEntries.size > 0) {
         this.state.widgetHandlerRegistry = newEntries;
       } else {
-        // No widget handlers in this tree -- clear registry
+        // No widget handlers in this tree; clear registry
         this.state.widgetHandlerRegistry = new Map();
       }
 
@@ -1118,7 +1118,7 @@ export class Runtime<M> {
         break;
 
       default:
-        // Unknown command type -- send as widget_op
+        // Unknown command type; send as widget_op
         this.send(encodeWidgetOp(this.sessionId, cmd.type, cmd.payload as Record<string, unknown>));
     }
   }
@@ -1367,7 +1367,7 @@ export class Runtime<M> {
         console.debug(`[plushie] ${String(count)} consecutive errors (suppressing details)`);
       }
     } else if (count === 101) {
-      console.warn(`[plushie] 100 consecutive errors -- suppressing further logs`);
+      console.warn(`[plushie] 100 consecutive errors; suppressing further logs`);
     } else if (count % 1000 === 0) {
       console.warn(`[plushie] ${String(count)} consecutive errors`);
     }
@@ -1376,7 +1376,7 @@ export class Runtime<M> {
   private handleRendererClose(reason: string): void {
     console.warn(`[plushie] Renderer closed: ${reason}`);
 
-    // Fail pending interact calls -- they will never get a response
+    // Fail pending interact calls; they will never get a response
     for (const [id, pending] of this.state.pendingInteract) {
       clearTimeout(pending.timer);
       pending.reject(new Error(`Interact "${id}" failed: renderer closed (${reason})`));

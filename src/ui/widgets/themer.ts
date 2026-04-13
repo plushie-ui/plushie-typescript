@@ -1,5 +1,5 @@
 /**
- * Themer -- applies a theme to child content.
+ * Themer: applies a theme to child content.
  *
  * @module
  */

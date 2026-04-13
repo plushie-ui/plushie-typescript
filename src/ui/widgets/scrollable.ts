@@ -1,5 +1,5 @@
 /**
- * Scrollable container -- wraps child content in a scrollable viewport.
+ * Scrollable container: wraps child content in a scrollable viewport.
  *
  * @module
  */

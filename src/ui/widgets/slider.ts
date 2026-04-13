@@ -1,5 +1,5 @@
 /**
- * Slider widget -- horizontal range input.
+ * Slider widget: horizontal range input.
  *
  * @module
  */

@@ -114,7 +114,7 @@ function handleEvent(
     return [{ type: "update_state" }, { ...state, progress: newProgress }];
   }
 
-  // All other events consumed -- ThemeToggle only surfaces "toggle".
+  // All other events consumed; ThemeToggle only surfaces "toggle".
   return [{ type: "consumed" }, state];
 }
 
@@ -147,7 +147,7 @@ function view(id: string, _props: ThemeToggleProps, state: ThemeToggleState): UI
         // Thumb circle
         circle(thumbX, TRACK_H / 2, THUMB_R, { fill: "#ffffff" }),
 
-        // Face -- uses a transform group for rotation
+        // Face: uses a transform group for rotation
         group(
           [
             circle(-3.5, -3, 2, { fill: faceColor }),

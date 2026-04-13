@@ -1,5 +1,5 @@
 /**
- * Canvas -- drawing surface with shapes organized into layers.
+ * Canvas: drawing surface with shapes organized into layers.
  *
  * @module
  */

@@ -1,5 +1,5 @@
 /**
- * Pick list -- dropdown selection.
+ * Pick list: dropdown selection.
  *
  * @module
  */

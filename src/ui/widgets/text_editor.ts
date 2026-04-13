@@ -1,5 +1,5 @@
 /**
- * Text editor -- multi-line editable text area.
+ * Text editor: multi-line editable text area.
  *
  * Always requires an explicit ID (stateful widget).
  *

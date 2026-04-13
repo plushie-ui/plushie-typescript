@@ -1,5 +1,5 @@
 /**
- * Stack -- overlays children on top of each other.
+ * Stack: overlays children on top of each other.
  *
  * @module
  */

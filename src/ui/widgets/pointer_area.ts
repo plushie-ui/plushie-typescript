@@ -1,5 +1,5 @@
 /**
- * Pointer area -- captures pointer events (mouse, touch, pen) on child content.
+ * Pointer area: captures pointer events (mouse, touch, pen) on child content.
  *
  * Wraps child content and emits events for various pointer buttons,
  * hover enter/exit, cursor movement, scroll, and double-click.

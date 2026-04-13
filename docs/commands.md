@@ -16,10 +16,10 @@ Handlers and `update()` can return either a bare model or a
 `[model, command]` tuple:
 
 ```typescript
-// No commands -- just return the model:
+// No commands; just return the model:
 const handleSimple = (s: Model) => s
 
-// With a command -- return a tuple:
+// With a command: return a tuple:
 const handleSave = (s: Model): [Model, Command] => [
   s,
   Command.async(async () => saveToServer(s.data), 'saveResult'),
@@ -504,7 +504,7 @@ updates and UI refreshes at every link in the chain, not just at the
 end.
 
 ```typescript
-// Step 1: user clicks "deploy" -- validate first
+// Step 1: user clicks "deploy": validate first
 if (isClick(event, 'deploy')) {
   return [
     { ...state, status: 'validating' },
@@ -512,7 +512,7 @@ if (isClick(event, 'deploy')) {
   ]
 }
 
-// Step 2: validation result arrives -- if OK, start the build
+// Step 2: validation result arrives: if OK, start the build
 if (isAsync(event, 'validated') && event.result.ok) {
   return [
     { ...state, status: 'building' },
@@ -520,7 +520,7 @@ if (isAsync(event, 'validated') && event.result.ok) {
   ]
 }
 
-// Step 3: build result arrives -- if OK, push it
+// Step 3: build result arrives: if OK, push it
 if (isAsync(event, 'built') && event.result.ok) {
   const artifact = event.result.value
   return [
@@ -774,7 +774,7 @@ A global default applied to all coalescable event types:
 ```typescript
 app({
   settings: {
-    defaultEventRate: 60,   // 60 events/sec -- good for most cases
+    defaultEventRate: 60,   // 60 events/sec (good for most cases)
   },
   // ...
 })
@@ -828,11 +828,11 @@ paused during renderer restart and resumed once the renderer is back.
 The `settings` object is passed to the renderer on startup. Notable
 settings relevant to commands and rendering:
 
-- `vsync` -- boolean (default `true`). Controls vertical sync. Set to
+- `vsync`: boolean (default `true`). Controls vertical sync. Set to
   `false` for uncapped frame rates (useful for benchmarks).
-- `scaleFactor` -- number (default `1.0`). Global UI scale factor.
+- `scaleFactor`: number (default `1.0`). Global UI scale factor.
   Values greater than 1.0 make the UI larger.
-- `defaultEventRate` -- integer. Maximum events per second for
+- `defaultEventRate`: integer. Maximum events per second for
   coalescable event types. Omit for unlimited.
 
 <!-- test: commands_settings_vsync_and_scale -- keep this code block in sync with the test -->
@@ -861,7 +861,7 @@ are native platform operations handled by the renderer (see
 | Transport | internal | wire protocol request/response |
 | Return from | `update()` / handlers | `update()` / handlers (via effects API) |
 
-Widget operations and window commands are a hybrid -- they are
+Widget operations and window commands are a hybrid: they are
 initiated from the TypeScript side but executed by the renderer. They
 use the command mechanism for the API but effect/effect_response for
 the transport.

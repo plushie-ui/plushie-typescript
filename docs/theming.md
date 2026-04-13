@@ -95,7 +95,7 @@ automatically using iced's Oklch-based color math.
 
 If the auto-generated shades don't match your design, you can override
 individual shades by adding flat keys to the theme object. Only the
-shades you specify are replaced -- the rest keep their generated
+shades you specify are replaced; the rest keep their generated
 values.
 
 ### Why override shades?
@@ -178,7 +178,7 @@ Themes can be overridden for a subtree using the `Themer` widget:
 ```
 
 This is useful for panels, modals, or sections that need a different
-visual treatment. Themer nodes nest -- an inner themer overrides the
+visual treatment. Themer nodes nest: an inner themer overrides the
 outer one for its subtree.
 
 **Note:** The `Themer` widget does not support `"system"` as a theme
@@ -269,7 +269,7 @@ want a specific look.
 
 ### Presets and style maps together
 
-Style maps don't replace presets -- they complement them. Use presets
+Style maps don't replace presets; they complement them. Use presets
 for standard looks and style maps when you need custom appearance:
 
 ```tsx
@@ -355,7 +355,7 @@ function spacing(density: Density, size: Size): number {
 </Column>
 ```
 
-There is no global density setting or built-in density module -- your
+There is no global density setting or built-in density module; your
 app decides how to handle it. This keeps the framework lean and lets
 you define density semantics that match your design system.
 

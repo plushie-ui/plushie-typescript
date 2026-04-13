@@ -2,9 +2,9 @@
  * Transport layer for communicating with the plushie binary.
  *
  * Provides the `Transport` interface and implementations:
- * - `SpawnTransport` -- spawns the binary as a child process (production)
- * - `StdioTransport` -- uses process stdin/stdout (for --exec mode)
- * - `PooledTransport` -- multiplexed session in a shared binary (testing)
+ * - `SpawnTransport`: spawns the binary as a child process (production)
+ * - `StdioTransport`: uses process stdin/stdout (for --exec mode)
+ * - `PooledTransport`: multiplexed session in a shared binary (testing)
  *
  * @module
  */

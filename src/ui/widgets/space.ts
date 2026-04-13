@@ -1,5 +1,5 @@
 /**
- * Space -- invisible spacer widget.
+ * Space: invisible spacer widget.
  *
  * @module
  */

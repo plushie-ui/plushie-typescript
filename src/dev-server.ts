@@ -3,7 +3,7 @@
  *
  * Watches directories for changes, debounces rapid edits, and calls
  * back when it's time to reload. Module cache invalidation and
- * re-import are handled by the consumer (runtime/CLI) -- this module
+ * re-import are handled by the consumer (runtime/CLI); this module
  * only watches and debounces.
  *
  * @module
@@ -25,7 +25,7 @@ export interface DevServerOptions {
 /**
  * File watcher that debounces filesystem changes and fires a callback.
  *
- * Modelled after Plushie.DevServer from the Elixir SDK -- same
+ * Modelled after Plushie.DevServer from the Elixir SDK; same
  * concept (watch, debounce, notify), adapted for Node's fs.watch API.
  */
 export class DevServer {

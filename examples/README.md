@@ -8,7 +8,7 @@ npx plushie run examples/<name>.ts
 ```
 
 In dev mode, file watching is enabled. Edit an example while the GUI
-is running and the window updates instantly -- a good way to experiment
+is running and the window updates instantly, a good way to experiment
 with the API:
 
 ```sh
@@ -19,16 +19,16 @@ npx plushie dev examples/<name>.ts
 
 The examples deliberately use different API patterns so you can compare:
 
-- **Inline handlers** -- `button("inc", "+", { onClick: increment })`
+- **Inline handlers**: `button("inc", "+", { onClick: increment })`
   Used by: Counter, Clock, ColorPicker. Handlers are pure functions
   `(state, event) => newState` defined outside the view.
-- **update() fallback** -- a single update function handling all events
+- **update() fallback**: a single update function handling all events
   via type guards (`isClick`, `isTimer`, `isAsync`, etc.).
   Used by: RatePlushie, Shortcuts, AsyncFetch.
-- **Hybrid** -- inline handlers for widget events, update() for
+- **Hybrid**: inline handlers for widget events, update() for
   subscriptions and async results.
   Used by: Todo, Notes, Clock.
-- **Custom widgets** -- reusable `WidgetDef` components in `widgets/`.
+- **Custom widgets**: reusable `WidgetDef` components in `widgets/`.
   Used by: RatePlushie (StarRating, ThemeToggle), ColorPicker (ColorPickerWidget).
 
 All styles are interchangeable. Pick whichever reads best for your

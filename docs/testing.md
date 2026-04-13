@@ -7,14 +7,14 @@ promote to integration tests with the real renderer when you need
 wire-protocol verification or pixel-accurate screenshots.
 
 All integration testing goes through the real plushie binary. There
-are no TypeScript-side mocks -- the mock backend in the binary is
+are no TypeScript-side mocks; the mock backend in the binary is
 fast enough (sub-millisecond per interaction) and provides real
 protocol validation.
 
 
 ## Unit testing
 
-Handlers are pure functions. Test them directly with vitest -- no
+Handlers are pure functions. Test them directly with vitest; no
 framework needed.
 
 ### Testing handlers
@@ -183,7 +183,7 @@ response events through the app's runtime:
 Interacting with the wrong widget type raises with an actionable hint:
 
 ```
-cannot click a checkbox widget -- use toggle() instead
+cannot click a checkbox widget; use toggle() instead
 ```
 
 ### Queries
@@ -253,16 +253,16 @@ changing assertions.
 | **Real windows** | No | No | Yes |
 | **Display server** | No | No | Yes (Xvfb in CI) |
 
-- **mock** -- shared `plushie --mock` process with session
+- **mock**: shared `plushie --mock` process with session
   multiplexing. Tests app logic, tree structure, and wire protocol.
   No rendering, no display, sub-millisecond. The right default for
   90% of tests.
 
-- **headless** -- `plushie --headless` with software rendering via
+- **headless**: `plushie --headless` with software rendering via
   tiny-skia (no display server). Pixel screenshots for visual
   regression. Catches rendering bugs that mock mode can't.
 
-- **windowed** -- `plushie` with real iced windows and GPU rendering.
+- **windowed**: `plushie` with real iced windows and GPU rendering.
   Effects execute, subscriptions fire, screenshots capture exactly
   what a user sees. Needs a display server (Xvfb or headless Weston).
 
@@ -282,7 +282,7 @@ PLUSHIE_TEST_BACKEND=headless pnpm test    # real rendering
 PLUSHIE_TEST_BACKEND=windowed pnpm test    # real windows
 ```
 
-Tests are backend-agnostic -- the same test code works at all three
+Tests are backend-agnostic; the same test code works at all three
 fidelity levels.
 
 
@@ -307,7 +307,7 @@ How it works:
 8. Sessions are Reset between tests.
 
 This architecture means tests exercise the real wire protocol, real
-encoding, and real diffing -- the same code paths as production.
+encoding, and real diffing: the same code paths as production.
 
 
 ## Snapshots and screenshots
@@ -360,11 +360,11 @@ produce assertions when run on the headless or windowed backends.
 
 ### When to use each
 
-- **`assertTreeHash`** -- always appropriate. Catches structural
+- **`assertTreeHash`**: always appropriate. Catches structural
   regressions (widgets appearing/disappearing, prop changes, nesting
   changes). Works on every backend. Use liberally.
 
-- **`assertScreenshot`** -- after bumping iced, changing the renderer,
+- **`assertScreenshot`**: after bumping iced, changing the renderer,
   modifying themes, or any change that affects visual output. Only
   meaningful on the headless and windowed backends.
 
@@ -373,7 +373,7 @@ produce assertions when run on the headless or windowed backends.
 
 `.plushie` scripts provide a declarative format for describing
 interaction sequences. The format is a superset of iced's `.ice` test
-scripts -- the core instructions (`click`, `type`, `expect`,
+scripts; the core instructions (`click`, `type`, `expect`,
 `snapshot`) use the same syntax. Plushie adds `assert_text`,
 `assert_model`, `screenshot`, `wait`, and a header section for app
 configuration.
@@ -453,7 +453,7 @@ The mock backend executes `async`, `stream`, and `done` commands
 synchronously. When `update()` returns a command like
 `Command.async(async () => fetchData(), 'dataLoaded')`, the backend
 immediately calls the function, gets the result, and dispatches the
-`AsyncEvent` through `update()` -- all within the same call.
+`AsyncEvent` through `update()`, all within the same call.
 
 This means `awaitAsync()` returns immediately (the work is already
 done):
@@ -462,7 +462,7 @@ done):
 test('fetching data loads results', async ({ session }) => {
   await session.click('fetch')
   // On mock, the async command already executed synchronously.
-  // awaitAsync is a no-op -- the model is already updated.
+  // awaitAsync is a no-op; the model is already updated.
   await session.awaitAsync('dataLoaded')
   expect(session.model().results.length).toBeGreaterThan(0)
 })
@@ -492,7 +492,7 @@ console.log('current tree:', JSON.stringify(session.tree(), null, 2))
 ### Wrong interaction type
 
 ```
-cannot click a checkbox widget -- use toggle() instead
+cannot click a checkbox widget; use toggle() instead
 ```
 
 Use the correct interaction function for the widget type. See the

@@ -1,5 +1,5 @@
 /**
- * Commands -- pure data descriptions of side effects.
+ * Commands: pure data descriptions of side effects.
  *
  * Commands are returned from `update()` alongside the new model to request
  * side effects without performing them directly. The runtime interprets
@@ -7,7 +7,7 @@
  * operations.
  *
  * Commands are immutable frozen objects identified by a branded symbol.
- * Use the constructor functions in this module to create them -- never
+ * Use the constructor functions in this module to create them; never
  * construct the raw objects by hand.
  *
  * @example

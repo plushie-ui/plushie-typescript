@@ -1,5 +1,5 @@
 /**
- * Tooltip -- shows a popup tip over child content on hover.
+ * Tooltip: shows a popup tip over child content on hover.
  *
  * @module
  */

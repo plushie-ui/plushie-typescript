@@ -1,7 +1,7 @@
 /**
  * Plushie binary path resolution and download.
  *
- * The plushie binary is a hard requirement -- without it, nothing
+ * The plushie binary is a hard requirement; without it, nothing
  * works. This module resolves the binary path using a priority-based
  * lookup, and provides a download function for fetching precompiled
  * binaries.
