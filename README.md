@@ -209,7 +209,7 @@ PLUSHIE_TEST_BACKEND=headless pnpm test
 |---|---|
 | TypeScript SDK | [github.com/plushie-ui/plushie-typescript](https://github.com/plushie-ui/plushie-typescript) |
 | Elixir SDK | [github.com/plushie-ui/plushie-elixir](https://github.com/plushie-ui/plushie-elixir) |
-| Renderer | [github.com/plushie-ui/plushie](https://github.com/plushie-ui/plushie) |
+| Renderer | [github.com/plushie-ui/plushie-rust](https://github.com/plushie-ui/plushie-rust) |
 | Demo projects | [github.com/plushie-ui/plushie-demos](https://github.com/plushie-ui/plushie-demos) |
 
 ## License
