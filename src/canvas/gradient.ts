@@ -7,11 +7,6 @@
  * ```
  */
 
-export interface GradientStop {
-  readonly offset: number;
-  readonly color: string;
-}
-
 export interface LinearGradient {
   readonly type: "linear";
   readonly start: readonly [number, number];
@@ -23,12 +18,12 @@ export interface LinearGradient {
 export function linearGradient(
   from: readonly [number, number],
   to: readonly [number, number],
-  stops: readonly GradientStop[],
+  stops: readonly (readonly [number, string])[],
 ): LinearGradient {
   return {
     type: "linear",
     start: from,
     end: to,
-    stops: stops.map((s) => [s.offset, s.color] as const),
+    stops,
   };
 }

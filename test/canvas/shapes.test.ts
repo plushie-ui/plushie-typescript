@@ -352,8 +352,8 @@ describe("linearGradient", () => {
       [0, 0],
       [200, 0],
       [
-        { offset: 0, color: "#ff0000" },
-        { offset: 1, color: "#0000ff" },
+        [0, "#ff0000"],
+        [1, "#0000ff"],
       ],
     );
     expect(g).toEqual({
@@ -372,8 +372,8 @@ describe("linearGradient", () => {
       [0, 0],
       [100, 0],
       [
-        { offset: 0, color: "#000" },
-        { offset: 1, color: "#fff" },
+        [0, "#000"],
+        [1, "#fff"],
       ],
     );
     const r = rect(0, 0, 100, 50, { fill: grad });

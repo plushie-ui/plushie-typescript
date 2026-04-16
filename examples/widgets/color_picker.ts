@@ -284,8 +284,8 @@ function svHueShapes(hue: number): CanvasShape[] {
         [SQ_ORIGIN, SQ_ORIGIN],
         [SQ_ORIGIN + SQ_SIZE, SQ_ORIGIN],
         [
-          { offset: 0.0, color: "#ffffff" },
-          { offset: 1.0, color: hueColor },
+          [0.0, "#ffffff"],
+          [1.0, hueColor],
         ],
       ),
     }),
@@ -299,8 +299,8 @@ function svDarkShapes(): CanvasShape[] {
         [SQ_ORIGIN, SQ_ORIGIN],
         [SQ_ORIGIN, SQ_ORIGIN + SQ_SIZE],
         [
-          { offset: 0.0, color: "#00000000" },
-          { offset: 1.0, color: "#000000ff" },
+          [0.0, "#00000000"],
+          [1.0, "#000000ff"],
         ],
       ),
     }),

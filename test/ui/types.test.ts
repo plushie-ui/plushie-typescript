@@ -101,11 +101,11 @@ describe("encodeFont", () => {
     expect(encodeFont("Helvetica")).toEqual({ family: "Helvetica" });
   });
 
-  test("object with all fields uses PascalCase", () => {
+  test("object with all fields passes values through as snake_case", () => {
     expect(encodeFont({ family: "Arial", weight: "semi_bold", style: "italic" })).toEqual({
       family: "Arial",
-      weight: "SemiBold",
-      style: "Italic",
+      weight: "semi_bold",
+      style: "italic",
     });
   });
 

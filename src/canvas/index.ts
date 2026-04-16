@@ -13,7 +13,7 @@
  * @module
  */
 
-export type { GradientStop, LinearGradient } from "./gradient.js";
+export type { LinearGradient } from "./gradient.js";
 export { linearGradient } from "./gradient.js";
 export type {
   DragBounds,

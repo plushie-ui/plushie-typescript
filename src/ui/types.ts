@@ -274,23 +274,71 @@ function hex2(n: number): string {
 // =========================================================================
 
 /**
+ * Gradient color stop: `[offset, color]` where offset is 0.0-1.0.
+ */
+export type GradientStop = readonly [number, Color];
+
+/**
  * Linear gradient specification.
  *
- * Defines a gradient with an angle (in degrees) and a list of color stops.
- * Each stop has an offset (0.0-1.0) and a color.
+ * Defines a gradient between two coordinate points with color stops.
+ * Wire format uses coordinate-based start/end with array stops,
+ * matching `Plushie.Canvas.Gradient`.
  */
 export interface Gradient {
-  type: "linear";
-  angle: number;
-  stops: Array<{ offset: number; color: Color }>;
+  readonly type: "linear";
+  readonly start: readonly [number, number];
+  readonly end: readonly [number, number];
+  readonly stops: readonly GradientStop[];
+}
+
+/**
+ * Create a linear gradient between two coordinate points.
+ *
+ * @param from - Start point `[x, y]`
+ * @param to - End point `[x, y]`
+ * @param stops - Color stops as `[offset, color]` tuples
+ */
+export function linearGradient(
+  from: readonly [number, number],
+  to: readonly [number, number],
+  stops: readonly GradientStop[],
+): Gradient {
+  return {
+    type: "linear",
+    start: from,
+    end: to,
+    stops,
+  };
+}
+
+/**
+ * Create a linear gradient from an angle (degrees) and color stops.
+ *
+ * The angle is converted to start/end coordinates on a unit square
+ * (0,0 to 1,1), matching the renderer's convention.
+ */
+export function linearGradientFromAngle(angle: number, stops: readonly GradientStop[]): Gradient {
+  const radians = (angle * Math.PI) / 180;
+  const dx = Math.cos(radians);
+  const dy = Math.sin(radians);
+  const halfLen = Math.abs(dx) / 2 + Math.abs(dy) / 2;
+  const cx = 0.5;
+  const cy = 0.5;
+  return linearGradient(
+    [cx - dx * halfLen, cy - dy * halfLen],
+    [cx + dx * halfLen, cy + dy * halfLen],
+    stops,
+  );
 }
 
 /** Encode a Gradient to its wire representation. */
 export function encodeGradient(value: Gradient): Record<string, unknown> {
   return {
     type: value.type,
-    angle: value.angle,
-    stops: value.stops.map((s) => ({ offset: s.offset, color: encodeColor(s.color) })),
+    start: [...value.start],
+    end: [...value.end],
+    stops: value.stops.map(([offset, color]) => [offset, encodeColor(color)]),
   };
 }
 
@@ -339,14 +387,6 @@ export type Font =
   | string
   | { family: string; weight?: FontWeight; style?: FontStyle; stretch?: FontStretch };
 
-/** Convert a snake_case string to PascalCase (e.g. "semi_bold" -> "SemiBold"). */
-function toPascalCase(snakeCase: string): string {
-  return snakeCase
-    .split("_")
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join("");
-}
-
 /** Encode a Font to its wire representation. */
 export function encodeFont(value: Font): unknown {
   if (typeof value === "string") {
@@ -354,9 +394,9 @@ export function encodeFont(value: Font): unknown {
     return { family: value };
   }
   const result: Record<string, unknown> = { family: value.family };
-  if (value.weight !== undefined) result["weight"] = toPascalCase(value.weight);
-  if (value.style !== undefined) result["style"] = toPascalCase(value.style);
-  if (value.stretch !== undefined) result["stretch"] = toPascalCase(value.stretch);
+  if (value.weight !== undefined) result["weight"] = value.weight;
+  if (value.style !== undefined) result["style"] = value.style;
+  if (value.stretch !== undefined) result["stretch"] = value.stretch;
   return result;
 }
 

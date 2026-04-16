@@ -31,6 +31,7 @@ export type {
   FontStyle,
   FontWeight,
   Gradient,
+  GradientStop,
   Length,
   LineHeight,
   Padding,
@@ -55,6 +56,8 @@ export {
   encodePadding,
   encodeShadow,
   encodeStyleMap,
+  linearGradient,
+  linearGradientFromAngle,
 } from "./types.js";
 
 // -- Widget re-exports (PascalCase JSX components + camelCase functions) --
