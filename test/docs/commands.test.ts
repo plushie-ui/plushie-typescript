@@ -58,56 +58,64 @@ test("commands_exit_construct", () => {
 
 test("commands_focus_construct", () => {
   const cmd = Command.focus("todoInput");
-  expect(cmd.type).toBe("focus");
-  expect(cmd.payload["target"]).toBe("todoInput");
+  expect(cmd.type).toBe("command");
+  expect(cmd.payload["id"]).toBe("todoInput");
+  expect(cmd.payload["family"]).toBe("focus");
 });
 
 test("commands_focus_next_construct", () => {
   const cmd = Command.focusNext();
-  expect(cmd.type).toBe("focus_next");
+  expect(cmd.type).toBe("widget_op");
+  expect(cmd.payload["op"]).toBe("focus_next");
 });
 
 test("commands_focus_previous_construct", () => {
   const cmd = Command.focusPrevious();
-  expect(cmd.type).toBe("focus_previous");
+  expect(cmd.type).toBe("widget_op");
+  expect(cmd.payload["op"]).toBe("focus_previous");
 });
 
 // -- Text operations --
 
 test("commands_select_all_construct", () => {
   const cmd = Command.selectAll("editor");
-  expect(cmd.type).toBe("select_all");
-  expect(cmd.payload["target"]).toBe("editor");
+  expect(cmd.type).toBe("command");
+  expect(cmd.payload["id"]).toBe("editor");
+  expect(cmd.payload["family"]).toBe("select_all");
 });
 
 test("commands_select_range_construct", () => {
   const cmd = Command.selectRange("editor", 5, 10);
-  expect(cmd.type).toBe("select_range");
-  expect(cmd.payload["target"]).toBe("editor");
-  expect(cmd.payload["start"]).toBe(5);
-  expect(cmd.payload["end"]).toBe(10);
+  expect(cmd.type).toBe("command");
+  expect(cmd.payload["id"]).toBe("editor");
+  expect(cmd.payload["family"]).toBe("select_range");
+  expect((cmd.payload["value"] as Record<string, unknown>)["start_pos"]).toBe(5);
+  expect((cmd.payload["value"] as Record<string, unknown>)["end_pos"]).toBe(10);
 });
 
 // -- Scroll operations --
 
 test("commands_snap_to_end_construct", () => {
   const cmd = Command.snapToEnd("chatLog");
-  expect(cmd.type).toBe("snap_to_end");
-  expect(cmd.payload["target"]).toBe("chatLog");
+  expect(cmd.type).toBe("command");
+  expect(cmd.payload["id"]).toBe("chatLog");
+  expect(cmd.payload["family"]).toBe("snap_to_end");
 });
 
 test("commands_snap_to_construct", () => {
   const cmd = Command.snapTo("scroller", 0.0, 0.5);
-  expect(cmd.type).toBe("snap_to");
-  expect(cmd.payload["target"]).toBe("scroller");
-  expect(cmd.payload["x"]).toBe(0.0);
-  expect(cmd.payload["y"]).toBe(0.5);
+  expect(cmd.type).toBe("command");
+  expect(cmd.payload["id"]).toBe("scroller");
+  expect(cmd.payload["family"]).toBe("snap_to");
+  expect((cmd.payload["value"] as Record<string, unknown>)["x"]).toBe(0.0);
+  expect((cmd.payload["value"] as Record<string, unknown>)["y"]).toBe(0.5);
 });
 
 test("commands_scroll_by_construct", () => {
   const cmd = Command.scrollBy("scroller", 0, 50);
-  expect(cmd.type).toBe("scroll_by");
-  expect(cmd.payload["target"]).toBe("scroller");
+  expect(cmd.type).toBe("command");
+  expect(cmd.payload["id"]).toBe("scroller");
+  expect(cmd.payload["family"]).toBe("scroll_by");
 });
 
 // -- Window management --
@@ -150,22 +158,22 @@ test("commands_batch_construct", () => {
   expect(commands).toHaveLength(2);
 });
 
-// -- Extension commands --
+// -- Widget commands --
 
-test("commands_extension_command_construct", () => {
-  const cmd = Command.nativeWidgetCommand("term-1", "write", { data: "output" });
-  expect(cmd.type).toBe("extension_command");
-  expect(cmd.payload["node_id"]).toBe("term-1");
-  expect(cmd.payload["op"]).toBe("write");
+test("commands_widget_command_construct", () => {
+  const cmd = Command.widgetCommand("term-1", "write", { data: "output" });
+  expect(cmd.type).toBe("command");
+  expect(cmd.payload["id"]).toBe("term-1");
+  expect(cmd.payload["family"]).toBe("write");
 });
 
-test("commands_extension_commands_construct", () => {
+test("commands_widget_commands_construct", () => {
   const cmds = [
-    { nodeId: "term-1", op: "write", payload: { data: "line1" } },
-    { nodeId: "log-1", op: "append", payload: { line: "entry" } },
+    { id: "term-1", family: "write", value: { data: "line1" } },
+    { id: "log-1", family: "append", value: { line: "entry" } },
   ];
-  const cmd = Command.nativeWidgetCommands(cmds);
-  expect(cmd.type).toBe("extension_commands");
+  const cmd = Command.widgetCommands(cmds);
+  expect(cmd.type).toBe("commands");
 });
 
 // -- Subscriptions --

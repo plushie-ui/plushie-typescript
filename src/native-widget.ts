@@ -53,7 +53,7 @@ export interface NativeWidgetConfig {
   /**
    * Path to the Rust crate (relative to project root).
    * Required for `npx plushie build` to include this widget in the custom binary.
-   * The crate must implement the `WidgetExtension` trait from `plushie_ext`.
+   * The crate must implement the `PlushieWidget` trait from `plushie_widget_sdk`.
    */
   readonly rustCrate?: string;
   /**
@@ -160,8 +160,8 @@ export function nativeWidgetConfigKey(config: Pick<NativeWidgetConfig, "type">):
 /**
  * Generate Command constructor functions for a native widget's declared commands.
  *
- * Each command becomes a function that takes a node ID and optional payload,
- * returning a Command that the runtime sends as an extension_command wire message.
+ * Each command becomes a function that takes a node ID and optional value,
+ * returning a Command that the runtime sends as a unified command wire message.
  *
  * ```ts
  * const gaugeConfig = {
@@ -178,15 +178,15 @@ export function nativeWidgetConfigKey(config: Pick<NativeWidgetConfig, "type">):
  */
 export function nativeWidgetCommands(
   config: NativeWidgetConfig,
-): Record<string, (nodeId: string, payload?: Record<string, unknown>) => Command> {
-  const cmds: Record<string, (nodeId: string, payload?: Record<string, unknown>) => Command> = {};
+): Record<string, (nodeId: string, value?: unknown) => Command> {
+  const cmds: Record<string, (nodeId: string, value?: unknown) => Command> = {};
 
   for (const cmdName of config.commands ?? []) {
-    cmds[cmdName] = (nodeId: string, payload: Record<string, unknown> = {}): Command =>
+    cmds[cmdName] = (nodeId: string, value: unknown = null): Command =>
       Object.freeze({
         [COMMAND]: true as const,
-        type: "extension_command",
-        payload: Object.freeze({ node_id: nodeId, op: cmdName, payload }),
+        type: "command",
+        payload: Object.freeze({ id: nodeId, family: cmdName, value }),
       });
   }
 

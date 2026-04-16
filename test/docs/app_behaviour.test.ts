@@ -79,8 +79,9 @@ test("app_behaviour_update_submit_returns_focus", () => {
 
   expect(model.input).toBe("");
   expect(model.todos[0]!.text).toBe("Walk dog");
-  expect(cmd.type).toBe("focus");
-  expect(cmd.payload["target"]).toBe("todoField");
+  expect(cmd.type).toBe("command");
+  expect(cmd.payload["id"]).toBe("todoField");
+  expect(cmd.payload["family"]).toBe("focus");
 });
 
 // -- view example --

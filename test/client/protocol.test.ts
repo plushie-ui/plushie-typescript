@@ -3,9 +3,9 @@ import {
   decodeEvent,
   decodeMessage,
   encodeAdvanceFrame,
+  encodeCommand,
+  encodeCommands,
   encodeEffect,
-  encodeExtensionCommand,
-  encodeExtensionCommands,
   encodeImageOp,
   encodeInteract,
   encodePatch,
@@ -244,21 +244,22 @@ describe("other encoders", () => {
     expect(msg["handle"]).toBe("sprite");
   });
 
-  test("encodeExtensionCommand", () => {
-    const msg = encodeExtensionCommand("", "chart-1", "append_data", { values: [1, 2] });
-    expect(msg["type"]).toBe("extension_command");
-    expect(msg["node_id"]).toBe("chart-1");
+  test("encodeCommand", () => {
+    const msg = encodeCommand("", "chart-1", "append_data", { values: [1, 2] });
+    expect(msg["type"]).toBe("command");
+    expect(msg["id"]).toBe("chart-1");
+    expect(msg["family"]).toBe("append_data");
   });
 
-  test("encodeExtensionCommands", () => {
-    const msg = encodeExtensionCommands("", [
-      { nodeId: "chart-1", op: "clear" },
-      { nodeId: "chart-2", op: "update", payload: { x: 1 } },
+  test("encodeCommands", () => {
+    const msg = encodeCommands("", [
+      { id: "chart-1", family: "clear" },
+      { id: "chart-2", family: "update", value: { x: 1 } },
     ]);
-    expect(msg["type"]).toBe("extension_commands");
+    expect(msg["type"]).toBe("commands");
     const cmds = msg["commands"] as Array<Record<string, unknown>>;
     expect(cmds).toHaveLength(2);
-    expect(cmds[0]!["node_id"]).toBe("chart-1");
+    expect(cmds[0]!["id"]).toBe("chart-1");
   });
 
   test("encodeUnsubscribe", () => {

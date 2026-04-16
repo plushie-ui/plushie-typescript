@@ -36,7 +36,6 @@ import type {
   DragData,
   EffectEvent,
   Event,
-  ExtensionCommandErrorEvent,
   ImeEvent,
   KeyEvent,
   KeyPressData,
@@ -47,6 +46,7 @@ import type {
   StreamEvent,
   SystemEvent,
   TimerEvent,
+  WidgetCommandErrorEvent,
   WidgetEvent,
   WindowEvent,
 } from "./types.js";
@@ -303,9 +303,9 @@ export function isSystem(event: Event, type?: string): event is SystemEvent {
   return event.kind === "system" && (type === undefined || event.type === type);
 }
 
-/** Narrows to a native extension command error event. */
-export function isExtensionCommandError(event: Event): event is ExtensionCommandErrorEvent {
-  return event.kind === "extension_command_error";
+/** Narrows to a native widget command error event. */
+export function isWidgetCommandError(event: Event): event is WidgetCommandErrorEvent {
+  return event.kind === "widget_command_error";
 }
 
 /** Narrows to a timer event, optionally matching a subscription tag. */

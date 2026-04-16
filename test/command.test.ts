@@ -8,10 +8,10 @@ describe("Command", () => {
     expect(cmd[COMMAND]).toBe(true);
   });
 
-  test("focus() creates a focus command with target", () => {
+  test("focus() creates a command with the widget ID", () => {
     const cmd = Command.focus("form/email");
-    expect(cmd.type).toBe("focus");
-    expect(cmd.payload).toEqual({ target: "form/email" });
+    expect(cmd.type).toBe("command");
+    expect(cmd.payload).toEqual({ id: "form/email", family: "focus", value: null });
   });
 
   test("batch() wraps multiple commands", () => {
@@ -29,14 +29,10 @@ describe("Command", () => {
     expect(cmd.payload["fn"]).toBe(fn);
   });
 
-  test("focusElement() creates a widget_op focus_element command", () => {
-    const cmd = Command.focusElement("my-canvas", "element-42");
-    expect(cmd.type).toBe("widget_op");
-    expect(cmd.payload).toEqual({
-      op: "focus_element",
-      target: "my-canvas",
-      element_id: "element-42",
-    });
+  test("focusElement() is unified into focus()", () => {
+    const cmd = Command.focus("my-canvas/element-42");
+    expect(cmd.type).toBe("command");
+    expect(cmd.payload).toEqual({ id: "my-canvas/element-42", family: "focus", value: null });
   });
 
   test("commands are frozen", () => {
@@ -136,22 +132,26 @@ describe("Command", () => {
 
   // -- Text editing ---------------------------------------------------------
 
-  test("moveCursorTo() sets target and position", () => {
+  test("moveCursorTo() sends command with position value", () => {
     const cmd = Command.moveCursorTo("editor", 42);
-    expect(cmd.type).toBe("move_cursor_to");
-    expect(cmd.payload).toEqual({ target: "editor", position: 42 });
+    expect(cmd.type).toBe("command");
+    expect(cmd.payload).toEqual({ id: "editor", family: "move_cursor_to", value: 42 });
   });
 
-  test("moveCursorToFront() sets target", () => {
+  test("moveCursorToFront() sends command", () => {
     const cmd = Command.moveCursorToFront("editor");
-    expect(cmd.type).toBe("move_cursor_to_front");
-    expect(cmd.payload).toEqual({ target: "editor" });
+    expect(cmd.type).toBe("command");
+    expect(cmd.payload).toEqual({ id: "editor", family: "move_cursor_to_front", value: null });
   });
 
-  test("selectRange() sets start and end positions", () => {
+  test("selectRange() sets start_pos and end_pos", () => {
     const cmd = Command.selectRange("editor", 5, 15);
-    expect(cmd.type).toBe("select_range");
-    expect(cmd.payload).toEqual({ target: "editor", start: 5, end: 15 });
+    expect(cmd.type).toBe("command");
+    expect(cmd.payload).toEqual({
+      id: "editor",
+      family: "select_range",
+      value: { start_pos: 5, end_pos: 15 },
+    });
   });
 
   // -- Image operations -----------------------------------------------------
@@ -189,42 +189,47 @@ describe("Command", () => {
 
   test("paneSplit() creates a split command", () => {
     const cmd = Command.paneSplit("grid", "pane1", "horizontal", "pane2");
-    expect(cmd.type).toBe("widget_op");
+    expect(cmd.type).toBe("command");
     expect(cmd.payload).toEqual({
-      op: "pane_split",
-      target: "grid",
-      pane: "pane1",
-      axis: "horizontal",
-      new_pane_id: "pane2",
+      id: "grid",
+      family: "pane_split",
+      value: {
+        pane: "pane1",
+        axis: "horizontal",
+        new_pane_id: "pane2",
+      },
     });
   });
 
   test("paneClose() closes a pane", () => {
     const cmd = Command.paneClose("grid", "pane1");
-    expect(cmd.payload).toEqual({ op: "pane_close", target: "grid", pane: "pane1" });
+    expect(cmd.type).toBe("command");
+    expect(cmd.payload).toEqual({ id: "grid", family: "pane_close", value: { pane: "pane1" } });
   });
 
   test("paneSwap() swaps two panes", () => {
     const cmd = Command.paneSwap("grid", "a", "b");
-    expect(cmd.payload).toEqual({ op: "pane_swap", target: "grid", a: "a", b: "b" });
+    expect(cmd.type).toBe("command");
+    expect(cmd.payload).toEqual({ id: "grid", family: "pane_swap", value: { a: "a", b: "b" } });
   });
 
   test("paneRestore() restores from maximized state", () => {
     const cmd = Command.paneRestore("grid");
-    expect(cmd.payload).toEqual({ op: "pane_restore", target: "grid" });
+    expect(cmd.type).toBe("command");
+    expect(cmd.payload).toEqual({ id: "grid", family: "pane_restore", value: null });
   });
 
-  // -- Extension commands ---------------------------------------------------
+  // -- Widget commands -------------------------------------------------------
 
-  test("nativeWidgetCommand() sends command to extension widget", () => {
-    const cmd = Command.nativeWidgetCommand("ext-1", "set_value", { value: 42 });
-    expect(cmd.type).toBe("extension_command");
-    expect(cmd.payload).toEqual({ node_id: "ext-1", op: "set_value", payload: { value: 42 } });
+  test("widgetCommand() sends command to widget by ID", () => {
+    const cmd = Command.widgetCommand("ext-1", "set_value", { value: 42 });
+    expect(cmd.type).toBe("command");
+    expect(cmd.payload).toEqual({ id: "ext-1", family: "set_value", value: { value: 42 } });
   });
 
-  test("nativeWidgetCommand() defaults payload to empty object", () => {
-    const cmd = Command.nativeWidgetCommand("ext-1", "reset");
-    expect(cmd.payload["payload"]).toEqual({});
+  test("widgetCommand() defaults value to null", () => {
+    const cmd = Command.widgetCommand("ext-1", "reset");
+    expect(cmd.payload["value"]).toBe(null);
   });
 
   // -- Other ----------------------------------------------------------------
@@ -272,38 +277,27 @@ describe("Command", () => {
 
   test("focus() without window qualifier", () => {
     const cmd = Command.focus("form/email");
-    expect(cmd.payload["target"]).toBe("form/email");
-    expect(cmd.payload["window_id"]).toBeUndefined();
+    expect(cmd.payload["id"]).toBe("form/email");
   });
 
   test("focus() with window qualifier", () => {
     const cmd = Command.focus("main#form/email");
-    expect(cmd.payload["target"]).toBe("form/email");
-    expect(cmd.payload["window_id"]).toBe("main");
+    expect(cmd.payload["id"]).toBe("main#form/email");
   });
 
   test("scrollTo() with window qualifier", () => {
     const cmd = Command.scrollTo("editor#content", 0, 100);
-    expect(cmd.payload["target"]).toBe("content");
-    expect(cmd.payload["window_id"]).toBe("editor");
-    expect(cmd.payload["offset_y"]).toBe(100);
+    expect(cmd.payload["id"]).toBe("editor#content");
+    expect((cmd.payload["value"] as Record<string, unknown>)["offset_y"]).toBe(100);
   });
 
   test("selectAll() with window qualifier", () => {
     const cmd = Command.selectAll("main#editor");
-    expect(cmd.payload["target"]).toBe("editor");
-    expect(cmd.payload["window_id"]).toBe("main");
+    expect(cmd.payload["id"]).toBe("main#editor");
   });
 
   test("moveCursorToEnd() with window qualifier", () => {
     const cmd = Command.moveCursorToEnd("main#input");
-    expect(cmd.payload["target"]).toBe("input");
-    expect(cmd.payload["window_id"]).toBe("main");
-  });
-
-  test("# at position 0 is not a window qualifier", () => {
-    const cmd = Command.focus("#orphan");
-    expect(cmd.payload["target"]).toBe("#orphan");
-    expect(cmd.payload["window_id"]).toBeUndefined();
+    expect(cmd.payload["id"]).toBe("main#input");
   });
 });

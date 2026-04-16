@@ -136,7 +136,8 @@ test("tutorial_step2_submit_creates_todo", () => {
   expect(newModel.todos[0]!.text).toBe("Buy milk");
   expect(newModel.todos[0]!.id).toBe("todo_1");
   expect(newModel.todos[0]!.done).toBe(false);
-  expect(cmd.type).toBe("focus");
+  expect(cmd.type).toBe("command");
+  expect(cmd.payload["family"]).toBe("focus");
 });
 
 test("tutorial_step2_empty_submit_does_nothing", () => {
@@ -294,8 +295,9 @@ test("tutorial_step5_submit_returns_focus_command", () => {
 
   expect(Array.isArray(result)).toBe(true);
   const [, cmd] = result as [Model, ReturnType<typeof Command.focus>];
-  expect(cmd.type).toBe("focus");
-  expect(cmd.payload["target"]).toBe("app/newTodo");
+  expect(cmd.type).toBe("command");
+  expect(cmd.payload["id"]).toBe("app/newTodo");
+  expect(cmd.payload["family"]).toBe("focus");
 });
 
 // -- Step 6: filtering --

@@ -13,12 +13,12 @@
 
 import type {
   Event,
-  ExtensionCommandErrorEvent,
   ImeEvent,
   KeyEvent,
   Modifiers,
   ModifiersEvent,
   SystemEvent,
+  WidgetCommandErrorEvent,
   WidgetEvent,
   WindowEvent,
 } from "../types.js";
@@ -46,6 +46,7 @@ export interface HelloInfo {
   readonly backend: string;
   readonly transport: string;
   readonly extensions: readonly string[];
+  readonly widgets: readonly string[];
 }
 
 /** Query selector for find/interact messages. */
@@ -253,28 +254,28 @@ export function encodeImageOp(
   return { type: "image_op", session, op, ...payload };
 }
 
-/** Encode an ExtensionCommand message. */
-export function encodeExtensionCommand(
+/** Encode a Command message (unified widget-targeted command). */
+export function encodeCommand(
   session: string,
-  nodeId: string,
-  op: string,
-  payload: Record<string, unknown> = {},
+  id: string,
+  family: string,
+  value: unknown = null,
 ): WireMessage {
-  return { type: "extension_command", session, node_id: nodeId, op, payload };
+  return { type: "command", session, id, family, value };
 }
 
-/** Encode an ExtensionCommands (batch) message. */
-export function encodeExtensionCommands(
+/** Encode a Commands (batch) message. */
+export function encodeCommands(
   session: string,
-  commands: Array<{ nodeId: string; op: string; payload?: Record<string, unknown> }>,
+  commands: Array<{ id: string; family: string; value?: unknown }>,
 ): WireMessage {
   return {
-    type: "extension_commands",
+    type: "commands",
     session,
     commands: commands.map((c) => ({
-      node_id: c.nodeId,
-      op: c.op,
-      payload: c.payload ?? {},
+      id: c.id,
+      family: c.family,
+      value: c.value ?? null,
     })),
   };
 }
@@ -505,6 +506,7 @@ function decodeHello(raw: WireMessage): HelloInfo {
     backend: str(raw, "backend", "unknown"),
     transport: str(raw, "transport", "stdio"),
     extensions: Array.isArray(raw["extensions"]) ? (raw["extensions"] as string[]) : [],
+    widgets: Array.isArray(raw["widgets"]) ? (raw["widgets"] as string[]) : [],
   };
 }
 
@@ -940,7 +942,7 @@ function decodeSystemEvent(
   raw: WireMessage,
   family: string,
   data: WireMessage | null,
-): SystemEvent | ExtensionCommandErrorEvent {
+): SystemEvent | WidgetCommandErrorEvent {
   let eventData: unknown = data;
 
   // Flatten specific system event data
@@ -951,15 +953,16 @@ function decodeSystemEvent(
   } else if (family === "announce" && data) {
     eventData = data["text"] ?? null;
   } else if (family === "error") {
-    if (str(raw, "id") === "extension_command") {
+    if (str(raw, "id") === "widget_command") {
       return {
-        kind: "extension_command_error",
+        kind: "widget_command_error",
         reason: typeof data?.["reason"] === "string" ? (data["reason"] as string) : "",
         nodeId: typeof data?.["node_id"] === "string" ? (data["node_id"] as string) : null,
-        op: typeof data?.["op"] === "string" ? (data["op"] as string) : null,
-        extension: typeof data?.["extension"] === "string" ? (data["extension"] as string) : null,
+        family: typeof data?.["family"] === "string" ? (data["family"] as string) : null,
+        widgetType:
+          typeof data?.["widget_type"] === "string" ? (data["widget_type"] as string) : null,
         message: typeof data?.["message"] === "string" ? (data["message"] as string) : null,
-      } as ExtensionCommandErrorEvent;
+      } as WidgetCommandErrorEvent;
     }
     eventData = data ? { id: str(raw, "id"), ...data } : { id: str(raw, "id") };
   }

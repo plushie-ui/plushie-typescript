@@ -18,9 +18,9 @@ import type { DecodedResponse, WireMessage, WirePatchOp } from "./client/protoco
 import {
   decodeMessage,
   encodeAdvanceFrame,
+  encodeCommand,
+  encodeCommands,
   encodeEffect,
-  encodeExtensionCommand,
-  encodeExtensionCommands,
   encodeImageOp,
   encodeInteract,
   encodePatch,
@@ -991,31 +991,32 @@ export class Runtime<M> {
         break;
       }
 
-      case "focus":
-      case "focus_next":
-      case "focus_previous":
-      case "select_all":
-      case "scroll_to":
-      case "scroll_by":
-      case "snap_to":
-      case "snap_to_end":
-      case "move_cursor_to":
-      case "move_cursor_to_front":
-      case "move_cursor_to_end":
-      case "select_range":
-      case "announce":
-      case "close_window":
-      case "pane_split":
-      case "pane_close":
-      case "pane_swap":
-      case "pane_maximize":
-      case "pane_restore":
-      case "tree_hash":
-      case "find_focused":
-      case "load_font":
-      case "list_images":
-      case "clear_images":
-        this.send(encodeWidgetOp(this.sessionId, cmd.type, cmd.payload as Record<string, unknown>));
+      case "command": {
+        const id = cmd.payload["id"] as string;
+        const family = cmd.payload["family"] as string;
+        const value = cmd.payload["value"];
+        this.send(encodeCommand(this.sessionId, id, family, value));
+        break;
+      }
+
+      case "commands": {
+        const commands = cmd.payload["commands"] as Array<{
+          id: string;
+          family: string;
+          value?: unknown;
+        }>;
+        this.send(encodeCommands(this.sessionId, commands));
+        break;
+      }
+
+      case "widget_op":
+        this.send(
+          encodeWidgetOp(
+            this.sessionId,
+            cmd.payload["op"] as string,
+            cmd.payload as Record<string, unknown>,
+          ),
+        );
         break;
 
       case "window_op":
@@ -1085,30 +1086,6 @@ export class Runtime<M> {
             this.sessionId,
             cmd.payload["op"] as string,
             omitPayloadKeys(cmd.payload as Record<string, unknown>, ["op"]),
-          ),
-        );
-        break;
-
-      case "extension_command":
-        this.send(
-          encodeExtensionCommand(
-            this.sessionId,
-            cmd.payload["node_id"] as string,
-            cmd.payload["op"] as string,
-            (cmd.payload["payload"] as Record<string, unknown> | undefined) ?? {},
-          ),
-        );
-        break;
-
-      case "extension_commands":
-        this.send(
-          encodeExtensionCommands(
-            this.sessionId,
-            cmd.payload["commands"] as Array<{
-              nodeId: string;
-              op: string;
-              payload?: Record<string, unknown>;
-            }>,
           ),
         );
         break;

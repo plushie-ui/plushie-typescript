@@ -64,6 +64,61 @@ export function validateExtensions(extensions: readonly NativeWidgetConfig[]): v
     typeNames.set(ext.type, ext.type);
   }
 
+  // Check for built-in widget type name shadows
+  const builtinTypes = new Set([
+    "column",
+    "row",
+    "container",
+    "stack",
+    "grid",
+    "pin",
+    "keyed_column",
+    "float",
+    "responsive",
+    "scrollable",
+    "pane_grid",
+    "text",
+    "rich_text",
+    "rich",
+    "space",
+    "rule",
+    "progress_bar",
+    "slider",
+    "text_input",
+    "text_editor",
+    "button",
+    "checkbox",
+    "radio",
+    "toggle",
+    "dropdown",
+    "pick_list",
+    "combo_box",
+    "tooltip",
+    "image",
+    "svg",
+    "canvas",
+    "table",
+    "tab_bar",
+    "horizontal_slider",
+    "vertical_slider",
+    "modal",
+    "tooltip_area",
+    "key_displayer",
+  ]);
+  const shadows: string[] = [];
+  for (const ext of extensions) {
+    if (builtinTypes.has(ext.type)) {
+      shadows.push(ext.type);
+    }
+  }
+  if (shadows.length > 0) {
+    throw new Error(
+      `Native widget type name shadows a built-in widget:\n` +
+        shadows.join("\n") +
+        "\n\nChoose a different type name. The iced widget set is registered first and handles these names.",
+    );
+  }
+
   // Check for crate name collisions
   const crateNames = new Map<string, string>();
   for (const ext of nativeExts) {
@@ -80,15 +135,15 @@ export function validateExtensions(extensions: readonly NativeWidgetConfig[]): v
 }
 
 /**
- * Check plushie-ext version compatibility for each native widget crate.
+ * Check plushie-widget-sdk version compatibility for each native widget crate.
  *
  * Reads each crate's Cargo.toml and warns (via callback) if its
- * plushie-ext dependency version doesn't match the expected version.
+ * plushie-widget-sdk dependency version doesn't match the expected version.
  * Handles version strings, table dependencies with version, and path
  * dependencies (reads version from the target Cargo.toml).
  *
  * @param extensions - Extension configs with rustCrate paths.
- * @param expectedVersion - Expected plushie-ext major.minor (e.g. "0.5").
+ * @param expectedVersion - Expected plushie-widget-sdk major.minor (e.g. "0.6").
  * @param warn - Callback for version mismatch warnings.
  */
 export function checkExtensionVersions(
@@ -109,15 +164,15 @@ export function checkExtensionVersions(
       continue;
     }
 
-    // Try: plushie-ext = "version"
-    let match = content.match(/plushie-ext\s*=\s*"([^"]+)"/);
+    // Try: plushie-widget-sdk = "version"
+    let match = content.match(/plushie-widget-sdk\s*=\s*"([^"]+)"/);
     if (!match) {
-      // Try: plushie-ext = { version = "version", ... }
-      match = content.match(/plushie-ext\s*=\s*\{[^}]*version\s*=\s*"([^"]+)"/);
+      // Try: plushie-widget-sdk = { version = "version", ... }
+      match = content.match(/plushie-widget-sdk\s*=\s*\{[^}]*version\s*=\s*"([^"]+)"/);
     }
     if (!match) {
-      // Try: plushie-ext = { path = "path", ... }; read version from target
-      const pathMatch = content.match(/plushie-ext\s*=\s*\{[^}]*path\s*=\s*"([^"]+)"/);
+      // Try: plushie-widget-sdk = { path = "path", ... }; read version from target
+      const pathMatch = content.match(/plushie-widget-sdk\s*=\s*\{[^}]*path\s*=\s*"([^"]+)"/);
       if (pathMatch) {
         const targetCargoPath = nodePath.resolve(ext.rustCrate!, pathMatch[1]!, "Cargo.toml");
         if (existsSync(targetCargoPath)) {
@@ -141,7 +196,7 @@ export function checkExtensionVersions(
       const expectedMajorMinor = expectedVersion.split(".").slice(0, 2).join(".");
       if (depMajorMinor !== expectedMajorMinor) {
         warn(
-          `Widget "${ext.type}" depends on plushie-ext ${depVersion}, ` +
+          `Widget "${ext.type}" depends on plushie-widget-sdk ${depVersion}, ` +
             `but this SDK targets ${expectedVersion}. Version mismatch may cause ` +
             `build failures or runtime incompatibilities.`,
         );
@@ -164,24 +219,24 @@ export function generateCargoToml(config: NativeWidgetBuildConfig): string {
   const buildDir = nodePath.resolve("node_modules", ".plushie", "build");
 
   // Plushie dependencies: use local source if available, otherwise crates.io
-  let plushieExtDep: string;
+  let plushieWidgetSdkDep: string;
   let plushieRendererDep: string;
 
   if (config.sourcePath) {
-    const plushieExtRel = nodePath.relative(
+    const plushieWidgetSdkRel = nodePath.relative(
       buildDir,
-      nodePath.join(config.sourcePath, "plushie-ext"),
+      nodePath.join(config.sourcePath, "plushie-widget-sdk"),
     );
     const plushieRendererRel = nodePath.relative(
       buildDir,
       nodePath.join(config.sourcePath, "plushie-renderer"),
     );
-    plushieExtDep = `plushie-ext = { path = "${plushieExtRel}" }`;
+    plushieWidgetSdkDep = `plushie-widget-sdk = { path = "${plushieWidgetSdkRel}" }`;
     plushieRendererDep = `plushie-renderer = { path = "${plushieRendererRel}" }`;
   } else {
     // Use published crates from crates.io
-    plushieExtDep = `plushie-ext = "0.5"`;
-    plushieRendererDep = `plushie-renderer = "0.5"`;
+    plushieWidgetSdkDep = `plushie-widget-sdk = "0.6"`;
+    plushieRendererDep = `plushie-renderer = "0.6"`;
   }
 
   // Extension crate dependencies
@@ -194,6 +249,18 @@ export function generateCargoToml(config: NativeWidgetBuildConfig): string {
     })
     .join("\n");
 
+  // When using local source paths, add [patch.crates-io] so widget
+  // crates that depend on plushie-widget-sdk from crates.io get redirected
+  // to the same local checkout.
+  const patchSection = config.sourcePath
+    ? `
+
+[patch.crates-io]
+plushie-widget-sdk = { path = "${nodePath.relative(buildDir, nodePath.join(config.sourcePath, "plushie-widget-sdk"))}" }
+plushie-renderer = { path = "${nodePath.relative(buildDir, nodePath.join(config.sourcePath, "plushie-renderer"))}" }
+`
+    : "";
+
   return `[package]
 name = "${packageName}"
 version = "0.1.0"
@@ -204,10 +271,9 @@ name = "${binName}"
 path = "src/main.rs"
 
 [dependencies]
-${plushieExtDep}
+${plushieWidgetSdkDep}
 ${plushieRendererDep}
-${extDeps}
-`;
+${extDeps}${patchSection}`;
 }
 
 /**
@@ -233,15 +299,15 @@ export function generateMainRs(extensions: readonly NativeWidgetConfig[]): strin
   }
 
   const registrations = nativeExts
-    .map((ext) => `        .extension(${ext.rustConstructor})`)
+    .map((ext) => `        .widget(${ext.rustConstructor})`)
     .join("\n");
 
   return `// Auto-generated by npx plushie build
 // Do not edit manually.
 
-use plushie_ext::app::PlushieAppBuilder;
+use plushie_widget_sdk::app::PlushieAppBuilder;
 
-fn main() -> plushie_ext::iced::Result {
+fn main() -> plushie_widget_sdk::iced::Result {
     let builder = PlushieAppBuilder::new()
 ${registrations};
     plushie_renderer::run(builder)

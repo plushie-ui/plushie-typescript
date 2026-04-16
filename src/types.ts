@@ -71,7 +71,7 @@ export type EventKind =
   | "ime"
   | "window"
   | "effect"
-  | "extension_command_error"
+  | "widget_command_error"
   | "system"
   | "timer"
   | "async"
@@ -284,12 +284,12 @@ export interface EffectEvent extends EventBase {
   readonly error: string | null;
 }
 
-export interface ExtensionCommandErrorEvent extends EventBase {
-  readonly kind: "extension_command_error";
+export interface WidgetCommandErrorEvent extends EventBase {
+  readonly kind: "widget_command_error";
   readonly reason: string;
   readonly nodeId: string | null;
-  readonly op: string | null;
-  readonly extension: string | null;
+  readonly family: string | null;
+  readonly widgetType: string | null;
   readonly message: string | null;
 }
 
@@ -328,7 +328,7 @@ export type Event =
   | ImeEvent
   | WindowEvent
   | EffectEvent
-  | ExtensionCommandErrorEvent
+  | WidgetCommandErrorEvent
   | SystemEvent
   | TimerEvent
   | AsyncEvent

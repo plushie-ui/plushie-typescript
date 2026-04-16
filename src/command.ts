@@ -110,54 +110,42 @@ export function sendAfter(delayMs: number, event: unknown): Command {
 
 /** Focus a widget by its scoped ID path. Supports `"window#path"`. */
 export function focus(widgetId: string): Command {
-  return cmd("focus", targetPayload(widgetId));
-}
-
-/** Focus a specific element within a canvas. Supports `"window#canvas"`. */
-export function focusElement(canvasId: string, elementId: string): Command {
-  const { windowId, path } = parseTarget(canvasId);
-  const payload: Record<string, unknown> = {
-    op: "focus_element",
-    target: path,
-    element_id: elementId,
-  };
-  if (windowId !== undefined) payload["window_id"] = windowId;
-  return cmd("widget_op", payload);
+  return widgetCommand(widgetId, "focus");
 }
 
 /** Move focus to the next focusable widget. */
 export function focusNext(): Command {
-  return cmd("focus_next");
+  return cmd("widget_op", { op: "focus_next" });
 }
 
 /** Move focus to the previous focusable widget. */
 export function focusPrevious(): Command {
-  return cmd("focus_previous");
+  return cmd("widget_op", { op: "focus_previous" });
 }
 
 /** Select all text in a widget. Supports `"window#path"`. */
 export function selectAll(widgetId: string): Command {
-  return cmd("select_all", targetPayload(widgetId));
+  return widgetCommand(widgetId, "select_all");
 }
 
 /** Scroll a scrollable widget to an absolute offset. Supports `"window#path"`. */
 export function scrollTo(widgetId: string, offsetX: number, offsetY: number): Command {
-  return cmd("scroll_to", targetPayload(widgetId, { offset_x: offsetX, offset_y: offsetY }));
+  return widgetCommand(widgetId, "scroll_to", { offset_x: offsetX, offset_y: offsetY });
 }
 
 /** Scroll a scrollable widget by a relative amount. Supports `"window#path"`. */
 export function scrollBy(widgetId: string, x: number, y: number): Command {
-  return cmd("scroll_by", targetPayload(widgetId, { offset_x: x, offset_y: y }));
+  return widgetCommand(widgetId, "scroll_by", { offset_x: x, offset_y: y });
 }
 
 /** Snap a scrollable to a relative position (0.0 - 1.0). Supports `"window#path"`. */
 export function snapTo(widgetId: string, x: number, y: number): Command {
-  return cmd("snap_to", targetPayload(widgetId, { x, y }));
+  return widgetCommand(widgetId, "snap_to", { x, y });
 }
 
 /** Snap a scrollable to the end of its content. Supports `"window#path"`. */
 export function snapToEnd(widgetId: string): Command {
-  return cmd("snap_to_end", targetPayload(widgetId));
+  return widgetCommand(widgetId, "snap_to_end");
 }
 
 /** Close a window by ID. */
@@ -184,22 +172,22 @@ export function announce(text: string): Command {
 
 /** Move the text cursor to the front of the input. Supports `"window#path"`. */
 export function moveCursorToFront(widgetId: string): Command {
-  return cmd("move_cursor_to_front", targetPayload(widgetId));
+  return widgetCommand(widgetId, "move_cursor_to_front");
 }
 
 /** Move the text cursor to the end of the input. Supports `"window#path"`. */
 export function moveCursorToEnd(widgetId: string): Command {
-  return cmd("move_cursor_to_end", targetPayload(widgetId));
+  return widgetCommand(widgetId, "move_cursor_to_end");
 }
 
 /** Move the text cursor to a specific position. Supports `"window#path"`. */
 export function moveCursorTo(widgetId: string, position: number): Command {
-  return cmd("move_cursor_to", targetPayload(widgetId, { position }));
+  return widgetCommand(widgetId, "move_cursor_to", position);
 }
 
 /** Select a range of text in the input. Supports `"window#path"`. */
-export function selectRange(widgetId: string, start: number, end: number): Command {
-  return cmd("select_range", targetPayload(widgetId, { start, end }));
+export function selectRange(widgetId: string, startPos: number, endPos: number): Command {
+  return widgetCommand(widgetId, "select_range", { start_pos: startPos, end_pos: endPos });
 }
 
 // -- Window operations ------------------------------------------------------
@@ -458,9 +446,7 @@ export function paneSplit(
   axis: string,
   newPaneId: string,
 ): Command {
-  return cmd("widget_op", {
-    op: "pane_split",
-    target: paneGridId,
+  return widgetCommand(paneGridId, "pane_split", {
     pane: paneId,
     axis,
     new_pane_id: newPaneId,
@@ -469,40 +455,36 @@ export function paneSplit(
 
 /** Close a pane in the pane grid. */
 export function paneClose(paneGridId: string, paneId: string): Command {
-  return cmd("widget_op", { op: "pane_close", target: paneGridId, pane: paneId });
+  return widgetCommand(paneGridId, "pane_close", { pane: paneId });
 }
 
 /** Swap two panes in the pane grid. */
 export function paneSwap(paneGridId: string, paneA: string, paneB: string): Command {
-  return cmd("widget_op", { op: "pane_swap", target: paneGridId, a: paneA, b: paneB });
+  return widgetCommand(paneGridId, "pane_swap", { a: paneA, b: paneB });
 }
 
 /** Maximize a pane in the pane grid. */
 export function paneMaximize(paneGridId: string, paneId: string): Command {
-  return cmd("widget_op", { op: "pane_maximize", target: paneGridId, pane: paneId });
+  return widgetCommand(paneGridId, "pane_maximize", { pane: paneId });
 }
 
 /** Restore all panes from maximized state. */
 export function paneRestore(paneGridId: string): Command {
-  return cmd("widget_op", { op: "pane_restore", target: paneGridId });
+  return widgetCommand(paneGridId, "pane_restore");
 }
 
-// -- Native widget commands --------------------------------------------------
+// -- Widget commands -------------------------------------------------------
 
-/** Send a command to a native widget. */
-export function nativeWidgetCommand(
-  nodeId: string,
-  op: string,
-  payload: Record<string, unknown> = {},
-): Command {
-  return cmd("extension_command", { node_id: nodeId, op, payload });
+/** Send a command to a widget by ID using the unified wire format. */
+export function widgetCommand(id: string, family: string, value?: unknown): Command {
+  return cmd("command", { id, family, value: value ?? null });
 }
 
-/** Send a batch of native widget commands (processed in one cycle). */
-export function nativeWidgetCommands(
-  commands: Array<{ nodeId: string; op: string; payload?: Record<string, unknown> }>,
+/** Send a batch of widget commands (processed in one cycle). */
+export function widgetCommands(
+  commands: Array<{ id: string; family: string; value?: unknown }>,
 ): Command {
-  return cmd("extension_commands", { commands });
+  return cmd("commands", { commands });
 }
 
 // -- Other ------------------------------------------------------------------
@@ -534,29 +516,4 @@ export function treeHash(tag: string): Command {
  */
 export function done(value: unknown, mapper: (v: unknown) => unknown): Command {
   return cmd("done", { value, mapper });
-}
-
-// -- Helpers ------------------------------------------------------------------
-
-/**
- * Parse a widget ID that may include a window qualifier.
- * "main#form/email" -> { windowId: "main", path: "form/email" }
- * "form/email"      -> { windowId: undefined, path: "form/email" }
- */
-function parseTarget(widgetId: string): {
-  readonly windowId: string | undefined;
-  readonly path: string;
-} {
-  const sep = widgetId.indexOf("#");
-  if (sep > 0) {
-    return { windowId: widgetId.slice(0, sep), path: widgetId.slice(sep + 1) };
-  }
-  return { windowId: undefined, path: widgetId };
-}
-
-function targetPayload(widgetId: string, extra?: Record<string, unknown>): Record<string, unknown> {
-  const { windowId, path } = parseTarget(widgetId);
-  const payload: Record<string, unknown> = { target: path, ...extra };
-  if (windowId !== undefined) payload["window_id"] = windowId;
-  return payload;
 }
