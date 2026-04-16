@@ -1,9 +1,16 @@
 /**
  * Canvas: drawing surface with shapes organized into layers.
  *
+ * Canvas is a container widget. Its children are Layer elements,
+ * each holding shape children. Bare shapes are auto-wrapped in a
+ * default layer.
+ *
  * @module
  */
 
+import type { LayerNode } from "../../canvas/layer.js";
+import { isLayer, layerToWireNode, shapeToWireNode } from "../../canvas/layer.js";
+import type { CanvasShape } from "../../canvas/shapes.js";
 import type { Handler, UINode } from "../../types.js";
 import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.js";
 import type { A11y, Color, Length } from "../types.js";
@@ -16,6 +23,9 @@ const CANVAS_EVENTS: Record<string, { readonly eventType: string; readonly wireP
   onMove: { eventType: "move", wireProp: "move" },
   onScroll: { eventType: "scroll", wireProp: "scroll" },
 };
+
+/** Canvas children can be Layer elements, raw shapes, or pre-built UINodes. */
+export type CanvasChild = LayerNode | CanvasShape | UINode;
 
 /** Props for the Canvas widget. */
 export interface CanvasProps {
@@ -49,13 +59,57 @@ export interface CanvasProps {
   onMove?: Handler<unknown> | boolean;
   /** Scroll handler or boolean to enable scroll events. */
   onScroll?: Handler<unknown> | boolean;
-  /** Canvas layer children (shapes, groups, transforms). */
-  children?: UINode[];
+  /** Canvas layer children (shapes, groups, layers, transforms). */
+  children?: CanvasChild[];
+}
+
+const SHAPE_TYPES = new Set(["rect", "circle", "line", "text", "path", "image", "svg", "group"]);
+
+function isCanvasShape(value: unknown): value is CanvasShape {
+  if (typeof value !== "object" || value === null) return false;
+  const type = (value as Record<string, unknown>)["type"];
+  return typeof type === "string" && SHAPE_TYPES.has(type);
+}
+
+function isUINode(value: unknown): value is UINode {
+  if (typeof value !== "object" || value === null) return false;
+  const r = value as Record<string, unknown>;
+  return typeof r["type"] === "string" && typeof r["props"] === "object";
+}
+
+function convertChildren(children: CanvasChild[]): UINode[] {
+  const layers: UINode[] = [];
+  const bareShapes: CanvasShape[] = [];
+
+  for (const child of children) {
+    if (isLayer(child)) {
+      layers.push(layerToWireNode(child, layers.length));
+    } else if (isUINode(child)) {
+      layers.push(child);
+    } else if (isCanvasShape(child)) {
+      bareShapes.push(child);
+    }
+  }
+
+  if (bareShapes.length > 0) {
+    const defaultLayerId = "auto:layer:default";
+    const shapeNodes = bareShapes.map((shape, i) => shapeToWireNode(shape, "default", i));
+    const defaultLayer: UINode = Object.freeze({
+      id: defaultLayerId,
+      type: "__layer__",
+      props: Object.freeze({ name: "default" }),
+      children: Object.freeze(shapeNodes),
+    });
+    layers.unshift(defaultLayer);
+  }
+
+  return layers;
 }
 
 export function Canvas(props: CanvasProps): UINode {
   const id = props.id ?? autoId("canvas");
-  const children = props.children ?? [];
+  const rawChildren = props.children ?? [];
+  const children = convertChildren(rawChildren);
   const handlerProps: Record<string, string> = {};
   for (const [key, spec] of Object.entries(CANVAS_EVENTS)) {
     if (typeof (props as Record<string, unknown>)[key] === "function") {
@@ -80,15 +134,9 @@ export function Canvas(props: CanvasProps): UINode {
     if (typeof val === "boolean") putIf(p, val, `on_${spec.wireProp}`);
     else if (typeof val === "function") p[`on_${spec.wireProp}`] = true;
   }
-  return containerNodeWithMeta(
-    id,
-    "canvas",
-    p,
-    Array.isArray(children) ? children : [children],
-    meta,
-  );
+  return containerNodeWithMeta(id, "canvas", p, children, meta);
 }
 
-export function canvas(opts: Omit<CanvasProps, "children">, children: UINode[]): UINode {
+export function canvas(opts: Omit<CanvasProps, "children">, children: CanvasChild[]): UINode {
   return Canvas({ ...opts, children });
 }

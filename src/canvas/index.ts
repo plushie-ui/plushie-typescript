@@ -4,11 +4,11 @@
  * Provides shape builders (rect, circle, line, path, text, image, svg,
  * group), path commands (moveTo, lineTo, bezierTo, arc, etc.), transform
  * values, clip rects, stroke configuration, interactive shape support,
- * and linear gradients.
+ * linear gradients, and layer grouping.
  *
- * Canvas shapes are used as children of the Canvas widget. Each shape
- * builder returns a typed node that the runtime encodes for the wire
- * protocol.
+ * Canvas shapes are used as children of Layer elements, which are in
+ * turn children of the Canvas widget. Each shape builder returns a typed
+ * node that the runtime encodes for the wire protocol.
  *
  * @module
  */
@@ -21,6 +21,8 @@ export type {
   InteractiveOpts,
 } from "./interactive.js";
 export { interactive } from "./interactive.js";
+export type { LayerNode } from "./layer.js";
+export { isLayer, layer, layerToWireNode, shapeToWireNode } from "./layer.js";
 export type { PathCommand } from "./path.js";
 export {
   arc,

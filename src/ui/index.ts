@@ -64,7 +64,7 @@ export {
 
 export type { ButtonProps } from "./widgets/button.js";
 export { Button, button } from "./widgets/button.js";
-export type { CanvasProps } from "./widgets/canvas.js";
+export type { CanvasChild, CanvasProps } from "./widgets/canvas.js";
 export { Canvas, canvas } from "./widgets/canvas.js";
 export type { CheckboxIcon, CheckboxProps } from "./widgets/checkbox.js";
 export { Checkbox, checkbox } from "./widgets/checkbox.js";
