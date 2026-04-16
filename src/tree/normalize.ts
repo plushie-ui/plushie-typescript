@@ -136,12 +136,29 @@ export function normalize(
  * @param scope - The current scope prefix (empty string for root).
  * @returns Normalized WireNode.
  */
+const MAX_TREE_DEPTH = 256;
+const WARN_TREE_DEPTH = 200;
+
 function normalizeNode(
   node: UINode,
   scope: string,
   windowId: string | undefined,
   ctx?: NormalizeContext,
+  depth = 0,
 ): WireNode {
+  if (depth >= MAX_TREE_DEPTH) {
+    throw new Error(
+      `Tree exceeds maximum depth of ${String(MAX_TREE_DEPTH)}. ` +
+        `Check for circular widget compositions or deeply nested structures.`,
+    );
+  }
+  if (depth === WARN_TREE_DEPTH) {
+    console.warn(
+      `[plushie] Tree depth reached ${String(WARN_TREE_DEPTH)}. ` +
+        `Very deep nesting may indicate circular widget compositions.`,
+    );
+  }
+
   const id = node.id;
   const type = node.type;
   const currentWindowId = type === "window" ? id : windowId;
@@ -175,6 +192,7 @@ function normalizeNode(
         currentWindowId,
         ctx,
         standardProps,
+        depth,
       );
     }
   }
@@ -189,7 +207,7 @@ function normalizeNode(
 
   // Normalize children recursively
   const children = node.children.map((child) =>
-    normalizeNode(child, childScope, currentWindowId, ctx),
+    normalizeNode(child, childScope, currentWindowId, ctx, depth + 1),
   );
 
   // Reject duplicate sibling IDs; they cause undefined behavior in
@@ -198,10 +216,10 @@ function normalizeNode(
     const ids = new Set<string>();
     for (const child of children) {
       if (ids.has(child.id)) {
-        throw new Error(
-          `Duplicate sibling ID "${child.id}" under parent "${scopedId}". ` +
-            `Each sibling must have a unique ID.`,
-        );
+        const hint = child.id.startsWith("auto:")
+          ? " Provide explicit IDs for items in dynamic lists."
+          : " Each sibling must have a unique ID.";
+        throw new Error(`Duplicate sibling ID "${child.id}" under parent "${scopedId}".${hint}`);
       }
       ids.add(child.id);
     }
@@ -230,11 +248,14 @@ function normalizeRenderedWidget(
   windowId: string | undefined,
   ctx?: NormalizeContext,
   standardProps?: Readonly<Record<string, unknown>> | null,
+  depth = 0,
 ): WireNode {
   // Windows reset scope; otherwise children are scoped under this node.
   const childScope = node.type === "window" ? "" : scopedId;
 
-  const children = node.children.map((child) => normalizeNode(child, childScope, windowId, ctx));
+  const children = node.children.map((child) =>
+    normalizeNode(child, childScope, windowId, ctx, depth + 1),
+  );
 
   // Auto-apply standard widget options (a11y, event_rate) from the
   // original widget placeholder to the top-level rendered node. Widget
