@@ -426,14 +426,26 @@ export class TestSession<M> {
   // Queries (send Query to renderer, await response)
   // =======================================================================
 
-  /** Find a widget by ID. Returns null if not found. */
+  /** Find a widget by ID, text, role, label, or focus state using a unified selector string.
+   *
+   * Selector syntax:
+   * - `"my-id"` or `"path/to/id"` -> find by ID
+   * - `"#path/to/id"` -> find by ID (explicit prefix)
+   * - `"window#path/to/id"` -> window-qualified ID
+   * - `":focused"` -> find the focused widget
+   * - `"window#:focused"` -> window-qualified focused widget
+   * - `"[text=Save]"` -> find by text content
+   * - `"[role=button]"` -> find by a11y role
+   * - `"[label=Email]"` -> find by a11y label
+   * - `"window#[text=Save]"` -> window-qualified text search
+   */
   async find(selector: string): Promise<Element | null> {
-    return this.query(this.idSelector(selector));
+    return this.query(parseSelector(selector));
   }
 
   /**
    * Find a widget by ID, throwing if not found.
-   * Use this when the widget must exist; a missing widget is a test failure.
+   * Accepts the same unified selector syntax as `find()`.
    */
   async findOrThrow(selector: string): Promise<Element> {
     const el = await this.find(selector);
@@ -539,6 +551,8 @@ export class TestSession<M> {
   // Internal
   // =======================================================================
 
+  private static readonly INTERACT_TIMEOUT_MS = 15_000;
+
   private async interact(
     action: string,
     selector: WireSelector | Record<string, never>,
@@ -546,9 +560,20 @@ export class TestSession<M> {
   ): Promise<void> {
     const id = this.nextId();
     const msg = encodeInteract(this.sessionId, id, action, selector, payload);
+    const selectorDesc = "by" in selector ? `${selector.by}=${selector.value ?? ""}` : "";
 
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       const originalHandler = this.getMessageHandler();
+
+      const cleanup = (): void => {
+        clearTimeout(timer);
+        this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}));
+      };
+
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error(`interact timed out: action=${action} selector=${selectorDesc}`));
+      }, TestSession.INTERACT_TIMEOUT_MS);
 
       this.pool.onSessionMessage(this.sessionId, (raw) => {
         const decoded = decodeMessage(raw);
@@ -558,23 +583,19 @@ export class TestSession<M> {
         }
 
         if (decoded.type === "interact_response" && raw["id"] === id) {
-          // Process events from the response
-          this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}));
-          // In mock mode, events are in the response
           if (Array.isArray(decoded.events)) {
             for (const eventRaw of decoded.events) {
               this.injectEvent(eventRaw);
             }
           }
+          cleanup();
           resolve();
         } else if (decoded.type === "interact_step" && raw["id"] === id) {
-          // Headless mode: process step events and send updated tree
           if (Array.isArray(decoded.events)) {
             for (const eventRaw of decoded.events) {
               this.injectEvent(eventRaw);
             }
           }
-          // Runtime already re-rendered; send the current tree as snapshot
           const tree = this.runtime.tree();
           if (tree) {
             this.pool.sendToSession(this.sessionId, {
@@ -753,6 +774,7 @@ function wireNodeToElement(raw: Record<string, unknown>): Element {
     (typeof props["content"] === "string" ? props["content"] : null) ??
     (typeof props["label"] === "string" ? props["label"] : null) ??
     (typeof props["value"] === "string" ? props["value"] : null) ??
+    (typeof props["placeholder"] === "string" ? props["placeholder"] : null) ??
     null;
 
   return {
@@ -762,4 +784,57 @@ function wireNodeToElement(raw: Record<string, unknown>): Element {
     children: childrenRaw.map(wireNodeToElement),
     text,
   };
+}
+
+const ATTR_RE = /^\[(\w+)=(.+)\]$/;
+
+function parseSelector(selector: string): WireSelector {
+  const hashIdx = selector.indexOf("#");
+
+  // ":focused" or "window#:focused"
+  if (selector === ":focused") {
+    return { by: "focused" };
+  }
+  if (hashIdx > 0 && selector.slice(hashIdx + 1) === ":focused") {
+    return { by: "focused", window_id: selector.slice(0, hashIdx) };
+  }
+
+  // "[text=Save]" or "window#[text=Save]"
+  const attrMatch = ATTR_RE.exec(selector);
+  if (attrMatch) {
+    const attr = attrMatch[1]!;
+    const val = attrMatch[2]!;
+    if (attr === "text") return { by: "text", value: val };
+    if (attr === "role") return { by: "role", value: val };
+    if (attr === "label") return { by: "label", value: val };
+    throw new Error(`Unknown attribute selector "[${attr}=...]". Use "text", "role", or "label".`);
+  }
+  if (hashIdx > 0) {
+    const after = selector.slice(hashIdx + 1);
+    const attrWin = ATTR_RE.exec(after);
+    if (attrWin) {
+      const attr = attrWin[1]!;
+      const val = attrWin[2]!;
+      const windowId = selector.slice(0, hashIdx);
+      if (attr === "text") return { by: "text", value: val, window_id: windowId };
+      if (attr === "role") return { by: "role", value: val, window_id: windowId };
+      if (attr === "label") return { by: "label", value: val, window_id: windowId };
+      throw new Error(
+        `Unknown attribute selector "[${attr}=...]". Use "text", "role", or "label".`,
+      );
+    }
+  }
+
+  // "#path/to/id" -> strip leading #
+  if (selector.startsWith("#")) {
+    return { by: "id", value: selector.slice(1) };
+  }
+
+  // "window#path/to/id" -> window-qualified ID
+  if (hashIdx > 0) {
+    return { by: "id", value: selector.slice(hashIdx + 1), window_id: selector.slice(0, hashIdx) };
+  }
+
+  // Plain ID
+  return { by: "id", value: selector };
 }

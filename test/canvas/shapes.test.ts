@@ -180,12 +180,6 @@ describe("group", () => {
     ]);
   });
 
-  test("accepts interactive fields", () => {
-    const g = group("btn", [rect(0, 0, 10, 10)], { on_click: true, cursor: "pointer" });
-    expect(g.on_click).toBe(true);
-    expect(g.cursor).toBe("pointer");
-  });
-
   test("omits optional fields when not provided", () => {
     const g = group([]);
     expect(Object.keys(g)).toEqual(["type", "children"]);
@@ -298,7 +292,7 @@ describe("stroke", () => {
 describe("interactive", () => {
   test("wraps a leaf shape in a group with interactive fields", () => {
     const r = rect(0, 0, 100, 40, { fill: "#3498db" });
-    const ir = interactive(r as unknown as Record<string, unknown>, "btn", {
+    const ir = interactive(r, "btn", {
       on_click: true,
       cursor: "pointer",
     });
@@ -312,7 +306,7 @@ describe("interactive", () => {
 
   test("merges interactive fields onto an existing group", () => {
     const g = group([rect(0, 0, 10, 10)]);
-    const ig = interactive(g as unknown as Record<string, unknown>, "panel", {
+    const ig = interactive(g, "panel", {
       on_hover: true,
       tooltip: "info",
     });
@@ -325,7 +319,7 @@ describe("interactive", () => {
 
   test("creates group with only id when no opts given", () => {
     const c = circle(0, 0, 10);
-    const ic = interactive(c as unknown as Record<string, unknown>, "dot");
+    const ic = interactive(c, "dot");
     expect(ic.type).toBe("group");
     expect(ic.id).toBe("dot");
     expect(ic.children).toEqual([c]);
@@ -333,14 +327,17 @@ describe("interactive", () => {
 
   test("includes drag options", () => {
     const r = rect(0, 0, 50, 50);
-    const ir = interactive(r as unknown as Record<string, unknown>, "handle", {
+    const ir = interactive(r, "handle", {
       draggable: true,
       drag_axis: "x",
       drag_bounds: { min_x: 0, max_x: 200 },
     });
     expect(ir.draggable).toBe(true);
     expect(ir.drag_axis).toBe("x");
-    expect(ir.drag_bounds).toEqual({ min_x: 0, max_x: 200 });
+    expect(ir.drag_bounds).toEqual({
+      min_x: 0,
+      max_x: 200,
+    });
   });
 });
 

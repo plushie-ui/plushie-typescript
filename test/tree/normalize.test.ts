@@ -1,4 +1,7 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
+import { memo, resetMemoCounter } from "../../src/memo.js";
+import { diff } from "../../src/tree/diff.js";
+import type { NormalizeContext } from "../../src/tree/normalize.js";
 import { isAutoId, normalize } from "../../src/tree/normalize.js";
 import type { UINode } from "../../src/types.js";
 
@@ -208,5 +211,159 @@ describe("normalize", () => {
       expect(() => normalize(node("w", type, {}, []))).not.toThrow();
       expect(() => normalize(node("w", type, {}, [node("a", "button")]))).not.toThrow();
     }
+  });
+
+  // -- Radio a11y inference --
+
+  test("infers position_in_set/size_of_set for radio siblings with same group", () => {
+    const parent = node("form", "column", {}, [
+      node("r1", "radio", { group: "color", value: "red" }),
+      node("r2", "radio", { group: "color", value: "blue" }),
+      node("r3", "radio", { group: "color", value: "green" }),
+    ]);
+    const wire = normalize(parent);
+    const radios = wire.children;
+    expect(radios[0]!.props["a11y"]).toEqual({ position_in_set: 1, size_of_set: 3 });
+    expect(radios[1]!.props["a11y"]).toEqual({ position_in_set: 2, size_of_set: 3 });
+    expect(radios[2]!.props["a11y"]).toEqual({ position_in_set: 3, size_of_set: 3 });
+  });
+
+  test("preserves manual position_in_set, fills size_of_set", () => {
+    const parent = node("form", "column", {}, [
+      node("r1", "radio", { group: "size", value: "s", a11y: { position_in_set: 5 } }),
+      node("r2", "radio", { group: "size", value: "m" }),
+    ]);
+    const wire = normalize(parent);
+    expect(wire.children[0]!.props["a11y"]).toEqual({ position_in_set: 5, size_of_set: 2 });
+    expect(wire.children[1]!.props["a11y"]).toEqual({ position_in_set: 2, size_of_set: 2 });
+  });
+
+  test("skips radios without a group", () => {
+    const parent = node("form", "column", {}, [
+      node("r1", "radio", { value: "a" }),
+      node("r2", "radio", { value: "b" }),
+    ]);
+    const wire = normalize(parent);
+    expect(wire.children[0]!.props["a11y"]).toBeUndefined();
+    expect(wire.children[1]!.props["a11y"]).toBeUndefined();
+  });
+});
+
+// -- Memo cache tests --
+
+describe("memo", () => {
+  test("produces a __memo__ node with metadata", () => {
+    resetMemoCounter();
+    const m = memo(1, () => node("a", "text"));
+    expect(m.type).toBe("__memo__");
+    expect(m.id).toBe("auto:memo:1");
+    expect(m.meta?.["__memo_deps__"]).toBe(1);
+    expect(typeof m.meta?.["__memo_fun__"]).toBe("function");
+  });
+
+  test("memo body is evaluated on first render", () => {
+    resetMemoCounter();
+    let callCount = 0;
+    const m = memo("v1", () => {
+      callCount++;
+      return node("a", "text", { content: "hello" });
+    });
+    const result = normalize(m);
+    expect(callCount).toBe(1);
+    expect(result.id).toBe("a");
+    expect(result.type).toBe("text");
+  });
+
+  test("memo body returns same tree reference on cache hit", () => {
+    resetMemoCounter();
+    let callCount = 0;
+    const body = () => {
+      callCount++;
+      return node("a", "text", { content: "hello" });
+    };
+
+    // First render
+    const m1 = memo("v1", body);
+    const ctx1: NormalizeContext = {
+      memo: new Map(),
+      memoPrev: new Map(),
+    };
+    const result1 = normalize(m1, ctx1);
+    expect(callCount).toBe(1);
+
+    // Second render: reset counter (runtime does this before each normalize)
+    resetMemoCounter();
+    const m2 = memo("v1", body);
+    const ctx2: NormalizeContext = {
+      memo: new Map(),
+      memoPrev: ctx1.memo,
+    };
+    const result2 = normalize(m2, ctx2);
+
+    expect(callCount).toBe(1);
+    expect(result2).toBe(result1);
+  });
+
+  test("memo body is re-evaluated when deps change", () => {
+    resetMemoCounter();
+    let callCount = 0;
+    const body = () => {
+      callCount++;
+      return node("a", "text", { content: `v${callCount}` });
+    };
+
+    const m1 = memo("v1", body);
+    const ctx1: NormalizeContext = {
+      memo: new Map(),
+      memoPrev: new Map(),
+    };
+    normalize(m1, ctx1);
+    expect(callCount).toBe(1);
+
+    // Second render with different deps
+    const m2 = memo("v2", body);
+    const ctx2: NormalizeContext = {
+      memo: new Map(),
+      memoPrev: ctx1.memo,
+    };
+    const result2 = normalize(m2, ctx2);
+    expect(callCount).toBe(2);
+    expect(result2.props["content"]).toBe("v2");
+  });
+
+  test("memo with null body returns empty container", () => {
+    resetMemoCounter();
+    const m = memo(null, () => null);
+    const result = normalize(m);
+    expect(result.type).toBe("container");
+    expect(result.children).toHaveLength(0);
+  });
+
+  test("memo with array body wraps multiple children", () => {
+    resetMemoCounter();
+    const m = memo("v1", () => [node("a", "text"), node("b", "text")]);
+    const result = normalize(m);
+    expect(result.type).toBe("container");
+    expect(result.children).toHaveLength(2);
+    expect(result.children[0]!.id).toBe("a");
+    expect(result.children[1]!.id).toBe("b");
+  });
+
+  test("memo with single-child array unwraps", () => {
+    resetMemoCounter();
+    const m = memo("v1", () => [node("a", "text")]);
+    const result = normalize(m);
+    expect(result.id).toBe("a");
+    expect(result.type).toBe("text");
+  });
+});
+
+// -- Diff reference equality --
+
+describe("diff reference equality", () => {
+  test("reference-equal nodes produce no patches", () => {
+    const shared = { id: "a", type: "text", props: { content: "hi" }, children: [] };
+    const ops = diff(shared as never, shared as never);
+    expect(ops).toEqual([]);
   });
 });

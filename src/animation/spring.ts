@@ -69,13 +69,25 @@ export interface SpringDescriptor {
 /** Create a physics-based spring descriptor. */
 export function spring(opts: SpringOpts): SpringDescriptor {
   const preset = opts.preset ? PRESETS[opts.preset] : undefined;
+  const stiffness = opts.stiffness ?? preset?.stiffness ?? 100;
+  const damping = opts.damping ?? preset?.damping ?? 10;
+  const mass = opts.mass ?? 1;
+  if (typeof stiffness !== "number" || stiffness <= 0 || !Number.isFinite(stiffness)) {
+    throw new Error(`spring: stiffness must be a positive finite number, got ${String(stiffness)}`);
+  }
+  if (typeof damping !== "number" || damping < 0 || !Number.isFinite(damping)) {
+    throw new Error(`spring: damping must be a non-negative finite number, got ${String(damping)}`);
+  }
+  if (typeof mass !== "number" || mass <= 0 || !Number.isFinite(mass)) {
+    throw new Error(`spring: mass must be a positive finite number, got ${String(mass)}`);
+  }
   const base = {
     [ANIMATION_DESCRIPTOR]: true as const,
     type: "spring" as const,
     to: opts.to,
-    stiffness: opts.stiffness ?? preset?.stiffness ?? 100,
-    damping: opts.damping ?? preset?.damping ?? 10,
-    mass: opts.mass ?? 1,
+    stiffness,
+    damping,
+    mass,
     velocity: opts.velocity ?? 0,
   };
   const optional: Record<string, unknown> = {};

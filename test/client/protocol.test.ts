@@ -747,7 +747,7 @@ describe("decodeEvent", () => {
     expect(event.kind).toBe("system");
     if (event.kind === "system") {
       expect(event.type).toBe("animation_frame");
-      expect(event.data).toBe(16000);
+      expect(event.value).toBe(16000);
     }
   });
 
@@ -761,7 +761,7 @@ describe("decodeEvent", () => {
     });
     if (event.kind === "system") {
       expect(event.type).toBe("theme_changed");
-      expect(event.data).toBe("dark");
+      expect(event.value).toBe("dark");
     }
   });
 

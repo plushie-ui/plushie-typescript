@@ -24,7 +24,7 @@ export function translate(x: number, y: number): TransformValue {
   return { type: "translate", x, y };
 }
 
-/** Rotate the coordinate system (angle in radians). */
+/** Rotate the coordinate system (angle in degrees). */
 export function rotate(angle: number): TransformValue {
   return { type: "rotate", angle };
 }
@@ -42,4 +42,17 @@ export function scaleUniform(factor: number): TransformValue {
 /** Create a clip rectangle in local coordinates. */
 export function clip(x: number, y: number, w: number, h: number): ClipRect {
   return { x, y, w, h };
+}
+
+const DEG_TO_RAD = Math.PI / 180;
+const RAD_TO_DEG = 180 / Math.PI;
+
+/** Convert degrees to radians. */
+export function degToRad(degrees: number): number {
+  return degrees * DEG_TO_RAD;
+}
+
+/** Convert radians to degrees. */
+export function radToDeg(radians: number): number {
+  return radians * RAD_TO_DEG;
 }

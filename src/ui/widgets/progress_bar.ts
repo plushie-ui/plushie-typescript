@@ -5,7 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
-import { autoId, leafNode, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, leafNode, putIf } from "../build.js";
 import type { A11y, Length, StyleMap } from "../types.js";
 import { encodeA11y, encodeLength, encodeStyleMap } from "../types.js";
 
@@ -42,7 +42,7 @@ export function ProgressBar(props: ProgressBarProps): UINode {
   putIf(p, props.style, "style", encodeStyleMap);
   putIf(p, props.vertical, "vertical");
   putIf(p, props.label, "label");
-  putIf(p, props.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, props.a11y, { role: "progress_indicator" }, encodeA11y);
   return leafNode(id, "progress_bar", p);
 }
 

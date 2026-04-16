@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Font, Length, LineHeight, Shaping, StyleMap, Wrapping } from "../types.js";
 import {
   encodeA11y,
@@ -73,7 +73,7 @@ export function Radio(props: RadioProps): UINode {
   putIf(p, clean.shaping, "shaping");
   putIf(p, clean.wrapping, "wrapping");
   putIf(p, clean.style, "style", encodeStyleMap);
-  putIf(p, clean.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, clean.a11y, { role: "radio_button" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   return leafNodeWithMeta(id, "radio", p, meta);
 }

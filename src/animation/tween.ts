@@ -199,8 +199,9 @@ export function animationValue(anim: Animation): number {
   return anim.value;
 }
 
-/** Return true if the animation has run to completion. */
+/** Return true if the animation has run to completion. Looping animations never finish. */
 export function animationFinished(anim: Animation): boolean {
   if (anim.startedAt === null) return false;
+  if (anim.looping) return false;
   return anim.value === anim.to;
 }

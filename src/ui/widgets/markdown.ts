@@ -5,7 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
-import { autoId, leafNode, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, leafNode, putIf } from "../build.js";
 import type { A11y, Color, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
@@ -49,7 +49,7 @@ export function Markdown(props: MarkdownProps): UINode {
   putIf(p, props.width, "width", encodeLength);
   putIf(p, props.linkColor, "link_color", encodeColor);
   putIf(p, props.codeTheme, "code_theme");
-  putIf(p, props.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, props.a11y, { role: "document" }, encodeA11y);
   return leafNode(id, "markdown", p);
 }
 

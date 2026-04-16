@@ -8,7 +8,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
+import { applyA11yDefaults, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type {
   A11y,
   Alignment,
@@ -74,8 +74,8 @@ export interface TextInputProps {
   onPaste?: Handler<unknown> | boolean;
   /** When true, masks input like a password field. */
   secure?: boolean;
-  /** Hint to the input method editor about the expected content type. */
-  imePurpose?: "normal" | "secure" | "terminal";
+  /** Hint to the platform about the expected content type (keyboard layout, autocorrect). */
+  inputPurpose?: "normal" | "secure" | "terminal";
   /** Style preset name or StyleMap overrides. */
   style?: StyleMap;
   /** Color of the placeholder text. */
@@ -133,12 +133,12 @@ export function TextInput(props: TextInputProps): UINode {
   if (typeof props.onPaste === "boolean") putIf(p, props.onPaste, "on_paste");
   else if (typeof props.onPaste === "function") p["on_paste"] = true;
   putIf(p, clean.secure, "secure");
-  putIf(p, clean.imePurpose, "ime_purpose");
+  putIf(p, clean.inputPurpose, "input_purpose");
   putIf(p, clean.style, "style", encodeStyleMap);
   putIf(p, clean.placeholderColor, "placeholder_color", encodeColor);
   putIf(p, clean.selectionColor, "selection_color", encodeColor);
   putIf(p, clean.disabled, "disabled");
-  putIf(p, clean.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, clean.a11y, { role: "text_input" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   return leafNodeWithMeta(id, "text_input", p, meta);
 }

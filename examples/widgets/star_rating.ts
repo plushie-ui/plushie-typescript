@@ -8,7 +8,7 @@
 // - "select" with { value: n } when the user clicks a star
 
 import type { CanvasShape, PathCommand } from "../../src/canvas/index.js";
-import { close, group, lineTo, moveTo, path } from "../../src/canvas/index.js";
+import { close, group, interactive, lineTo, moveTo, path } from "../../src/canvas/index.js";
 import type { Event, EventAction, UINode, WidgetDef } from "../../src/index.js";
 import { buildWidget } from "../../src/index.js";
 import { Canvas } from "../../src/ui/widgets/canvas.js";
@@ -131,22 +131,27 @@ function view(id: string, props: StarRatingProps, state: StarState): UINode {
       );
     } else {
       shapes.push(
-        group(`star-${i}`, [path(commands, { fill: starColor(filled, preview, themeProgress) })], {
-          x: cx,
-          y: cy,
-          on_click: true,
-          on_hover: true,
-          cursor: "pointer",
-          focus_style: { stroke: { color: "#3b82f6", width: 2 * scale } },
-          show_focus_ring: false,
-          a11y: {
-            role: "radio",
-            label: `${i + 1} star${i === 0 ? "" : "s"}`,
-            selected: rating >= i + 1,
-            position_in_set: i + 1,
-            size_of_set: 5,
+        interactive(
+          group([path(commands, { fill: starColor(filled, preview, themeProgress) })], {
+            x: cx,
+            y: cy,
+          }),
+          `star-${i}`,
+          {
+            on_click: true,
+            on_hover: true,
+            cursor: "pointer",
+            focus_style: { stroke: { color: "#3b82f6", width: 2 * scale } },
+            show_focus_ring: false,
+            a11y: {
+              role: "radio",
+              label: `${i + 1} star${i === 0 ? "" : "s"}`,
+              selected: rating >= i + 1,
+              position_in_set: i + 1,
+              size_of_set: 5,
+            },
           },
-        }),
+        ),
       );
     }
   }

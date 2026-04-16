@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Font, Length, LineHeight, Padding, Shaping, StyleMap } from "../types.js";
 import {
   encodeA11y,
@@ -88,7 +88,7 @@ export function PickList(props: PickListProps): UINode {
   putIf(p, clean.ellipsis, "ellipsis");
   putIf(p, clean.menuStyle, "menu_style");
   putIf(p, clean.style, "style", encodeStyleMap);
-  putIf(p, clean.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, clean.a11y, { role: "combo_box", hasPopup: "listbox" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   if (typeof props.onOpen === "boolean") putIf(p, props.onOpen, "on_open");
   else if (typeof props.onOpen === "function") p["on_open"] = true;

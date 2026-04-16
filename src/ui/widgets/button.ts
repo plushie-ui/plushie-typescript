@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Length, Padding, StyleMap } from "../types.js";
 import { encodeA11y, encodeLength, encodePadding, encodeStyleMap } from "../types.js";
 
@@ -57,7 +57,7 @@ export function Button(props: ButtonProps): UINode {
   putIf(p, clean.clip, "clip");
   putIf(p, clean.style, "style", encodeStyleMap);
   putIf(p, clean.disabled, "disabled");
-  putIf(p, clean.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, clean.a11y, { role: "button" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   return leafNodeWithMeta(id, "button", p, meta);
 }

@@ -5,7 +5,13 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.js";
+import {
+  applyA11yDefaults,
+  autoId,
+  containerNodeWithMeta,
+  extractHandlers,
+  putIf,
+} from "../build.js";
 import type { A11y, Anchor, Color, Direction, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
@@ -69,7 +75,7 @@ export function Scrollable(props: ScrollableProps): UINode {
   putIf(p, clean.anchor, "anchor");
   putIf(p, clean.autoScroll, "auto_scroll");
   putIf(p, clean.style, "style");
-  putIf(p, clean.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, clean.a11y, { role: "scroll_view" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   if (typeof props.onScroll === "boolean") putIf(p, props.onScroll, "on_scroll");
   else if (typeof props.onScroll === "function") p["on_scroll"] = true;

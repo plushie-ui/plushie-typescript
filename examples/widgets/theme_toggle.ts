@@ -11,6 +11,7 @@ import type { CanvasShape, PathCommand } from "../../src/canvas/index.js";
 import {
   circle,
   group,
+  interactive,
   lineTo,
   stroke as makeStroke,
   moveTo,
@@ -138,30 +139,29 @@ function view(id: string, _props: ThemeToggleProps, state: ThemeToggleState): UI
   const faceColor = progress < 0.5 ? "#665500" : "#4c1d95";
 
   const shapes: CanvasShape[] = [
-    group(
+    interactive(
+      group(
+        [
+          rect(0, 0, TRACK_W, TRACK_H, { fill: trackColor, radius: TRACK_H / 2 }),
+          circle(thumbX, TRACK_H / 2, THUMB_R, { fill: "#ffffff" }),
+          group(
+            [
+              circle(-3.5, -3, 2, { fill: faceColor }),
+              circle(3.5, -3, 2, { fill: faceColor }),
+              path(smilePath(), { stroke: makeStroke(faceColor, 2) }),
+            ],
+            {
+              transforms: [translate(thumbX, TRACK_H / 2), rotate(rotation)],
+            },
+          ),
+        ],
+        {
+          x: RING_PAD,
+          y: RING_PAD,
+        },
+      ),
       "switch",
-      [
-        // Track
-        rect(0, 0, TRACK_W, TRACK_H, { fill: trackColor, radius: TRACK_H / 2 }),
-
-        // Thumb circle
-        circle(thumbX, TRACK_H / 2, THUMB_R, { fill: "#ffffff" }),
-
-        // Face: uses a transform group for rotation
-        group(
-          [
-            circle(-3.5, -3, 2, { fill: faceColor }),
-            circle(3.5, -3, 2, { fill: faceColor }),
-            path(smilePath(), { stroke: makeStroke(faceColor, 2) }),
-          ],
-          {
-            transforms: [translate(thumbX, TRACK_H / 2), rotate(rotation)],
-          },
-        ),
-      ],
       {
-        x: RING_PAD,
-        y: RING_PAD,
         on_click: true,
         cursor: "pointer",
         hit_rect: { x: 0, y: 0, w: TRACK_W, h: TRACK_H },

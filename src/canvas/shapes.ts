@@ -9,7 +9,6 @@
  */
 
 import type { LinearGradient } from "./gradient.js";
-import type { DragBounds, HitRect } from "./interactive.js";
 import type { PathCommand } from "./path.js";
 import type { Stroke } from "./stroke.js";
 import type { ClipRect, TransformValue } from "./transform.js";
@@ -98,21 +97,6 @@ export interface GroupShape {
   readonly transforms?: readonly TransformValue[];
   readonly clip?: ClipRect;
   readonly id?: string;
-  readonly on_click?: boolean;
-  readonly on_hover?: boolean;
-  readonly draggable?: boolean;
-  readonly drag_axis?: "x" | "y" | "both";
-  readonly drag_bounds?: DragBounds;
-  readonly cursor?: string;
-  readonly hit_rect?: HitRect;
-  readonly tooltip?: string;
-  readonly hover_style?: Readonly<Record<string, unknown>>;
-  readonly pressed_style?: Readonly<Record<string, unknown>>;
-  readonly focus_style?: Readonly<Record<string, unknown>>;
-  readonly show_focus_ring?: boolean;
-  readonly focus_ring_radius?: number;
-  readonly a11y?: Readonly<Record<string, unknown>>;
-  readonly focusable?: boolean;
 }
 
 /** Union of all canvas shape types. */
@@ -174,21 +158,6 @@ export interface GroupOpts {
   readonly y?: number;
   readonly transforms?: readonly TransformValue[];
   readonly clip?: ClipRect;
-  readonly on_click?: boolean;
-  readonly on_hover?: boolean;
-  readonly draggable?: boolean;
-  readonly drag_axis?: "x" | "y" | "both";
-  readonly drag_bounds?: DragBounds;
-  readonly cursor?: string;
-  readonly hit_rect?: HitRect;
-  readonly tooltip?: string;
-  readonly hover_style?: Readonly<Record<string, unknown>>;
-  readonly pressed_style?: Readonly<Record<string, unknown>>;
-  readonly focus_style?: Readonly<Record<string, unknown>>;
-  readonly show_focus_ring?: boolean;
-  readonly focus_ring_radius?: number;
-  readonly a11y?: Readonly<Record<string, unknown>>;
-  readonly focusable?: boolean;
 }
 
 // -- Builder functions --------------------------------------------------------
@@ -269,7 +238,7 @@ export function canvasSvg(
   return { type: "svg", source, x, y, w, h };
 }
 
-/** Group child shapes with optional transforms, clip, and interactive fields. */
+/** Group child shapes with optional transforms and clip. */
 export function group(
   idOrChildren: string | readonly CanvasShape[],
   childrenOrOpts?: readonly CanvasShape[] | GroupOpts,
@@ -291,7 +260,6 @@ export function group(
   const shape: Record<string, unknown> = { type: "group", children };
   if (id !== undefined) shape["id"] = id;
 
-  // Desugar x/y to leading translate
   const transforms: Record<string, unknown>[] = [];
   if (opts?.x !== undefined || opts?.y !== undefined) {
     transforms.push({ type: "translate", x: opts?.x ?? 0, y: opts?.y ?? 0 });
@@ -302,21 +270,6 @@ export function group(
   if (transforms.length > 0) shape["transforms"] = transforms;
 
   if (opts?.clip !== undefined) shape["clip"] = opts.clip;
-  if (opts?.on_click !== undefined) shape["on_click"] = opts.on_click;
-  if (opts?.on_hover !== undefined) shape["on_hover"] = opts.on_hover;
-  if (opts?.draggable !== undefined) shape["draggable"] = opts.draggable;
-  if (opts?.drag_axis !== undefined) shape["drag_axis"] = opts.drag_axis;
-  if (opts?.drag_bounds !== undefined) shape["drag_bounds"] = opts.drag_bounds;
-  if (opts?.cursor !== undefined) shape["cursor"] = opts.cursor;
-  if (opts?.hit_rect !== undefined) shape["hit_rect"] = opts.hit_rect;
-  if (opts?.tooltip !== undefined) shape["tooltip"] = opts.tooltip;
-  if (opts?.hover_style !== undefined) shape["hover_style"] = opts.hover_style;
-  if (opts?.pressed_style !== undefined) shape["pressed_style"] = opts.pressed_style;
-  if (opts?.focus_style !== undefined) shape["focus_style"] = opts.focus_style;
-  if (opts?.show_focus_ring !== undefined) shape["show_focus_ring"] = opts.show_focus_ring;
-  if (opts?.focus_ring_radius !== undefined) shape["focus_ring_radius"] = opts.focus_ring_radius;
-  if (opts?.a11y !== undefined) shape["a11y"] = opts.a11y;
-  if (opts?.focusable !== undefined) shape["focusable"] = opts.focusable;
 
   return shape as unknown as GroupShape;
 }

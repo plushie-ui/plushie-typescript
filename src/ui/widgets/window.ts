@@ -11,7 +11,7 @@
  */
 
 import type { UINode } from "../../types.js";
-import { containerNode, putIf } from "../build.js";
+import { applyA11yDefaults, containerNode, putIf } from "../build.js";
 import type { A11y, Theme } from "../types.js";
 import { encodeA11y } from "../types.js";
 
@@ -103,7 +103,7 @@ export function Window(props: WindowProps): UINode {
   putIf(p, props.scaleFactor, "scale_factor");
   putIf(p, props.padding, "padding");
   putIf(p, props.theme, "theme");
-  putIf(p, props.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, props.a11y, { role: "window" }, encodeA11y);
   return containerNode(id, "window", p, Array.isArray(children) ? children : [children]);
 }
 

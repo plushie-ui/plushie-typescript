@@ -699,6 +699,55 @@ export type BuiltinTheme =
  */
 export type Theme = BuiltinTheme | string | Record<string, unknown>;
 
+const CORE_SEEDS = new Set(["background", "text", "primary", "success", "danger", "warning"]);
+const COLOR_FAMILIES = ["primary", "secondary", "success", "warning", "danger"];
+const SHADES = ["base", "weak", "strong"];
+const BG_SHADES = [
+  "base",
+  "weakest",
+  "weaker",
+  "weak",
+  "neutral",
+  "strong",
+  "stronger",
+  "strongest",
+];
+
+const VALID_CUSTOM_KEYS: Set<string> = (() => {
+  const keys = new Set<string>();
+  for (const seed of CORE_SEEDS) keys.add(seed);
+  for (const family of COLOR_FAMILIES) {
+    for (const shade of SHADES) {
+      keys.add(`${family}_${shade}`);
+      keys.add(`${family}_${shade}_text`);
+    }
+  }
+  for (const shade of BG_SHADES) {
+    keys.add(`background_${shade}`);
+    keys.add(`background_${shade}_text`);
+  }
+  return keys;
+})();
+
+/**
+ * Create a validated custom theme palette.
+ *
+ * Validates that all keys are recognized theme seed or shade override
+ * keys. Throws on unknown keys to catch typos early.
+ */
+export function customTheme(
+  name: string,
+  palette: Record<string, string>,
+): Record<string, unknown> {
+  for (const key of Object.keys(palette)) {
+    if (!VALID_CUSTOM_KEYS.has(key)) {
+      const validList = [...VALID_CUSTOM_KEYS].sort().join(", ");
+      throw new Error(`Unknown key "${key}" in custom theme. Valid keys: ${validList}`);
+    }
+  }
+  return { name, ...palette };
+}
+
 // =========================================================================
 // Position
 // =========================================================================

@@ -5,7 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
-import { autoId, leafNode, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, leafNode, putIf } from "../build.js";
 import type { A11y, Direction, StyleMap } from "../types.js";
 import { encodeA11y, encodeStyleMap } from "../types.js";
 
@@ -35,7 +35,7 @@ export function Rule(props: RuleProps): UINode {
   putIf(p, props.height, "height");
   putIf(p, props.thickness, "thickness");
   putIf(p, props.style, "style", encodeStyleMap);
-  putIf(p, props.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, props.a11y, { role: "splitter" }, encodeA11y);
   return leafNode(id, "rule", p);
 }
 

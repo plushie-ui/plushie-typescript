@@ -11,6 +11,7 @@ import { ANIMATION_DESCRIPTOR } from "../animation/transition.js";
 import { autoId } from "../tree/node.js";
 import type { Handler, UINode } from "../types.js";
 import { type HandlerMeta, registerHandler, withHandlersMeta } from "./handlers.js";
+import type { A11y } from "./types.js";
 
 /**
  * Animation descriptor type. Any value with the ANIMATION_DESCRIPTOR symbol.
@@ -93,6 +94,22 @@ export function putIf(
     props[key] = encode ? encode(value as never) : value;
   }
   return props;
+}
+
+/**
+ * Apply default a11y values to the wire props record.
+ * Merges defaults under the `a11y` key, preserving any
+ * user-provided a11y fields. User-provided `role` overrides
+ * the default.
+ */
+export function applyA11yDefaults(
+  props: Record<string, unknown>,
+  userA11y: A11y | undefined,
+  defaults: Partial<A11y>,
+  encode: (v: A11y) => unknown,
+): void {
+  const merged: A11y = { ...defaults, ...userA11y };
+  props["a11y"] = encode(merged);
 }
 
 /**

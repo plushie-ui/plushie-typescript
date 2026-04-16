@@ -37,10 +37,26 @@ import {
   PROTOCOL_VERSION,
 } from "./client/protocol.js";
 import type { Transport } from "./client/transport.js";
+import {
+  type DevOverlay,
+  dismissMs,
+  frozenThreshold,
+  handleOverlayAction,
+  maybeInjectOverlay,
+  overlayAction,
+  overlayEventId,
+} from "./dev-overlay.js";
+import { resetMemoCounter } from "./memo.js";
 import { nativeWidgetConfigKey } from "./native-widget.js";
 import * as SubscriptionMod from "./subscription.js";
 import { diff } from "./tree/diff.js";
-import { type NormalizeContext, normalize, type WireNode } from "./tree/normalize.js";
+import {
+  type MemoCache,
+  type NormalizeContext,
+  normalize,
+  type WidgetViewCache,
+  type WireNode,
+} from "./tree/normalize.js";
 import { detectWindows } from "./tree/search.js";
 import type {
   Command,
@@ -49,6 +65,7 @@ import type {
   Handler,
   RendererExit,
   Subscription,
+  SystemEvent,
   UpdateResult,
   WidgetEvent,
 } from "./types.js";
@@ -89,7 +106,7 @@ interface RuntimeState<M> {
   windowIds: Set<string>;
   windowProps: Map<string, Record<string, unknown>>;
   asyncTasks: Map<string, { controller: AbortController; nonce: number }>;
-  pendingTimers: Map<string, ReturnType<typeof setTimeout>>;
+  pendingTimers: Map<string, { timer: ReturnType<typeof setTimeout>; nonce: number }>;
   pendingEffects: Map<string, { tag: string; timer: ReturnType<typeof setTimeout> }>;
   pendingStubAcks: Map<string, { resolve: () => void; reject: (err: Error) => void }>;
   pendingAwaitAsync: Map<string, { resolve: () => void; timer: ReturnType<typeof setTimeout> }>;
@@ -107,6 +124,13 @@ interface RuntimeState<M> {
   restartCount: number;
   coalescePending: boolean;
   pendingCoalesce: Map<string, Event>;
+  widgetStatuses: Map<string, string>;
+  focusedWidgetId: string | null;
+  memoCache: MemoCache;
+  widgetViewCache: WidgetViewCache;
+  devOverlay: DevOverlay | null;
+  devOverlayTimer: ReturnType<typeof setTimeout> | null;
+  consecutiveViewErrors: number;
 }
 
 // =========================================================================
@@ -132,6 +156,7 @@ export class Runtime<M> {
   private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
   private started = false;
   private stopped = false;
+  private restarting = false;
   private nextNonce = 0;
   private nextInteractId = 0;
 
@@ -170,6 +195,13 @@ export class Runtime<M> {
       restartCount: 0,
       coalescePending: false,
       pendingCoalesce: new Map(),
+      widgetStatuses: new Map(),
+      focusedWidgetId: null,
+      memoCache: new Map(),
+      widgetViewCache: new Map(),
+      devOverlay: null,
+      devOverlayTimer: null,
+      consecutiveViewErrors: 0,
     };
   }
 
@@ -181,6 +213,11 @@ export class Runtime<M> {
   /** Current normalized wire tree. */
   tree(): WireNode | null {
     return this.state.tree;
+  }
+
+  /** The full scoped ID of the currently focused widget, or null. */
+  focusedWidgetId(): string | null {
+    return this.state.focusedWidgetId;
   }
 
   /** Inject an external event into the update cycle. */
@@ -378,8 +415,8 @@ export class Runtime<M> {
     this.state.asyncTasks.clear();
 
     // Cancel all pending timers
-    for (const [, timer] of this.state.pendingTimers) {
-      clearTimeout(timer);
+    for (const [, entry] of this.state.pendingTimers) {
+      clearTimeout(entry.timer);
     }
     this.state.pendingTimers.clear();
 
@@ -527,6 +564,12 @@ export class Runtime<M> {
   }
 
   private dispatchEvent(event: Event): void {
+    // Intercept status events for focus tracking and derive focused/blurred events.
+    if (event.kind === "widget" && (event as WidgetEvent).type === "status") {
+      this.handleStatusEvent(event as WidgetEvent);
+      return;
+    }
+
     // Capture diagnostic events before dispatching
     if (event.kind === "widget" && (event as WidgetEvent).type === "diagnostic") {
       this.state.diagnostics.push(event as Diagnostic);
@@ -566,6 +609,12 @@ export class Runtime<M> {
       }
     }
 
+    // Intercept dev overlay events (toggle, dismiss) before app handlers
+    if (event.kind === "widget" && overlayEventId((event as WidgetEvent).id)) {
+      this.handleOverlayEvent((event as WidgetEvent).id);
+      return;
+    }
+
     // Route through widget handler handlers before inline handlers / update
     if (this.state.widgetHandlerRegistry.size > 0) {
       const dispatchResult = dispatchThroughWidgets(this.state.widgetHandlerRegistry, event);
@@ -594,6 +643,71 @@ export class Runtime<M> {
     // Fall through to update()
     if (this.config.update) {
       this.runUpdate(event);
+    }
+  }
+
+  private handleStatusEvent(event: WidgetEvent): void {
+    const status = typeof event.value === "string" ? event.value : null;
+    if (!status) return;
+
+    const scopedId =
+      event.scope.length === 0 ? event.id : [...event.scope].reverse().join("/") + "/" + event.id;
+    const fullId = `${event.windowId}\0${scopedId}`;
+    const prevStatus = this.state.widgetStatuses.get(fullId) ?? null;
+    this.state.widgetStatuses.set(fullId, status);
+
+    if (status === "focused") {
+      this.state.focusedWidgetId = fullId;
+    } else if (prevStatus === "focused" && this.state.focusedWidgetId === fullId) {
+      this.state.focusedWidgetId = null;
+    }
+
+    if (prevStatus !== "focused" && status === "focused") {
+      this.dispatchEvent({ ...event, type: "focused", value: null, data: null });
+    } else if (prevStatus === "focused" && status !== "focused") {
+      this.dispatchEvent({ ...event, type: "blurred", value: null, data: null });
+    }
+  }
+
+  private handleOverlayEvent(eventId: string): void {
+    if (!this.state.devOverlay) return;
+
+    const action = overlayAction(eventId);
+    const result = handleOverlayAction(action, this.state.devOverlay);
+
+    switch (result.type) {
+      case "updated":
+        this.state.devOverlay = result.overlay;
+        if (!result.overlay.expanded && result.overlay.status === "succeeded") {
+          this.scheduleOverlayDismiss();
+        }
+        this.renderAndSync(false);
+        break;
+      case "dismissed":
+        this.cancelOverlayTimer();
+        this.state.devOverlay = null;
+        this.renderAndSync(false);
+        break;
+      case "noop":
+        break;
+    }
+  }
+
+  private scheduleOverlayDismiss(): void {
+    this.cancelOverlayTimer();
+    this.state.devOverlayTimer = setTimeout(() => {
+      this.state.devOverlayTimer = null;
+      if (this.state.devOverlay && !this.state.devOverlay.expanded) {
+        this.state.devOverlay = null;
+        this.renderAndSync(false);
+      }
+    }, dismissMs());
+  }
+
+  private cancelOverlayTimer(): void {
+    if (this.state.devOverlayTimer !== null) {
+      clearTimeout(this.state.devOverlayTimer);
+      this.state.devOverlayTimer = null;
     }
   }
 
@@ -686,13 +800,35 @@ export class Runtime<M> {
       const viewResult = this.config.view(this.state.model as never);
       this.validateRootWindows(viewResult);
 
-      // Build normalization context with widget handler registry
+      // Reset memo counter so memo() IDs are stable across renders
+      resetMemoCounter();
+
+      // Build normalization context with widget handler registry and caches
       const newEntries = new Map<string, RegistryEntry>();
+      const memo = new Map<string, import("./tree/normalize.js").MemoCacheEntry>();
+      const widgetView = new Map<string, import("./tree/normalize.js").WidgetViewCacheEntry>();
       const normalizeCtx: NormalizeContext = {
         registry: this.state.widgetHandlerRegistry,
         newEntries,
+        memoPrev: this.state.memoCache,
+        memo,
+        widgetViewPrev: this.state.widgetViewCache,
+        widgetView,
       };
       const tree = normalize(viewResult, normalizeCtx);
+
+      // Capture new caches
+      this.state.memoCache = memo;
+      this.state.widgetViewCache = widgetView;
+
+      // Clear frozen-UI overlay on successful render
+      if (this.state.devOverlay && this.state.devOverlay.status === "frozen_ui") {
+        this.state.devOverlay = null;
+      }
+      this.state.consecutiveViewErrors = 0;
+
+      // Inject dev overlay into tree
+      const treeWithOverlay = maybeInjectOverlay(tree, this.state.devOverlay) ?? tree;
 
       // Update widget handler registry from normalization results
       if (newEntries.size > 0) {
@@ -707,15 +843,15 @@ export class Runtime<M> {
 
       // Diff and send
       if (forceSnapshot || this.state.tree === null) {
-        this.send(encodeSnapshot(this.sessionId, tree as unknown as WireMessage));
+        this.send(encodeSnapshot(this.sessionId, treeWithOverlay as unknown as WireMessage));
       } else {
-        const ops = diff(this.state.tree, tree);
+        const ops = diff(this.state.tree, treeWithOverlay);
         if (ops.length > 0) {
           this.send(encodePatch(this.sessionId, ops as unknown as WirePatchOp[]));
         }
       }
 
-      this.state.tree = tree;
+      this.state.tree = treeWithOverlay;
 
       // Sync subscriptions
       this.syncSubscriptions();
@@ -726,6 +862,27 @@ export class Runtime<M> {
       // Revert widget handler registry to prevent state-tree desync
       this.state.widgetHandlerRegistry = registryBefore;
       this.handleUpdateError(error);
+
+      // Track consecutive view errors and inject frozen-UI overlay
+      this.state.consecutiveViewErrors++;
+      if (
+        this.state.consecutiveViewErrors === frozenThreshold() &&
+        !this.state.devOverlay &&
+        this.state.tree
+      ) {
+        this.state.devOverlay = { status: "frozen_ui", detail: "", expanded: false };
+        const patched = maybeInjectOverlay(this.state.tree, this.state.devOverlay);
+        if (patched) {
+          const ops = diff(this.state.tree, patched);
+          if (ops.length > 0) {
+            this.send(encodePatch(this.sessionId, ops as unknown as WirePatchOp[]));
+          }
+          this.state.tree = patched;
+        }
+      }
+
+      // Signal that the tree may be out of sync with the model
+      this.dispatchDesyncEvent(error);
     }
   }
 
@@ -859,19 +1016,23 @@ export class Runtime<M> {
     this.state.subscriptionMap = newKeys;
   }
 
+  private static timerNonce = 0;
+
   private startTimerSubscription(key: string, interval: number, tag: string): void {
     const tick = () => {
       const event: Event = { kind: "timer", tag: tag, timestamp: Date.now() };
       this.handleEvent(event);
-      // Re-arm for next tick (Elixir pattern: interval measured from end of processing)
       if (this.state.pendingTimers.has(key)) {
-        this.state.pendingTimers.set(
-          key,
-          setTimeout(tick, interval) as ReturnType<typeof setTimeout>,
-        );
+        this.state.pendingTimers.set(key, {
+          timer: setTimeout(tick, interval) as ReturnType<typeof setTimeout>,
+          nonce: ++Runtime.timerNonce,
+        });
       }
     };
-    this.state.pendingTimers.set(key, setTimeout(tick, interval) as ReturnType<typeof setTimeout>);
+    this.state.pendingTimers.set(key, {
+      timer: setTimeout(tick, interval) as ReturnType<typeof setTimeout>,
+      nonce: ++Runtime.timerNonce,
+    });
   }
 
   private startSubscription(key: string, sub: Subscription): void {
@@ -885,9 +1046,9 @@ export class Runtime<M> {
 
   private stopSubscription(key: string, sub?: Subscription): void {
     // Check if it's a timer
-    const timer = this.state.pendingTimers.get(key);
-    if (timer) {
-      clearTimeout(timer);
+    const entry = this.state.pendingTimers.get(key);
+    if (entry) {
+      clearTimeout(entry.timer);
       this.state.pendingTimers.delete(key);
       return;
     }
@@ -1008,12 +1169,16 @@ export class Runtime<M> {
         const event = cmd.payload["event"] as Event;
         const timerKey = `send_after:${JSON.stringify(event)}`;
         const existing = this.state.pendingTimers.get(timerKey);
-        if (existing) clearTimeout(existing);
+        if (existing) clearTimeout(existing.timer);
+        const nonce = ++Runtime.timerNonce;
         const timer = setTimeout(() => {
-          this.state.pendingTimers.delete(timerKey);
-          this.handleEvent(event);
+          const current = this.state.pendingTimers.get(timerKey);
+          if (current && current.nonce === nonce) {
+            this.state.pendingTimers.delete(timerKey);
+            this.handleEvent(event);
+          }
         }, delay);
-        this.state.pendingTimers.set(timerKey, timer);
+        this.state.pendingTimers.set(timerKey, { timer, nonce });
         break;
       }
 
@@ -1091,8 +1256,13 @@ export class Runtime<M> {
         const value = cmd.payload["value"];
         const mapper = cmd.payload["mapper"] as ((v: unknown) => unknown) | undefined;
         if (mapper) {
-          const mappedValue = mapper(value);
-          // Defer to match Elixir's mailbox-based dispatch
+          let mappedValue: unknown;
+          try {
+            mappedValue = mapper(value);
+          } catch (mapperError: unknown) {
+            this.handleUpdateError(mapperError, "done mapper");
+            break;
+          }
           queueMicrotask(() => {
             if (this.config.update) {
               this.runUpdate(mappedValue as Event);
@@ -1272,7 +1442,7 @@ export class Runtime<M> {
       kind: "system",
       type: response.kind,
       tag: response.tag,
-      data: response.data,
+      value: response.data,
     });
   }
 
@@ -1359,12 +1529,12 @@ export class Runtime<M> {
   // Error resilience
   // =======================================================================
 
-  private handleUpdateError(error: unknown): void {
+  private handleUpdateError(error: unknown, label = "update"): void {
     this.state.consecutiveErrors++;
     const count = this.state.consecutiveErrors;
 
     if (count <= 10) {
-      console.error(`[plushie] Error in update cycle:`, error);
+      console.error(`[plushie] Error in ${label}:`, error);
     } else if (count <= 100) {
       if (count % 10 === 0) {
         console.debug(`[plushie] ${String(count)} consecutive errors (suppressing details)`);
@@ -1376,7 +1546,30 @@ export class Runtime<M> {
     }
   }
 
+  private dispatchingDesync = false;
+
+  private dispatchDesyncEvent(error: unknown): void {
+    if (this.dispatchingDesync) return;
+    this.dispatchingDesync = true;
+    try {
+      const desyncEvent: SystemEvent = {
+        kind: "system",
+        type: "view_desync",
+        tag: "view_desync",
+        value: {
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
+      if (this.config.update) {
+        this.runUpdate(desyncEvent);
+      }
+    } finally {
+      this.dispatchingDesync = false;
+    }
+  }
+
   private handleRendererClose(reason: string): void {
+    if (this.restarting) return;
     this.cancelHeartbeat();
     console.warn(`[plushie] Renderer closed: ${reason}`);
 
@@ -1427,7 +1620,7 @@ export class Runtime<M> {
           kind: "system",
           type: "recovery_failed",
           tag: "recovery_failed",
-          data: {
+          value: {
             exit_reason: reason,
             error: exitError instanceof Error ? exitError.message : String(exitError),
           },
@@ -1443,6 +1636,7 @@ export class Runtime<M> {
   }
 
   private scheduleRestart(): void {
+    this.restarting = true;
     const delay = Math.min(this.restartBaseMs * 2 ** this.state.restartCount, this.restartMaxMs);
     this.state.restartCount++;
 
@@ -1476,12 +1670,17 @@ export class Runtime<M> {
           // Reset restart counter on success
           this.state.restartCount = 0;
           this.state.consecutiveErrors = 0;
+          this.state.widgetStatuses.clear();
+          this.state.focusedWidgetId = null;
           this.resetHeartbeat();
+          this.restarting = false;
           console.info("[plushie] Renderer restarted successfully");
         } catch (err) {
           console.error("[plushie] Restart failed:", err);
           if (this.state.restartCount < this.maxRestarts) {
             this.scheduleRestart();
+          } else {
+            this.restarting = false;
           }
         }
       })();

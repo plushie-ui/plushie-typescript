@@ -19,6 +19,7 @@ export type {
   DragBounds,
   HitRect,
   InteractiveOpts,
+  InteractiveShape,
 } from "./interactive.js";
 export { interactive } from "./interactive.js";
 export type { LayerNode } from "./layer.js";
@@ -66,4 +67,4 @@ export {
 export type { Dash, Stroke, StrokeOpts } from "./stroke.js";
 export { stroke } from "./stroke.js";
 export type { ClipRect, TransformValue } from "./transform.js";
-export { clip, rotate, scale, scaleUniform, translate } from "./transform.js";
+export { clip, degToRad, radToDeg, rotate, scale, scaleUniform, translate } from "./transform.js";

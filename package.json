@@ -100,6 +100,7 @@
     "lint": "biome check src/ test/ examples/",
     "format": "biome format --write src/ test/ examples/",
     "test": "vitest run",
+    "test:headless": "PLUSHIE_TEST_BACKEND=headless vitest run",
     "test:watch": "vitest",
     "docs": "typedoc",
     "docs:check": "typedoc",

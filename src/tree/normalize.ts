@@ -18,9 +18,11 @@ import type { UINode } from "../types.js";
 import {
   getStandardProps,
   isPlaceholder,
+  makeEntry,
   type Registry,
   type RegistryEntry,
   renderPlaceholder,
+  type WidgetDef,
 } from "../widget-handler.js";
 
 /**
@@ -33,6 +35,32 @@ export interface WireNode {
   readonly props: Readonly<Record<string, unknown>>;
   readonly children: readonly WireNode[];
 }
+
+/**
+ * A cached memo subtree: the normalized tree and the registry entries
+ * accumulated during that subtree's normalization.
+ */
+export interface MemoCacheEntry {
+  readonly deps: unknown;
+  readonly tree: WireNode;
+  readonly entries: ReadonlyMap<string, RegistryEntry>;
+}
+
+/**
+ * A cached widget view: the normalized tree, registry entries, and the
+ * key returned by the widget's cacheKey function.
+ */
+export interface WidgetViewCacheEntry {
+  readonly key: unknown;
+  readonly tree: WireNode;
+  readonly entries: ReadonlyMap<string, RegistryEntry>;
+}
+
+/** Memo cache: maps memo site keys to cached subtrees. */
+export type MemoCache = ReadonlyMap<string, MemoCacheEntry>;
+
+/** Widget view cache: maps widget keys to cached views. */
+export type WidgetViewCache = ReadonlyMap<string, WidgetViewCacheEntry>;
 
 /**
  * Check whether an ID is auto-generated (unstable, doesn't create scope).
@@ -99,6 +127,14 @@ export interface NormalizeContext {
   readonly registry?: Registry | undefined;
   /** Accumulator for new registry entries discovered during expansion. */
   readonly newEntries?: Map<string, RegistryEntry> | undefined;
+  /** Previous render's memo cache for cache hit detection. */
+  readonly memoPrev?: MemoCache | undefined;
+  /** New memo cache being built during this normalization pass. */
+  readonly memo?: Map<string, MemoCacheEntry> | undefined;
+  /** Previous render's widget view cache for cache_key hit detection. */
+  readonly widgetViewPrev?: WidgetViewCache | undefined;
+  /** New widget view cache being built during this normalization pass. */
+  readonly widgetView?: Map<string, WidgetViewCacheEntry> | undefined;
 }
 
 export function normalize(
@@ -163,6 +199,11 @@ function normalizeNode(
   const type = node.type;
   const currentWindowId = type === "window" ? id : windowId;
 
+  // Memo cache: skip re-normalization when deps match
+  if (type === "__memo__") {
+    return normalizeMemoNode(node, scope, windowId, ctx, depth);
+  }
+
   // Validate user-provided IDs
   if (!isAutoId(id)) {
     validateUserId(id);
@@ -176,16 +217,27 @@ function normalizeNode(
   // the rendered output in place.
   if (ctx?.registry && isPlaceholder(node)) {
     const standardProps = getStandardProps(node);
+
     const result = renderPlaceholder(node, currentWindowId, scopedId, id, ctx.registry);
     if (result) {
       // Record the new entry for registry derivation
       if (ctx.newEntries) {
         ctx.newEntries.set(result.key, result.entry);
       }
-      // Normalize the rendered output (which may itself contain children)
-      // The rendered node's ID is already set to scopedId by renderPlaceholder,
-      // so we normalize it as a root (no additional scoping).
-      return normalizeRenderedWidget(
+
+      // Check widget view cache before normalizing (after recording entry so
+      // the widget's own entry is in the delta snapshot)
+      const cached = tryWidgetViewCache(node, currentWindowId, scopedId, ctx);
+      if (cached) {
+        return cached;
+      }
+
+      // Snapshot entries after widget's own entry, before child normalization
+      const entriesBefore = ctx.newEntries
+        ? new Map(ctx.newEntries)
+        : new Map<string, RegistryEntry>();
+
+      const normalized = normalizeRenderedWidget(
         result.node,
         scopedId,
         scope,
@@ -194,6 +246,11 @@ function normalizeNode(
         standardProps,
         depth,
       );
+
+      // Store in widget view cache if the def has a cacheKey
+      storeWidgetViewCache(node, currentWindowId, scopedId, ctx, entriesBefore, normalized);
+
+      return normalized;
     }
   }
 
@@ -224,6 +281,9 @@ function normalizeNode(
       ids.add(child.id);
     }
   }
+
+  // Infer position_in_set/size_of_set for radio widgets sharing a group
+  inferRadioA11y(children);
 
   // Resolve a11y ID references relative to the current scope
   const props = resolveA11yRefs(node.props, scope);
@@ -316,4 +376,225 @@ function resolveA11yRefs(props: Record<string, unknown>, scope: string): Record<
     }
   }
   return changed ? { ...props, a11y } : props;
+}
+
+// -- Memo cache handling -------------------------------------------------------
+
+function normalizeMemoNode(
+  node: UINode,
+  scope: string,
+  windowId: string | undefined,
+  ctx: NormalizeContext | undefined,
+  depth: number,
+): WireNode {
+  const meta = node.meta as Record<string, unknown>;
+  const deps = meta["__memo_deps__"];
+  const body = meta["__memo_fun__"] as () => UINode | readonly UINode[] | null;
+  const nodeId = node.id;
+
+  const cacheKey = `${nodeId}\0${scope}\0${windowId ?? ""}`;
+  const prev = ctx?.memoPrev?.get(cacheKey);
+
+  if (prev && depsEqual(prev.deps, deps)) {
+    if (ctx?.memo && ctx?.newEntries) {
+      for (const [key, entry] of prev.entries) {
+        const current = ctx.registry?.get(key);
+        const refreshed = current
+          ? makeEntry(current.def as WidgetDef<unknown, unknown>, current.props, current.state)
+          : entry;
+        ctx.newEntries.set(key, refreshed);
+      }
+      ctx.memo.set(cacheKey, prev);
+    }
+    return prev.tree;
+  }
+
+  const entriesBefore = ctx?.newEntries
+    ? new Map(ctx.newEntries)
+    : new Map<string, RegistryEntry>();
+
+  const result = body();
+  const tree = normalizeMemoBody(result, nodeId, scope, windowId, ctx, depth);
+
+  const deltaEntries = new Map<string, RegistryEntry>();
+  if (ctx?.newEntries) {
+    for (const [key, value] of ctx.newEntries) {
+      if (!entriesBefore.has(key)) {
+        deltaEntries.set(key, value);
+      }
+    }
+  }
+
+  const entry: MemoCacheEntry = { deps, tree, entries: deltaEntries };
+  ctx?.memo?.set(cacheKey, entry);
+
+  return tree;
+}
+
+function normalizeMemoBody(
+  result: UINode | readonly UINode[] | null,
+  memoNodeId: string,
+  scope: string,
+  windowId: string | undefined,
+  ctx: NormalizeContext | undefined,
+  depth: number,
+): WireNode {
+  if (result === null) {
+    return { id: `${memoNodeId}_nil`, type: "container", props: {}, children: [] };
+  }
+
+  if (Array.isArray(result)) {
+    const children = result
+      .filter((child): child is UINode => child !== null && child !== undefined)
+      .map((child) => normalizeNode(child, scope, windowId, ctx, depth + 1));
+
+    if (children.length === 1) {
+      return children[0]!;
+    }
+    return { id: `${memoNodeId}_wrap`, type: "container", props: {}, children };
+  }
+
+  return normalizeNode(result as UINode, scope, windowId, ctx, depth);
+}
+
+function depsEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== typeof b) return false;
+
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!depsEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+
+  if (typeof a === "object" && typeof b === "object") {
+    const aObj = a as Record<string, unknown>;
+    const bObj = b as Record<string, unknown>;
+    const aKeys = Object.keys(aObj);
+    const bKeys = Object.keys(bObj);
+    if (aKeys.length !== bKeys.length) return false;
+    for (const key of aKeys) {
+      if (!depsEqual(aObj[key], bObj[key])) return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+// -- Widget view cache handling ------------------------------------------------
+
+function widgetRegKey(windowId: string | undefined, scopedId: string): string {
+  return `${windowId ?? ""}\0${scopedId}`;
+}
+
+function getDefFromPlaceholder(node: UINode): WidgetDef<unknown, unknown> | null {
+  if (!node.meta || !("__widget_handler__" in node.meta)) return null;
+  return node.meta["__widget_handler__"] as WidgetDef<unknown, unknown>;
+}
+
+function tryWidgetViewCache(
+  node: UINode,
+  windowId: string | undefined,
+  scopedId: string,
+  ctx: NormalizeContext,
+): WireNode | null {
+  const def = getDefFromPlaceholder(node);
+  if (!def || !def.cacheKey) return null;
+
+  const ck = widgetRegKey(windowId, scopedId);
+  const prev = ctx.widgetViewPrev?.get(ck);
+  if (!prev) return null;
+
+  const current = ctx.registry?.get(ck);
+  const currentProps = node.meta?.["__widget_handler_props__"];
+  const newKey = def.cacheKey(currentProps, current?.state);
+  if (!depsEqual(prev.key, newKey)) return null;
+
+  if (ctx.newEntries && ctx.widgetView) {
+    for (const [key, entry] of prev.entries) {
+      const reg = ctx.registry?.get(key);
+      const refreshed = reg
+        ? makeEntry(reg.def as WidgetDef<unknown, unknown>, reg.props, reg.state)
+        : entry;
+      ctx.newEntries.set(key, refreshed);
+    }
+    ctx.widgetView.set(ck, prev);
+  }
+
+  return prev.tree;
+}
+
+function storeWidgetViewCache(
+  node: UINode,
+  windowId: string | undefined,
+  scopedId: string,
+  ctx: NormalizeContext,
+  entriesBefore: Map<string, RegistryEntry>,
+  normalized: WireNode,
+): void {
+  const def = getDefFromPlaceholder(node);
+  if (!def || !def.cacheKey) return;
+
+  const ck = widgetRegKey(windowId, scopedId);
+  const current = ctx.newEntries?.get(ck);
+  const currentProps = node.meta?.["__widget_handler_props__"];
+  const key = def.cacheKey(currentProps, current?.state);
+
+  const deltaEntries = new Map<string, RegistryEntry>();
+  if (ctx.newEntries) {
+    for (const [k, v] of ctx.newEntries) {
+      if (!entriesBefore.has(k)) {
+        deltaEntries.set(k, v);
+      }
+    }
+  }
+
+  ctx.widgetView?.set(ck, { key, tree: normalized, entries: deltaEntries });
+}
+
+/**
+ * Scan normalized children for radio widgets sharing a `group` prop
+ * and inject `position_in_set` / `size_of_set` into their a11y props.
+ * Respects manual overrides: if `position_in_set` is already set, only
+ * `size_of_set` is filled from the group total.
+ */
+function inferRadioA11y(children: WireNode[]): void {
+  if (children.length < 2) return;
+
+  const groups = new Map<string, Array<{ idx: number; node: WireNode }>>();
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]!;
+    if (child.type !== "radio") continue;
+    const group = child.props["group"];
+    if (typeof group !== "string") continue;
+    let members = groups.get(group);
+    if (!members) {
+      members = [];
+      groups.set(group, members);
+    }
+    members.push({ idx: i, node: child });
+  }
+
+  for (const members of groups.values()) {
+    const size = members.length;
+    for (let pos = 0; pos < members.length; pos++) {
+      const { idx, node } = members[pos]!;
+      const a11y = (node.props["a11y"] ?? {}) as Record<string, unknown>;
+      const hasPosition = a11y["position_in_set"] !== undefined;
+      const hasSize = a11y["size_of_set"] !== undefined;
+      if (hasPosition && hasSize) continue;
+
+      const patched = { ...a11y };
+      if (!hasPosition) patched["position_in_set"] = pos + 1;
+      if (!hasSize) patched["size_of_set"] = size;
+      (children[idx] as { props: Record<string, unknown> }).props = {
+        ...node.props,
+        a11y: patched,
+      };
+    }
+  }
 }

@@ -5,7 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
-import { autoId, leafNode, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, leafNode, putIf } from "../build.js";
 import type { A11y, ContentFit, FilterMethod, Length } from "../types.js";
 import { encodeA11y, encodeLength } from "../types.js";
 
@@ -61,7 +61,7 @@ export function Image(props: ImageProps): UINode {
   putIf(p, props.alt, "alt");
   putIf(p, props.description, "description");
   putIf(p, props.decorative, "decorative");
-  putIf(p, props.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, props.a11y, { role: "image" }, encodeA11y);
   return leafNode(id, "image", p);
 }
 

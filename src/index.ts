@@ -34,6 +34,9 @@ export type {
 } from "./app.js";
 export { app } from "./app.js";
 
+export type { EventSpec, FieldType } from "./event-spec.js";
+export { builtinSpec, validateEmitData, validateFieldType } from "./event-spec.js";
+export { memo } from "./memo.js";
 // Widget handler system (stateful pure-TypeScript widgets).
 export type {
   EventAction,
@@ -43,6 +46,9 @@ export type {
   WidgetOpts,
 } from "./widget-handler.js";
 export { buildWidget } from "./widget-handler.js";
+
+export type { WidgetBuilder, WidgetOverrides, WidgetSet } from "./widget-set.js";
+export { createWidgetSet } from "./widget-set.js";
 
 // Command constructors as a namespace-style object.
 import * as Command from "./command.js";
@@ -55,9 +61,11 @@ import * as Subscription from "./subscription.js";
 // Event type guards.
 export {
   isAsync,
+  isBlurred,
   isClick,
   isDrag,
   isEffect,
+  isFocused,
   isIme,
   isInput,
   isKey,
@@ -153,6 +161,7 @@ export {
   easeOutQuad,
   interpolate,
   linear,
+  looping,
   springEase,
   startAnimation,
 } from "./animation/tween.js";

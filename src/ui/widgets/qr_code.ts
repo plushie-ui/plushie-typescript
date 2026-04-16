@@ -5,7 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
-import { autoId, leafNode, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, leafNode, putIf } from "../build.js";
 import type { A11y, Color } from "../types.js";
 import { encodeA11y, encodeColor } from "../types.js";
 
@@ -40,7 +40,7 @@ export function QrCode(props: QrCodeProps): UINode {
   putIf(p, props.background, "background", encodeColor);
   putIf(p, props.alt, "alt");
   putIf(p, props.description, "description");
-  putIf(p, props.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, props.a11y, { role: "image" }, encodeA11y);
   return leafNode(id, "qr_code", p);
 }
 

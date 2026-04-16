@@ -114,6 +114,8 @@ export interface WidgetEvent extends EventBase {
     | "drag_end"
     | "key_press"
     | "key_release"
+    // Widget status tracking (renderer sends status changes)
+    | "status"
     // Scrollable viewport events
     | "scrolled"
     // Pane grid events
@@ -297,7 +299,7 @@ export interface SystemEvent extends EventBase {
   readonly kind: "system";
   readonly type: string;
   readonly tag: string;
-  readonly data: unknown;
+  readonly value: unknown;
 }
 
 export interface TimerEvent extends EventBase {

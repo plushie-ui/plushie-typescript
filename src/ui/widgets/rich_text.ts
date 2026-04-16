@@ -5,7 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
-import { autoId, leafNode, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, leafNode, putIf } from "../build.js";
 import type { A11y, Color, Font, Length, LineHeight, Wrapping } from "../types.js";
 import { encodeA11y, encodeColor, encodeFont, encodeLength, encodeLineHeight } from "../types.js";
 
@@ -47,7 +47,7 @@ export function RichText(props: RichTextProps): UINode {
   putIf(p, props.lineHeight, "line_height", encodeLineHeight);
   putIf(p, props.wrapping, "wrapping");
   putIf(p, props.ellipsis, "ellipsis");
-  putIf(p, props.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, props.a11y, { role: "label" }, encodeA11y);
   return leafNode(id, "rich_text", p);
 }
 

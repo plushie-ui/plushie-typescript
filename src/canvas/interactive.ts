@@ -6,7 +6,7 @@
  * If the shape is a leaf, it is wrapped as the sole child of a new group.
  */
 
-import type { GroupShape } from "./shapes.js";
+import type { CanvasShape, GroupShape } from "./shapes.js";
 
 export interface DragBounds {
   readonly min_x?: number;
@@ -22,6 +22,30 @@ export interface HitRect {
   readonly h: number;
 }
 
+/**
+ * A group shape with interactive fields. Produced by `interactive()`.
+ * Encodes as `type: "group"` on the wire, same as structural groups.
+ */
+export interface InteractiveShape extends GroupShape {
+  readonly id: string;
+  readonly on_click?: boolean;
+  readonly on_hover?: boolean;
+  readonly draggable?: boolean;
+  readonly drag_axis?: "x" | "y" | "both";
+  readonly drag_bounds?: DragBounds;
+  readonly cursor?: string;
+  readonly hit_rect?: HitRect;
+  readonly tooltip?: string;
+  readonly hover_style?: Readonly<Record<string, unknown>>;
+  readonly pressed_style?: Readonly<Record<string, unknown>>;
+  readonly focus_style?: Readonly<Record<string, unknown>>;
+  readonly show_focus_ring?: boolean;
+  readonly focus_ring_radius?: number;
+  readonly a11y?: Readonly<Record<string, unknown>>;
+  readonly focusable?: boolean;
+}
+
+/** Interactive element options. */
 export interface InteractiveOpts {
   readonly on_click?: boolean;
   readonly on_hover?: boolean;
@@ -58,35 +82,66 @@ const INTERACTIVE_KEYS: readonly (keyof InteractiveOpts)[] = [
   "focusable",
 ];
 
+function inferA11yDefaults(
+  target: Record<string, unknown>,
+  opts: InteractiveOpts | undefined,
+): void {
+  if (!opts) return;
+  const existing = opts.a11y as Record<string, unknown> | undefined;
+  if (existing?.["role"]) return;
+
+  let role: string | undefined;
+  if (opts.on_click) role = "button";
+  else if (opts.draggable) role = "slider";
+  else if (opts.focusable) {
+    role = "group";
+  }
+
+  if (role) {
+    const a11y = { ...(existing ?? {}), role };
+    target["a11y"] = a11y;
+  }
+}
+
 function mergeInteractiveFields(
   target: Record<string, unknown>,
   opts: InteractiveOpts | undefined,
 ): void {
   if (!opts) return;
   for (const key of INTERACTIVE_KEYS) {
+    if (key === "a11y") continue;
     if (opts[key] !== undefined) target[key] = opts[key];
   }
+  inferA11yDefaults(target, opts);
 }
 
 /**
- * Make a shape interactive.
+ * Make a canvas shape interactive (clickable, draggable, focusable).
  *
  * If the shape is a group, interactive fields are merged at top level.
  * If the shape is a leaf (rect, circle, etc.), it is wrapped as the
- * sole child of a new group.
+ * sole child of a new interactive group.
+ *
+ * @example
+ * ```ts
+ * const btn = interactive(rect({ width: 80, height: 30 }), "btn", {
+ *   onClick: true,
+ *   cursor: "pointer",
+ * });
+ * ```
  */
-export function interactive<T extends Record<string, unknown>>(
-  shape: T,
+export function interactive(
+  shape: CanvasShape,
   id: string,
   opts?: InteractiveOpts,
-): GroupShape {
+): InteractiveShape {
   if (shape["type"] === "group") {
     const result: Record<string, unknown> = { ...shape, id };
     mergeInteractiveFields(result, opts);
-    return result as unknown as GroupShape;
+    return result as unknown as InteractiveShape;
   }
 
   const group: Record<string, unknown> = { type: "group", id, children: [shape] };
   mergeInteractiveFields(group, opts);
-  return group as unknown as GroupShape;
+  return group as unknown as InteractiveShape;
 }

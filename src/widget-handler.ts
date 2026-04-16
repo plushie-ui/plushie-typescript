@@ -41,6 +41,7 @@
  * @module
  */
 
+import { validateEmitData } from "./event-spec.js";
 import type { Event, Subscription, UINode, WidgetEvent } from "./types.js";
 
 // -- Widget definition ------------------------------------------------
@@ -85,32 +86,13 @@ export type EventAction =
  * `Props` is the widget's input from the parent view function.
  */
 export interface WidgetDef<State, Props> {
-  /**
-   * Create the initial state for a new widget instance.
-   *
-   * Optional. When omitted, the widget starts with an empty object as
-   * state (stateless widget). Stateless widgets can still define
-   * handleEvent for event interception.
-   */
   readonly init?: (() => State) | undefined;
-
-  /** Produce the widget's UINode tree. */
   readonly view: (id: string, props: Props, state: State) => UINode;
-
-  /**
-   * Handle an event. Returns the action and (possibly updated) state.
-   *
-   * Optional. Widgets without handleEvent are transparent; events from
-   * their children pass through to the app's update(). Widgets with
-   * handleEvent are opaque by default and should return `{ type: "ignored" }`
-   * explicitly to pass events through.
-   */
   readonly handleEvent?:
     | ((event: Event, state: State) => readonly [EventAction, State])
     | undefined;
-
-  /** Subscriptions for this widget instance (optional). */
   readonly subscriptions?: ((props: Props, state: State) => Subscription[]) | undefined;
+  readonly cacheKey?: ((props: Props, state: State) => unknown) | undefined;
 }
 
 // -- Metadata keys -----------------------------------------------------------
@@ -608,6 +590,10 @@ function walkChain(
       case "emit": {
         // Captured with output; replace event and continue
         const identity = resolveEmitIdentity(currentEvent, widgetId);
+        const err = validateEmitData(action.kind, action.value ?? action.data);
+        if (err) {
+          console.warn(`[plushie] ${err}`);
+        }
         currentEvent = buildEmitEvent(action, identity);
         break;
       }

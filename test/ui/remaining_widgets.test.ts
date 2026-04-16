@@ -54,6 +54,8 @@ import {
   Toggler,
   Tooltip,
   table,
+  tableCell,
+  tableRow,
   text,
   textEditor,
   themer,
@@ -570,13 +572,39 @@ describe("Floating", () => {
 // ---------------------------------------------------------------------------
 
 describe("Table", () => {
-  test("creates table with columns and rows", () => {
-    const cols = [{ key: "name", label: "Name" }];
-    const rows = [{ name: "Alice" }];
+  test("creates table with columns and rows expanded into children", () => {
+    const cols = [
+      { key: "name", label: "Name" },
+      { key: "email", label: "Email" },
+    ];
+    const rows = [{ id: "u1", name: "Alice", email: "a@b.com" }];
     const node = Table({ id: "tbl", columns: cols, rows });
     expect(node.type).toBe("table");
     expect(node.props["columns"]).toEqual(cols);
-    expect(node.props["rows"]).toEqual(rows);
+    expect(node.props["rows"]).toBeUndefined();
+    expect(node.children).toHaveLength(1);
+
+    const row = node.children[0]!;
+    expect(row.type).toBe("table_row");
+    expect(row.id).toBe("u1");
+    expect(row.children).toHaveLength(2);
+
+    const nameCell = row.children[0]!;
+    expect(nameCell.type).toBe("table_cell");
+    expect(nameCell.id).toBe("name");
+    expect(nameCell.props["column"]).toBe("name");
+
+    const emailCell = row.children[1]!;
+    expect(emailCell.type).toBe("table_cell");
+    expect(emailCell.id).toBe("email");
+    expect(emailCell.props["column"]).toBe("email");
+  });
+
+  test("expand_rows uses index-based row ID when row has no id field", () => {
+    const cols = [{ key: "name", label: "Name" }];
+    const rows = [{ name: "Alice" }];
+    const node = Table({ id: "tbl", columns: cols, rows });
+    expect(node.children[0]!.id).toBe("tbl/row/0");
   });
 
   test("encodes sortBy as sort_by and sortOrder as sort_order", () => {
@@ -592,6 +620,24 @@ describe("Table", () => {
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(1);
     expect(handlers[0]!.eventType).toBe("sort");
+  });
+
+  test("tableRow creates a table_row container with children", () => {
+    const cell = tableCell("name", "name", [text("Alice")]);
+    const row = tableRow("user-1", [cell]);
+    expect(row.type).toBe("table_row");
+    expect(row.id).toBe("user-1");
+    expect(row.children).toHaveLength(1);
+  });
+
+  test("tableCell creates a table_cell with column key", () => {
+    const cell = tableCell("email", "email", [text("alice@example.com")]);
+    expect(cell.type).toBe("table_cell");
+    expect(cell.id).toBe("email");
+    expect(cell.props["column"]).toBe("email");
+    expect(cell.props["id"]).toBe("email");
+    expect(cell.children).toHaveLength(1);
+    expect(cell.children[0]!.props["content"]).toBe("alice@example.com");
   });
 });
 

@@ -20,6 +20,8 @@ export interface DevServerOptions {
   readonly debounceMs?: number;
   /** Callback invoked when files change (after debounce). */
   readonly onReload: (changedPaths: string[]) => void;
+  /** Register OS signal handlers for graceful shutdown. Defaults to true. */
+  readonly trapSignals?: boolean;
 }
 
 /**
@@ -32,15 +34,18 @@ export class DevServer {
   private readonly dirs: readonly string[];
   private readonly debounceMs: number;
   private readonly onReload: (changedPaths: string[]) => void;
+  private readonly trapSignals: boolean;
   private watchers: FSWatcher[] = [];
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private changedPaths: Set<string> = new Set();
   private running = false;
+  private signalHandlers: (() => void)[] = [];
 
   constructor(opts: DevServerOptions) {
     this.dirs = opts.dirs;
     this.debounceMs = opts.debounceMs ?? 100;
     this.onReload = opts.onReload;
+    this.trapSignals = opts.trapSignals ?? true;
   }
 
   /** Start watching all configured directories. */
@@ -58,17 +63,38 @@ export class DevServer {
         });
         watcher.on("error", (err) => {
           console.error(`[plushie dev] watcher error on ${resolved}: ${String(err)}`);
+          if (this.running) {
+            const idx = this.watchers.indexOf(watcher);
+            if (idx !== -1) this.watchers.splice(idx, 1);
+            this.restartWatcher(resolved);
+          }
         });
         this.watchers.push(watcher);
       } catch (err) {
         console.error(`[plushie dev] failed to watch ${resolved}: ${String(err)}`);
       }
     }
+
+    if (this.trapSignals) {
+      for (const sig of ["SIGINT", "SIGTERM"] as const) {
+        const handler = (): void => {
+          this.stop();
+          process.exit(0);
+        };
+        process.on(sig, handler);
+        this.signalHandlers.push(() => process.off(sig, handler));
+      }
+    }
   }
 
-  /** Stop watching and cancel any pending debounce. */
+  /** Stop watching, cancel debounce, and remove signal handlers. */
   stop(): void {
     this.running = false;
+
+    for (const cleanup of this.signalHandlers) {
+      cleanup();
+    }
+    this.signalHandlers = [];
 
     if (this.debounceTimer !== null) {
       clearTimeout(this.debounceTimer);
@@ -107,5 +133,29 @@ export class DevServer {
     } catch (err) {
       console.error(`[plushie dev] onReload error: ${String(err)}`);
     }
+  }
+
+  private restartWatcher(resolved: string): void {
+    setTimeout(() => {
+      if (!this.running) return;
+      try {
+        const watcher = watch(resolved, { recursive: true }, (_eventType, filename) => {
+          if (filename !== null && filename !== undefined) {
+            this.handleChange(resolve(resolved, filename));
+          }
+        });
+        watcher.on("error", (err) => {
+          console.error(`[plushie dev] watcher error on ${resolved}: ${String(err)}`);
+          if (this.running) {
+            const idx = this.watchers.indexOf(watcher);
+            if (idx !== -1) this.watchers.splice(idx, 1);
+            this.restartWatcher(resolved);
+          }
+        });
+        this.watchers.push(watcher);
+      } catch (err) {
+        console.error(`[plushie dev] failed to restart watcher on ${resolved}: ${String(err)}`);
+      }
+    }, 1000);
   }
 }

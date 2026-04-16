@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { AsyncEvent, TimerEvent, WidgetEvent } from "../src/index.js";
-import { isAsync, isClick, isTimer, isToggle, target } from "../src/index.js";
+import { isAsync, isBlurred, isClick, isFocused, isTimer, isToggle, target } from "../src/index.js";
 
 const click: WidgetEvent = {
   kind: "widget",
@@ -59,6 +59,38 @@ describe("event type guards", () => {
     expect(isAsync(asyncResult)).toBe(true);
     expect(isAsync(asyncResult, "fetch")).toBe(true);
     expect(isAsync(asyncResult, "other")).toBe(false);
+  });
+
+  test("isFocused matches focused events", () => {
+    const focused: WidgetEvent = {
+      kind: "widget",
+      type: "focused",
+      id: "name_input",
+      scope: [],
+      value: null,
+      data: null,
+      windowId: "main",
+    };
+    expect(isFocused(focused)).toBe(true);
+    expect(isFocused(focused, "name_input")).toBe(true);
+    expect(isFocused(focused, "other")).toBe(false);
+    expect(isFocused(click)).toBe(false);
+  });
+
+  test("isBlurred matches blurred events", () => {
+    const blurred: WidgetEvent = {
+      kind: "widget",
+      type: "blurred",
+      id: "name_input",
+      scope: [],
+      value: null,
+      data: null,
+      windowId: "main",
+    };
+    expect(isBlurred(blurred)).toBe(true);
+    expect(isBlurred(blurred, "name_input")).toBe(true);
+    expect(isBlurred(blurred, "other")).toBe(false);
+    expect(isBlurred(click)).toBe(false);
   });
 });
 

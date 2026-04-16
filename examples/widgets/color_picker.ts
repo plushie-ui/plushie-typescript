@@ -12,6 +12,7 @@ import {
   circle,
   close,
   group,
+  interactive,
   linearGradient,
   lineTo,
   moveTo,
@@ -319,34 +320,44 @@ function cursorShapes(state: ColorPickerState): CanvasShape[] {
   const focusStroke = { stroke: { color: "#3b82f6", width: 3 } };
 
   return [
-    group("hue-cursor", [circle(0, 0, CURSOR_R, { fill: "#ffffff", stroke: cursorStroke })], {
-      x: ringX,
-      y: ringY,
-      focusable: true,
-      on_click: true,
-      focus_style: focusStroke,
-      show_focus_ring: false,
-      a11y: {
-        role: "slider",
-        label: "Hue",
-        value: `${Math.round(state.hue)} degrees`,
-        orientation: "horizontal",
+    interactive(
+      group([circle(0, 0, CURSOR_R, { fill: "#ffffff", stroke: cursorStroke })], {
+        x: ringX,
+        y: ringY,
+      }),
+      "hue-cursor",
+      {
+        focusable: true,
+        on_click: true,
+        focus_style: focusStroke,
+        show_focus_ring: false,
+        a11y: {
+          role: "slider",
+          label: "Hue",
+          value: `${Math.round(state.hue)} degrees`,
+          orientation: "horizontal",
+        },
       },
-    }),
-    group("sv-cursor", [circle(0, 0, CURSOR_R, { fill: "#ffffff", stroke: cursorStroke })], {
-      x: svX,
-      y: svY,
-      focusable: true,
-      on_click: true,
-      focus_style: focusStroke,
-      show_focus_ring: false,
-      a11y: {
-        role: "slider",
-        label: "Saturation and brightness",
-        value: `${Math.round(state.saturation * 100)}% saturation, ${Math.round(state.value * 100)}% brightness`,
-        orientation: "horizontal",
+    ),
+    interactive(
+      group([circle(0, 0, CURSOR_R, { fill: "#ffffff", stroke: cursorStroke })], {
+        x: svX,
+        y: svY,
+      }),
+      "sv-cursor",
+      {
+        focusable: true,
+        on_click: true,
+        focus_style: focusStroke,
+        show_focus_ring: false,
+        a11y: {
+          role: "slider",
+          label: "Saturation and brightness",
+          value: `${Math.round(state.saturation * 100)}% saturation, ${Math.round(state.value * 100)}% brightness`,
+          orientation: "horizontal",
+        },
       },
-    }),
+    ),
   ];
 }
 

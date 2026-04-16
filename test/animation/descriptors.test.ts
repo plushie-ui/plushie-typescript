@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { cubicBezier } from "../../src/animation/easing.js";
+import type { SequenceStep } from "../../src/animation/sequence.js";
 import { sequence } from "../../src/animation/sequence.js";
 import { spring } from "../../src/animation/spring.js";
 import { ANIMATION_DESCRIPTOR, loop, transition } from "../../src/animation/transition.js";
@@ -45,6 +46,22 @@ describe("transition", () => {
   test("repeat sets repeat count", () => {
     const t = transition({ to: 1, duration: 300, repeat: 5 });
     expect(t.repeat).toBe(5);
+  });
+
+  test("rejects negative duration", () => {
+    expect(() => transition({ to: 1, duration: -1 })).toThrow("duration must be a non-negative");
+  });
+
+  test("rejects non-finite duration", () => {
+    expect(() => transition({ to: 1, duration: Infinity })).toThrow(
+      "duration must be a non-negative",
+    );
+  });
+
+  test("rejects non-number duration", () => {
+    expect(() => transition({ to: 1, duration: "fast" as unknown as number })).toThrow(
+      "duration must be a non-negative",
+    );
   });
 });
 
@@ -106,6 +123,15 @@ describe("spring", () => {
     expect(s.from).toBe(0);
     expect(s.on_complete).toBe("settled");
   });
+
+  test("rejects non-positive stiffness", () => {
+    expect(() => spring({ to: 1, stiffness: -1 })).toThrow("stiffness must be a positive");
+    expect(() => spring({ to: 1, stiffness: 0 })).toThrow("stiffness must be a positive");
+  });
+
+  test("rejects non-positive mass", () => {
+    expect(() => spring({ to: 1, mass: 0 })).toThrow("mass must be a positive");
+  });
 });
 
 describe("sequence", () => {
@@ -133,6 +159,16 @@ describe("sequence", () => {
     });
     expect(s.steps[0]!.type).toBe("transition");
     expect(s.steps[1]!.type).toBe("spring");
+  });
+
+  test("rejects empty steps array", () => {
+    expect(() => sequence({ steps: [] })).toThrow("non-empty array");
+  });
+
+  test("rejects non-descriptor steps", () => {
+    expect(() => sequence({ steps: [{ to: 1 }] as unknown as readonly SequenceStep[] })).toThrow(
+      "not an animation descriptor",
+    );
   });
 });
 

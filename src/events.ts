@@ -91,6 +91,26 @@ export function isToggle(
   );
 }
 
+/** Narrows to a focus-gained event, optionally matching a widget ID. */
+export function isFocused(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & { readonly type: "focused" } {
+  return (
+    event.kind === "widget" && event.type === "focused" && (id === undefined || event.id === id)
+  );
+}
+
+/** Narrows to a focus-lost event, optionally matching a widget ID. */
+export function isBlurred(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & { readonly type: "blurred" } {
+  return (
+    event.kind === "widget" && event.type === "blurred" && (id === undefined || event.id === id)
+  );
+}
+
 /** Narrows to a select event (pick list, radio, combo box), optionally matching a widget ID. */
 export function isSelect(
   event: Event,

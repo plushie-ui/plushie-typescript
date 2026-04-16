@@ -47,6 +47,7 @@ export interface HelloInfo {
   readonly transport: string;
   readonly extensions: readonly string[];
   readonly widgets: readonly string[];
+  readonly widget_sets: readonly string[];
 }
 
 /** Query selector for find/interact messages. */
@@ -378,6 +379,18 @@ function obj(msg: WireMessage, key: string): WireMessage | null {
   return typeof v === "object" && v !== null && !Array.isArray(v) ? (v as WireMessage) : null;
 }
 
+function normalizeBase64(v: unknown): Uint8Array | null {
+  if (v === null || v === undefined) return null;
+  if (v instanceof Uint8Array) return v;
+  if (typeof v === "string" && v.length > 0) {
+    const binary = atob(v);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+  return null;
+}
+
 /** Parsed response types for request/response correlation. */
 export type DecodedResponse =
   | { type: "hello"; data: HelloInfo }
@@ -474,7 +487,7 @@ export function decodeMessage(raw: WireMessage): DecodedResponse | null {
         hash: str(raw, "hash"),
         width: num(raw, "width"),
         height: num(raw, "height"),
-        rgba: raw["rgba"] ?? null,
+        rgba: normalizeBase64(raw["rgba"]),
       };
 
     case "reset_response":
@@ -515,6 +528,7 @@ function decodeHello(raw: WireMessage): HelloInfo {
     transport: str(raw, "transport", "stdio"),
     extensions: Array.isArray(raw["extensions"]) ? (raw["extensions"] as string[]) : [],
     widgets: Array.isArray(raw["widgets"]) ? (raw["widgets"] as string[]) : [],
+    widget_sets: Array.isArray(raw["widget_sets"]) ? (raw["widget_sets"] as string[]) : [],
   };
 }
 
@@ -549,7 +563,7 @@ export function decodeEvent(raw: WireMessage): Event {
       kind: "system",
       type: family,
       tag: "",
-      data: data ?? null,
+      value: data ?? null,
     } as SystemEvent;
   }
 
@@ -635,6 +649,8 @@ const WIDGET_FAMILIES = new Set([
   "blurred",
   "drag",
   "drag_end",
+  // Widget status tracking
+  "status",
   // Pane events
   "pane_resized",
   "pane_dragged",
@@ -979,6 +995,6 @@ function decodeSystemEvent(
     kind: "system",
     type: family,
     tag: str(raw, "tag"),
-    data: eventData,
+    value: eventData,
   };
 }

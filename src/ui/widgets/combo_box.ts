@@ -5,7 +5,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
+import { applyA11yDefaults, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Font, Length, LineHeight, Padding, Shaping, StyleMap } from "../types.js";
 import {
   encodeA11y,
@@ -97,7 +97,7 @@ export function ComboBox(props: ComboBoxProps): UINode {
   putIf(p, clean.ellipsis, "ellipsis");
   putIf(p, clean.menuStyle, "menu_style");
   putIf(p, clean.style, "style", encodeStyleMap);
-  putIf(p, clean.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, clean.a11y, { role: "combo_box", hasPopup: "listbox" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   if (typeof props.onOptionHovered === "boolean")
     putIf(p, props.onOptionHovered, "on_option_hovered");

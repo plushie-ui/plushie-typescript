@@ -5,7 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
-import { autoId, leafNode, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, leafNode, putIf } from "../build.js";
 import type {
   A11y,
   Alignment,
@@ -87,7 +87,7 @@ export function Text(props: TextProps): UINode {
   putIf(p, props.ellipsis, "ellipsis");
   putIf(p, props.shaping, "shaping");
   putIf(p, props.style, "style", encodeStyleMap);
-  putIf(p, props.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, props.a11y, { role: "label" }, encodeA11y);
   putIf(p, props.eventRate, "event_rate");
   return leafNode(id, "text", p);
 }

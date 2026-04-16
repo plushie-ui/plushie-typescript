@@ -5,9 +5,17 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
+import {
+  applyA11yDefaults,
+  autoId,
+  containerNode,
+  extractHandlers,
+  leafNodeWithMeta,
+  putIf,
+} from "../build.js";
 import type { A11y, Color, Length, Padding } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength, encodePadding } from "../types.js";
+import { text } from "./text.js";
 
 const TABLE_HANDLERS = { onSort: "sort" } as const;
 
@@ -82,7 +90,6 @@ export function Table(props: TableProps): UINode {
   const { clean, meta } = extractHandlers(id, props, TABLE_HANDLERS);
   const p: Record<string, unknown> = {
     columns: clean.columns,
-    rows: clean.rows,
   };
   putIf(p, clean.width, "width", encodeLength);
   putIf(p, clean.header, "header");
@@ -96,8 +103,26 @@ export function Table(props: TableProps): UINode {
   putIf(p, clean.separatorThickness, "separator_thickness");
   putIf(p, clean.separatorColor, "separator_color", encodeColor);
   putIf(p, clean.separator, "separator");
-  putIf(p, clean.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, clean.a11y, { role: "table" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
+
+  if (Array.isArray(clean.rows) && clean.rows.length > 0 && Array.isArray(clean.columns)) {
+    const colKeys = clean.columns.map((c) => String(c.key));
+    const rowChildren = clean.rows.map((row, rowIdx) => {
+      const rowId =
+        (row as Record<string, unknown>)["id"] != null
+          ? String((row as Record<string, unknown>)["id"])
+          : `${id}/row/${String(rowIdx)}`;
+      const cells = colKeys.map((key) => {
+        const value = String((row as Record<string, unknown>)[key] ?? "");
+        return tableCell(key, key, [text(`${rowId}/${key}/text`, value)]);
+      });
+      return tableRow(rowId, cells);
+    });
+    return containerNode(id, "table", p, rowChildren);
+  }
+
+  putIf(p, clean.rows, "rows");
   return leafNodeWithMeta(id, "table", p, meta);
 }
 
@@ -108,4 +133,24 @@ export function table(
   opts?: Omit<TableProps, "id" | "columns" | "rows">,
 ): UINode {
   return Table({ id, columns, rows, ...opts });
+}
+
+/**
+ * A table row with explicit ID. Children are `tableCell` nodes, one per column.
+ *
+ * Used for rich table composition where cells contain arbitrary widgets
+ * (buttons, icons, etc.) instead of plain text data.
+ */
+export function tableRow(id: string, children: readonly UINode[]): UINode {
+  return containerNode(id, "table_row", { id }, [...children]);
+}
+
+/**
+ * A table cell mapped to a specific column. Children are the cell's
+ * widget content.
+ *
+ * The `column` field must match a `TableColumn.key` from the parent table.
+ */
+export function tableCell(id: string, column: string, children: readonly UINode[]): UINode {
+  return containerNode(id, "table_cell", { column, id }, [...children]);
 }

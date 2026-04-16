@@ -5,7 +5,13 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.js";
+import {
+  applyA11yDefaults,
+  autoId,
+  containerNodeWithMeta,
+  extractHandlers,
+  putIf,
+} from "../build.js";
 import type { A11y, Color, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
@@ -63,7 +69,7 @@ export function PaneGrid(props: PaneGridProps): UINode {
   putIf(p, clean.dividerColor, "divider_color", encodeColor);
   putIf(p, clean.dividerWidth, "divider_width");
   putIf(p, clean.splitAxis, "split_axis");
-  putIf(p, clean.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, clean.a11y, { role: "group" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   return containerNodeWithMeta(
     id,

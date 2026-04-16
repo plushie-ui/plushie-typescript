@@ -5,7 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
-import { autoId, containerNode, putIf } from "../build.js";
+import { applyA11yDefaults, autoId, containerNode, putIf } from "../build.js";
 import type { A11y, StyleMap } from "../types.js";
 import { encodeA11y, encodeStyleMap } from "../types.js";
 
@@ -43,7 +43,7 @@ export function Tooltip(props: TooltipProps): UINode {
   putIf(p, props.snapWithinViewport, "snap_within_viewport");
   putIf(p, props.delay, "delay");
   putIf(p, props.style, "style", encodeStyleMap);
-  putIf(p, props.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, props.a11y, { role: "tooltip" }, encodeA11y);
   return containerNode(id, "tooltip", p, Array.isArray(children) ? children : [children]);
 }
 

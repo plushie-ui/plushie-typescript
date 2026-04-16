@@ -64,6 +64,11 @@ export interface TransitionDescriptor {
 
 /** Create a timed transition descriptor. */
 export function transition(opts: TransitionOpts): TransitionDescriptor {
+  if (typeof opts.duration !== "number" || opts.duration < 0 || !Number.isFinite(opts.duration)) {
+    throw new Error(
+      `transition: duration must be a non-negative finite number, got ${String(opts.duration)}`,
+    );
+  }
   const base = {
     [ANIMATION_DESCRIPTOR]: true as const,
     type: "transition" as const,

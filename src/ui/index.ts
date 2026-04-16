@@ -44,6 +44,7 @@ export type {
   Wrapping,
 } from "./types.js";
 export {
+  customTheme,
   encodeA11y,
   encodeAlignment,
   encodeBackground,
@@ -125,7 +126,7 @@ export { Stack, stack } from "./widgets/stack.js";
 export type { SvgProps } from "./widgets/svg.js";
 export { Svg, svg } from "./widgets/svg.js";
 export type { TableColumn, TableProps, TableRow } from "./widgets/table.js";
-export { Table, table } from "./widgets/table.js";
+export { Table, table, tableCell, tableRow } from "./widgets/table.js";
 export type { TextProps } from "./widgets/text.js";
 export { Text, text } from "./widgets/text.js";
 export type { TextEditorProps } from "./widgets/text_editor.js";

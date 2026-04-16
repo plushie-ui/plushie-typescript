@@ -92,6 +92,11 @@ export function diff(oldTree: WireNode | null, newTree: WireNode): PatchOp[] {
  * Recursively diff two nodes at the given path.
  */
 function diffNode(oldNode: WireNode, newNode: WireNode, path: readonly number[]): PatchOp[] {
+  // Reference equality: identical objects (from memo/cache hit) need no diffing
+  if (oldNode === newNode) {
+    return [];
+  }
+
   // ID mismatch: completely different node
   if (oldNode.id !== newNode.id) {
     return [{ op: "replace_node", path, node: newNode }];

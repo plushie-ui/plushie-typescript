@@ -39,6 +39,7 @@ export {
   easeOutQuad,
   interpolate,
   linear,
+  looping,
   springEase,
   startAnimation,
 } from "./tween.js";

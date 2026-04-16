@@ -49,6 +49,17 @@ export interface SequenceDescriptor {
 
 /** Create a sequential animation chain. */
 export function sequence(opts: SequenceOpts): SequenceDescriptor {
+  if (!Array.isArray(opts.steps) || opts.steps.length === 0) {
+    throw new Error("sequence: steps must be a non-empty array of transition/spring descriptors");
+  }
+  for (let i = 0; i < opts.steps.length; i++) {
+    const step = opts.steps[i]!;
+    if (!(step as Record<symbol, unknown>)[ANIMATION_DESCRIPTOR]) {
+      throw new Error(
+        `sequence: step ${String(i)} is not an animation descriptor (use transition() or spring())`,
+      );
+    }
+  }
   const base = {
     [ANIMATION_DESCRIPTOR]: true as const,
     type: "sequence" as const,

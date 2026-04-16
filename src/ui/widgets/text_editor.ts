@@ -7,7 +7,7 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import { extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
+import { applyA11yDefaults, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type { A11y, Color, Font, Length, LineHeight, StyleMap, Wrapping } from "../types.js";
 import {
   encodeA11y,
@@ -61,8 +61,8 @@ export interface TextEditorProps {
   placeholderColor?: Color;
   /** Color of the text selection highlight. */
   selectionColor?: Color;
-  /** Hint to the input method editor about the expected content type. */
-  imePurpose?: "normal" | "secure" | "terminal";
+  /** Hint to the platform about the expected content type (keyboard layout, autocorrect). */
+  inputPurpose?: "normal" | "secure" | "terminal";
   /** Accessibility properties. */
   a11y?: A11y;
   /** Maximum events per second for this widget's coalescable events. */
@@ -94,8 +94,8 @@ export function TextEditor(props: TextEditorProps): UINode {
   putIf(p, clean.highlightTheme, "highlight_theme");
   putIf(p, clean.placeholderColor, "placeholder_color", encodeColor);
   putIf(p, clean.selectionColor, "selection_color", encodeColor);
-  putIf(p, clean.imePurpose, "ime_purpose");
-  putIf(p, clean.a11y, "a11y", encodeA11y);
+  putIf(p, clean.inputPurpose, "input_purpose");
+  applyA11yDefaults(p, clean.a11y, { role: "multiline_text_input" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   return leafNodeWithMeta(id, "text_editor", p, meta);
 }

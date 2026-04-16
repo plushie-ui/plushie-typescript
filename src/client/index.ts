@@ -9,7 +9,14 @@
 
 // Tree normalization (UINode -> WireNode): needed by advanced users
 // building custom transports or shared-state servers.
-export type { NormalizeContext, WireNode } from "../tree/normalize.js";
+export type {
+  MemoCache,
+  MemoCacheEntry,
+  NormalizeContext,
+  WidgetViewCache,
+  WidgetViewCacheEntry,
+  WireNode,
+} from "../tree/normalize.js";
 export { normalize } from "../tree/normalize.js";
 export {
   BINARY_VERSION,

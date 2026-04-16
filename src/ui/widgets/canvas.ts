@@ -12,7 +12,13 @@ import type { LayerNode } from "../../canvas/layer.js";
 import { isLayer, layerToWireNode, shapeToWireNode } from "../../canvas/layer.js";
 import type { CanvasShape } from "../../canvas/shapes.js";
 import type { Handler, UINode } from "../../types.js";
-import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.js";
+import {
+  applyA11yDefaults,
+  autoId,
+  containerNodeWithMeta,
+  extractHandlers,
+  putIf,
+} from "../build.js";
 import type { A11y, Color, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
 
@@ -125,7 +131,7 @@ export function Canvas(props: CanvasProps): UINode {
   putIf(p, clean.interactive, "interactive");
   putIf(p, clean.alt, "alt");
   putIf(p, clean.description, "description");
-  putIf(p, clean.a11y, "a11y", encodeA11y);
+  applyA11yDefaults(p, clean.a11y, { role: "canvas" }, encodeA11y);
   putIf(p, clean.role, "role");
   putIf(p, clean.arrowMode, "arrow_mode");
   putIf(p, clean.eventRate, "event_rate");
