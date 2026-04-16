@@ -30,6 +30,8 @@ export interface UndoEntry<M> {
 /** Immutable undo/redo stack holding the current model and history. */
 export interface UndoStack<M> {
   readonly current: M;
+  readonly max_size: number;
+  readonly undo_size: number;
   readonly undoStack: readonly UndoEntry<M>[];
   readonly redoStack: readonly UndoEntry<M>[];
 }
@@ -51,14 +53,18 @@ export function _resetTimestampFn(): void {
 // -- Creation -------------------------------------------------------------
 
 /** Create a new undo stack with the given initial model. */
-export function createUndoStack<M>(model: M): UndoStack<M> {
-  return { current: model, undoStack: [], redoStack: [] };
+export function createUndoStack<M>(model: M, opts?: { readonly max_size?: number }): UndoStack<M> {
+  const max_size = opts?.max_size ?? 100;
+  if (!Number.isInteger(max_size) || max_size <= 0) {
+    throw new Error(`max_size must be a positive integer, got: ${String(max_size)}`);
+  }
+  return { current: model, max_size, undo_size: 0, undoStack: [], redoStack: [] };
 }
 
 // -- Operations -----------------------------------------------------------
 
-/** Apply a command, pushing an entry onto the undo stack. Clears the redo stack. */
-export function applyCommand<M>(stack: UndoStack<M>, command: UndoCommand<M>): UndoStack<M> {
+/** Push a command onto the undo stack, updating the current model. Clears the redo stack. */
+export function push<M>(stack: UndoStack<M>, command: UndoCommand<M>): UndoStack<M> {
   const now = nowFn();
   const newModel = command.apply(stack.current);
 
@@ -82,6 +88,8 @@ export function applyCommand<M>(stack: UndoStack<M>, command: UndoCommand<M>): U
       };
       return {
         current: newModel,
+        max_size: stack.max_size,
+        undo_size: stack.undo_size,
         undoStack: [merged, ...stack.undoStack.slice(1)],
         redoStack: [],
       };
@@ -96,9 +104,17 @@ export function applyCommand<M>(stack: UndoStack<M>, command: UndoCommand<M>): U
     timestamp: now,
   };
 
+  const newUndoStack = [entry, ...stack.undoStack];
+  const newSize = stack.undo_size + 1;
+  const clampedStack =
+    newSize > stack.max_size ? newUndoStack.slice(0, stack.max_size) : newUndoStack;
+  const clampedSize = Math.min(newSize, stack.max_size);
+
   return {
     current: newModel,
-    undoStack: [entry, ...stack.undoStack],
+    max_size: stack.max_size,
+    undo_size: clampedSize,
+    undoStack: clampedStack,
     redoStack: [],
   };
 }
@@ -112,6 +128,8 @@ export function undo<M>(stack: UndoStack<M>): UndoStack<M> {
 
   return {
     current: oldModel,
+    max_size: stack.max_size,
+    undo_size: stack.undo_size - 1,
     undoStack: rest,
     redoStack: [entry, ...stack.redoStack],
   };
@@ -126,6 +144,8 @@ export function redo<M>(stack: UndoStack<M>): UndoStack<M> {
 
   return {
     current: newModel,
+    max_size: stack.max_size,
+    undo_size: stack.undo_size + 1,
     redoStack: rest,
     undoStack: [entry, ...stack.undoStack],
   };

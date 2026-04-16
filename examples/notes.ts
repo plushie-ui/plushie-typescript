@@ -199,7 +199,7 @@ export default app<Model>({
       const value = String(event.value);
       return {
         ...state,
-        undo: UndoStack.applyCommand(state.undo, {
+        undo: UndoStack.push(state.undo, {
           apply: (c) => ({ ...c, title: value }),
           undo: (c) => ({ ...c, title: oldTitle }),
           label: "edit title",
@@ -212,7 +212,7 @@ export default app<Model>({
       const value = String(event.value);
       return {
         ...state,
-        undo: UndoStack.applyCommand(state.undo, {
+        undo: UndoStack.push(state.undo, {
           apply: (c) => ({ ...c, text: value }),
           undo: (c) => ({ ...c, text: oldText }),
           label: "edit body",

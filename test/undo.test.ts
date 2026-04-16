@@ -13,9 +13,21 @@ describe("UndoStack", () => {
     expect(UndoStack.canRedo(stack)).toBe(false);
   });
 
-  test("applyCommand updates the model and enables undo", () => {
+  test("createUndoStack accepts max_size option", () => {
+    const stack = UndoStack.createUndoStack(0, { max_size: 3 });
+    expect(stack.max_size).toBe(3);
+    expect(stack.undo_size).toBe(0);
+  });
+
+  test("createUndoStack rejects invalid max_size", () => {
+    expect(() => UndoStack.createUndoStack(0, { max_size: 0 })).toThrow();
+    expect(() => UndoStack.createUndoStack(0, { max_size: -1 })).toThrow();
+    expect(() => UndoStack.createUndoStack(0, { max_size: 1.5 })).toThrow();
+  });
+
+  test("push updates the model and enables undo", () => {
     let stack = UndoStack.createUndoStack(0);
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (n) => n + 1,
       undo: (n) => n - 1,
     });
@@ -25,7 +37,7 @@ describe("UndoStack", () => {
 
   test("undo reverses the last command", () => {
     let stack = UndoStack.createUndoStack(0);
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (n) => n + 1,
       undo: (n) => n - 1,
     });
@@ -36,7 +48,7 @@ describe("UndoStack", () => {
 
   test("redo re-applies the last undone command", () => {
     let stack = UndoStack.createUndoStack(0);
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (n) => n + 1,
       undo: (n) => n - 1,
     });
@@ -45,14 +57,14 @@ describe("UndoStack", () => {
     expect(UndoStack.current(stack)).toBe(1);
   });
 
-  test("applying a new command clears the redo stack", () => {
+  test("pushing a new command clears the redo stack", () => {
     let stack = UndoStack.createUndoStack(0);
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (n) => n + 1,
       undo: (n) => n - 1,
     });
     stack = UndoStack.undo(stack);
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (n) => n + 10,
       undo: (n) => n - 10,
     });
@@ -74,12 +86,12 @@ describe("UndoStack", () => {
 
   test("history returns labels most recent first", () => {
     let stack = UndoStack.createUndoStack(0);
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (n) => n + 1,
       undo: (n) => n - 1,
       label: "increment",
     });
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (n) => n * 2,
       undo: (n) => n / 2,
       label: "double",
@@ -92,7 +104,7 @@ describe("UndoStack", () => {
     UndoStack._setTimestampFn(() => time);
 
     let stack = UndoStack.createUndoStack("");
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (s) => s + "a",
       undo: () => "",
       coalesce: "typing",
@@ -101,7 +113,7 @@ describe("UndoStack", () => {
     });
 
     time = 100;
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (s) => s + "b",
       undo: (s) => s.slice(0, -1),
       coalesce: "typing",
@@ -109,10 +121,8 @@ describe("UndoStack", () => {
     });
 
     expect(UndoStack.current(stack)).toBe("ab");
-    // Should be coalesced into one undo entry
     expect(UndoStack.history(stack)).toHaveLength(1);
 
-    // Undo should revert all coalesced changes
     stack = UndoStack.undo(stack);
     expect(UndoStack.current(stack)).toBe("");
   });
@@ -122,7 +132,7 @@ describe("UndoStack", () => {
     UndoStack._setTimestampFn(() => time);
 
     let stack = UndoStack.createUndoStack(0);
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (n) => n + 1,
       undo: (n) => n - 1,
       coalesce: "inc",
@@ -130,7 +140,7 @@ describe("UndoStack", () => {
     });
 
     time = 200;
-    stack = UndoStack.applyCommand(stack, {
+    stack = UndoStack.push(stack, {
       apply: (n) => n + 1,
       undo: (n) => n - 1,
       coalesce: "inc",
@@ -138,5 +148,42 @@ describe("UndoStack", () => {
     });
 
     expect(UndoStack.history(stack)).toHaveLength(2);
+  });
+
+  test("max_size drops oldest entries when exceeded", () => {
+    let stack = UndoStack.createUndoStack(0, { max_size: 3 });
+
+    for (let i = 1; i <= 5; i++) {
+      stack = UndoStack.push(stack, {
+        apply: (n) => n + 1,
+        undo: (n) => n - 1,
+        label: `step-${i}`,
+      });
+    }
+
+    expect(UndoStack.current(stack)).toBe(5);
+    expect(stack.undo_size).toBe(3);
+    expect(UndoStack.history(stack)).toEqual(["step-5", "step-4", "step-3"]);
+
+    stack = UndoStack.undo(stack);
+    expect(UndoStack.current(stack)).toBe(4);
+    expect(stack.undo_size).toBe(2);
+
+    stack = UndoStack.undo(stack);
+    stack = UndoStack.undo(stack);
+    expect(UndoStack.current(stack)).toBe(2);
+    expect(UndoStack.canUndo(stack)).toBe(false);
+  });
+
+  test("max_size is preserved across undo and redo", () => {
+    let stack = UndoStack.createUndoStack(0, { max_size: 2 });
+    stack = UndoStack.push(stack, { apply: (n) => n + 1, undo: (n) => n - 1 });
+    stack = UndoStack.push(stack, { apply: (n) => n + 1, undo: (n) => n - 1 });
+
+    stack = UndoStack.undo(stack);
+    expect(stack.max_size).toBe(2);
+
+    stack = UndoStack.redo(stack);
+    expect(stack.max_size).toBe(2);
   });
 });
