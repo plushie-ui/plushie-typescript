@@ -449,8 +449,8 @@ describe("widget subscriptions", () => {
 
     const subs = collectSubscriptions(registry);
     expect(subs).toHaveLength(2);
-    expect(parseWidgetTag(subs[0]!.tag)).toEqual({ widgetId: "widget-a", innerTag: "tick" });
-    expect(parseWidgetTag(subs[1]!.tag)).toEqual({ widgetId: "widget-b", innerTag: "tick" });
+    expect(parseWidgetTag(subs[0]!.tag!)).toEqual({ widgetId: "widget-a", innerTag: "tick" });
+    expect(parseWidgetTag(subs[1]!.tag!)).toEqual({ widgetId: "widget-b", innerTag: "tick" });
   });
 
   test("isWidgetTag detects namespaced tags", () => {
@@ -465,6 +465,11 @@ describe("widget subscriptions", () => {
 
   test("parseWidgetTag returns null for non-widget tags", () => {
     expect(parseWidgetTag("my-timer")).toBeNull();
+  });
+
+  test("parseWidgetTag handles null inner tag for renderer subs", () => {
+    const result = parseWidgetTag('__cw:{"key":"widget-a","tag":null}');
+    expect(result).toEqual({ widgetId: "widget-a", innerTag: null });
   });
 });
 

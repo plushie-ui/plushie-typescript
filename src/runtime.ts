@@ -829,8 +829,9 @@ export class Runtime<M> {
     for (const [key, newSub] of newKeys) {
       const oldSub = this.state.subscriptionMap.get(key);
       if (oldSub && oldSub.maxRate !== newSub.maxRate && newSub.type !== "every") {
+        const wireTag = SubscriptionMod.rendererWireTag(newSub);
         this.send(
-          encodeSubscribe(this.sessionId, newSub.type, newSub.tag, newSub.maxRate, newSub.windowId),
+          encodeSubscribe(this.sessionId, newSub.type, wireTag, newSub.maxRate, newSub.windowId),
         );
       }
     }
@@ -840,7 +841,7 @@ export class Runtime<M> {
 
   private startTimerSubscription(key: string, interval: number, tag: string): void {
     const tick = () => {
-      const event: Event = { kind: "timer", tag, timestamp: Date.now() };
+      const event: Event = { kind: "timer", tag: tag, timestamp: Date.now() };
       this.handleEvent(event);
       // Re-arm for next tick (Elixir pattern: interval measured from end of processing)
       if (this.state.pendingTimers.has(key)) {
@@ -854,11 +855,11 @@ export class Runtime<M> {
   }
 
   private startSubscription(key: string, sub: Subscription): void {
-    if (sub.type === "every" && sub.interval !== undefined) {
+    if (sub.type === "every" && sub.interval !== undefined && sub.tag !== undefined) {
       this.startTimerSubscription(key, sub.interval, sub.tag);
     } else {
-      // Renderer subscription: send subscribe message
-      this.send(encodeSubscribe(this.sessionId, sub.type, sub.tag, sub.maxRate, sub.windowId));
+      const wireTag = SubscriptionMod.rendererWireTag(sub);
+      this.send(encodeSubscribe(this.sessionId, sub.type, wireTag, sub.maxRate, sub.windowId));
     }
   }
 
@@ -871,12 +872,10 @@ export class Runtime<M> {
       return;
     }
 
-    // Renderer subscription: extract kind from key
-    const colonIdx = key.indexOf(":");
-    if (colonIdx !== -1) {
-      const kind = key.slice(0, colonIdx);
-      // Include tag for targeted removal when the subscription is window-scoped
-      this.send(encodeUnsubscribe(this.sessionId, kind, sub?.windowId ? sub.tag : undefined));
+    // Renderer subscription: send unsubscribe with wire tag
+    if (sub && sub.type !== "every") {
+      const wireTag = SubscriptionMod.rendererWireTag(sub);
+      this.send(encodeUnsubscribe(this.sessionId, sub.type, wireTag));
     }
   }
 

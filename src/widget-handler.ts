@@ -641,7 +641,7 @@ export function collectSubscriptions(registry: ReadonlyMap<string, RegistryEntry
 
 /** Namespace a subscription's tag for a widget. */
 function namespaceTag(sub: Subscription, widgetId: string): Subscription {
-  const key = JSON.stringify({ key: widgetId, tag: sub.tag });
+  const key = JSON.stringify({ key: widgetId, tag: sub.tag ?? null });
   return { ...sub, tag: CW_TAG_PREFIX + key };
 }
 
@@ -653,10 +653,11 @@ export function isWidgetTag(tag: string): boolean {
 /**
  * Parse a namespaced tag into { widgetId, innerTag }.
  * Returns null if the tag isn't namespaced.
+ * innerTag is null for renderer subscriptions (no user tag).
  */
 export function parseWidgetTag(
   tag: string,
-): { readonly widgetId: string; readonly innerTag: string } | null {
+): { readonly widgetId: string; readonly innerTag: string | null } | null {
   if (!tag.startsWith(CW_TAG_PREFIX)) return null;
   const rest = tag.slice(CW_TAG_PREFIX.length);
   let parsed: { key?: unknown; tag?: unknown };
@@ -667,12 +668,12 @@ export function parseWidgetTag(
     return null;
   }
 
-  if (typeof parsed.key !== "string" || typeof parsed.tag !== "string") {
+  if (typeof parsed.key !== "string") {
     return null;
   }
   return {
     widgetId: parsed.key,
-    innerTag: parsed.tag,
+    innerTag: typeof parsed.tag === "string" ? parsed.tag : null,
   };
 }
 
@@ -694,7 +695,7 @@ export function handleWidgetTimer(
   timestamp: number,
 ): { readonly event: Event | null; readonly registry: Map<string, RegistryEntry> } | null {
   const parsed = parseWidgetTag(tag);
-  if (parsed === null) return null;
+  if (parsed === null || parsed.innerTag === null) return null;
 
   const entry = registry.get(parsed.widgetId);
   if (!entry || !entry.handleEvent) return null;

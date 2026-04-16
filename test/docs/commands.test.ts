@@ -186,73 +186,73 @@ test("subscriptions_every_construct", () => {
 });
 
 test("subscriptions_on_key_press_construct", () => {
-  const sub = Subscription.onKeyPress("keyEvent");
+  const sub = Subscription.onKeyPress();
   expect(sub.type).toBe("on_key_press");
-  expect(sub.tag).toBe("keyEvent");
+  expect(sub.tag).toBeUndefined();
 });
 
 test("subscriptions_set_max_rate", () => {
-  const sub = Subscription.maxRate(Subscription.onPointerMove("mouse"), 30);
+  const sub = Subscription.maxRate(Subscription.onPointerMove(), 30);
   expect(sub.maxRate).toBe(30);
 });
 
 test("subscriptions_on_animation_frame_with_rate", () => {
-  const sub = Subscription.onAnimationFrame("frame", { maxRate: 60 });
+  const sub = Subscription.onAnimationFrame({ maxRate: 60 });
   expect(sub.maxRate).toBe(60);
 });
 
 test("subscriptions_on_window_close", () => {
-  const sub = Subscription.onWindowClose("winClose");
+  const sub = Subscription.onWindowClose();
   expect(sub.type).toBe("on_window_close");
-  expect(sub.tag).toBe("winClose");
+  expect(sub.tag).toBeUndefined();
 });
 
 test("subscriptions_on_window_resize", () => {
-  const sub = Subscription.onWindowResize("winResize");
+  const sub = Subscription.onWindowResize();
   expect(sub.type).toBe("on_window_resize");
-  expect(sub.tag).toBe("winResize");
+  expect(sub.tag).toBeUndefined();
 });
 
 test("subscriptions_on_pointer_button", () => {
-  const sub = Subscription.onPointerButton("mouseBtn");
+  const sub = Subscription.onPointerButton();
   expect(sub.type).toBe("on_pointer_button");
-  expect(sub.tag).toBe("mouseBtn");
+  expect(sub.tag).toBeUndefined();
 });
 
 test("subscriptions_on_pointer_scroll", () => {
-  const sub = Subscription.onPointerScroll("scroll");
+  const sub = Subscription.onPointerScroll();
   expect(sub.type).toBe("on_pointer_scroll");
-  expect(sub.tag).toBe("scroll");
+  expect(sub.tag).toBeUndefined();
 });
 
 test("subscriptions_on_pointer_touch", () => {
-  const sub = Subscription.onPointerTouch("touch");
+  const sub = Subscription.onPointerTouch();
   expect(sub.type).toBe("on_pointer_touch");
-  expect(sub.tag).toBe("touch");
+  expect(sub.tag).toBeUndefined();
 });
 
 test("subscriptions_on_ime", () => {
-  const sub = Subscription.onIme("ime");
+  const sub = Subscription.onIme();
   expect(sub.type).toBe("on_ime");
-  expect(sub.tag).toBe("ime");
+  expect(sub.tag).toBeUndefined();
 });
 
 test("subscriptions_on_theme_change", () => {
-  const sub = Subscription.onThemeChange("theme");
+  const sub = Subscription.onThemeChange();
   expect(sub.type).toBe("on_theme_change");
-  expect(sub.tag).toBe("theme");
+  expect(sub.tag).toBeUndefined();
 });
 
 test("subscriptions_on_file_drop", () => {
-  const sub = Subscription.onFileDrop("files");
+  const sub = Subscription.onFileDrop();
   expect(sub.type).toBe("on_file_drop");
-  expect(sub.tag).toBe("files");
+  expect(sub.tag).toBeUndefined();
 });
 
 test("subscriptions_on_event", () => {
-  const sub = Subscription.onEvent("all");
+  const sub = Subscription.onEvent();
   expect(sub.type).toBe("on_event");
-  expect(sub.tag).toBe("all");
+  expect(sub.tag).toBeUndefined();
 });
 
 // -- Settings --

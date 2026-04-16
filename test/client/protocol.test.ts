@@ -123,15 +123,21 @@ describe("encodePatch", () => {
 
 describe("encodeSubscribe", () => {
   test("without max_rate", () => {
-    const msg = encodeSubscribe("", "on_key_press", "keys");
+    const msg = encodeSubscribe("", "on_key_press", "on_key_press");
     expect(msg["kind"]).toBe("on_key_press");
-    expect(msg["tag"]).toBe("keys");
+    expect(msg["tag"]).toBe("on_key_press");
     expect(msg["max_rate"]).toBeUndefined();
   });
 
   test("with max_rate", () => {
-    const msg = encodeSubscribe("", "on_mouse_move", "mouse", 30);
+    const msg = encodeSubscribe("", "on_pointer_move", "on_pointer_move", 30);
     expect(msg["max_rate"]).toBe(30);
+  });
+
+  test("with window-scoped wire tag", () => {
+    const msg = encodeSubscribe("", "on_key_press", "on_key_press:editor", undefined, "editor");
+    expect(msg["tag"]).toBe("on_key_press:editor");
+    expect(msg["window_id"]).toBe("editor");
   });
 });
 

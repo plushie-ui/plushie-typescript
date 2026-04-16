@@ -42,7 +42,7 @@ export interface Command {
 /** A subscription spec for ongoing event sources. */
 export interface Subscription {
   readonly type: string;
-  readonly tag: string;
+  readonly tag: string | undefined;
   readonly interval?: number;
   readonly maxRate?: number;
   /** Scope the subscription to a specific window. Events from other windows are filtered. */

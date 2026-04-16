@@ -127,17 +127,17 @@ test("app_behaviour_view_basic_structure", () => {
 
 test("app_behaviour_subscribe_without_auto_refresh", () => {
   const _model = newModel({ autoRefresh: false });
-  const subs = [Subscription.onKeyPress("keyEvent")];
+  const subs = [Subscription.onKeyPress()];
 
   expect(subs).toHaveLength(1);
   expect(subs[0]!.type).toBe("on_key_press");
-  expect(subs[0]!.tag).toBe("keyEvent");
+  expect(subs[0]!.tag).toBeUndefined();
 });
 
 test("app_behaviour_subscribe_with_auto_refresh", () => {
   const model = newModel({ autoRefresh: true });
   const subs = [
-    Subscription.onKeyPress("keyEvent"),
+    Subscription.onKeyPress(),
     ...(model.autoRefresh ? [Subscription.every(5000, "refresh")] : []),
   ];
 

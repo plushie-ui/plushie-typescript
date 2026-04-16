@@ -46,7 +46,7 @@ export default app<Model>({
 
   // -- Subscribe --------------------------------------------------------------
 
-  subscriptions: () => [Subscription.onKeyPress("keys")],
+  subscriptions: () => [Subscription.onKeyPress()],
 
   // -- Update -----------------------------------------------------------------
 

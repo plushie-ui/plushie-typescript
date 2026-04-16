@@ -7,8 +7,14 @@
  * each cycle. The runtime diffs this list, starting new subscriptions
  * and stopping removed ones automatically.
  *
- * Each subscription has a `tag` that is included in the resulting events
- * so the app can route them in `update()`.
+ * Timer subscriptions carry a tag that becomes part of the event
+ * struct. `update()` receives `{ kind: "timer", tag, timestamp }`.
+ *
+ * Renderer subscriptions (keyboard, pointer, window, etc.) take no
+ * tag. Events arrive as typed event objects and are matched by
+ * event kind. Renderer subs are keyed by `{type, windowId}` for
+ * lifecycle diffing. Only one subscription of each kind per window
+ * (or globally when no window is specified).
  *
  * Subscriptions can be scoped to a specific window via the `window`
  * option. The renderer filters events by window before emitting,
@@ -20,9 +26,9 @@
  * import * as Sub from "plushie/subscription"
  *
  * function subscribe(model: Model): Subscription[] {
- *   const subs = [Sub.onWindowClose("win-close")]
+ *   const subs = [Sub.onWindowClose()]
  *   if (model.animating) {
- *     subs.push(Sub.onAnimationFrame("anim"))
+ *     subs.push(Sub.onAnimationFrame({ maxRate: 60 }))
  *   }
  *   return subs
  * }
@@ -33,26 +39,24 @@
 
 import type { Subscription } from "./types.js";
 
-/** Common options for subscription constructors. */
+/** Common options for renderer subscription constructors. */
 export interface SubOpts {
   readonly maxRate?: number;
   /** Scope this subscription to a specific window. */
   readonly window?: string;
 }
 
-function sub(
-  type: string,
-  tag: string,
-  opts?: { interval?: number; maxRate?: number; window?: string },
-): Subscription {
+function timerSub(tag: string, interval: number): Subscription {
+  return Object.freeze({ type: "every", tag, interval });
+}
+
+function rendererSub(type: string, opts?: SubOpts): Subscription {
   const s: {
     type: string;
-    tag: string;
-    interval?: number;
+    tag: undefined;
     maxRate?: number;
     windowId?: string;
-  } = { type, tag };
-  if (opts?.interval !== undefined) s.interval = opts.interval;
+  } = { type, tag: undefined };
   if (opts?.maxRate !== undefined) s.maxRate = opts.maxRate;
   if (opts?.window !== undefined) s.windowId = opts.window;
   return Object.freeze(s);
@@ -60,102 +64,102 @@ function sub(
 
 /** Timer that fires every `intervalMs` milliseconds. */
 export function every(intervalMs: number, tag: string): Subscription {
-  return sub("every", tag, { interval: intervalMs });
+  return timerSub(tag, intervalMs);
 }
 
 /** Subscribe to key press events. */
-export function onKeyPress(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_key_press", tag, opts);
+export function onKeyPress(opts?: SubOpts): Subscription {
+  return rendererSub("on_key_press", opts);
 }
 
 /** Subscribe to key release events. */
-export function onKeyRelease(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_key_release", tag, opts);
+export function onKeyRelease(opts?: SubOpts): Subscription {
+  return rendererSub("on_key_release", opts);
 }
 
 /** Subscribe to pointer move events (mouse cursor, touch, pen). */
-export function onPointerMove(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_pointer_move", tag, opts);
+export function onPointerMove(opts?: SubOpts): Subscription {
+  return rendererSub("on_pointer_move", opts);
 }
 
 /** Subscribe to pointer button press/release events. */
-export function onPointerButton(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_pointer_button", tag, opts);
+export function onPointerButton(opts?: SubOpts): Subscription {
+  return rendererSub("on_pointer_button", opts);
 }
 
 /** Subscribe to pointer scroll events. */
-export function onPointerScroll(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_pointer_scroll", tag, opts);
+export function onPointerScroll(opts?: SubOpts): Subscription {
+  return rendererSub("on_pointer_scroll", opts);
 }
 
 /** Subscribe to window close requests. */
-export function onWindowClose(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_window_close", tag, opts);
+export function onWindowClose(opts?: SubOpts): Subscription {
+  return rendererSub("on_window_close", opts);
 }
 
 /** Subscribe to window resize events. */
-export function onWindowResize(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_window_resize", tag, opts);
+export function onWindowResize(opts?: SubOpts): Subscription {
+  return rendererSub("on_window_resize", opts);
 }
 
 /** Subscribe to window focus events. */
-export function onWindowFocus(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_window_focus", tag, opts);
+export function onWindowFocus(opts?: SubOpts): Subscription {
+  return rendererSub("on_window_focus", opts);
 }
 
 /** Subscribe to window unfocus events. */
-export function onWindowUnfocus(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_window_unfocus", tag, opts);
+export function onWindowUnfocus(opts?: SubOpts): Subscription {
+  return rendererSub("on_window_unfocus", opts);
 }
 
 /** Subscribe to animation frame events. */
-export function onAnimationFrame(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_animation_frame", tag, opts);
+export function onAnimationFrame(opts?: SubOpts): Subscription {
+  return rendererSub("on_animation_frame", opts);
 }
 
 /** Subscribe to system theme changes. */
-export function onThemeChange(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_theme_change", tag, opts);
+export function onThemeChange(opts?: SubOpts): Subscription {
+  return rendererSub("on_theme_change", opts);
 }
 
 /** Subscribe to touch pointer events. */
-export function onPointerTouch(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_pointer_touch", tag, opts);
+export function onPointerTouch(opts?: SubOpts): Subscription {
+  return rendererSub("on_pointer_touch", opts);
 }
 
 /** Subscribe to IME events. */
-export function onIme(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_ime", tag, opts);
+export function onIme(opts?: SubOpts): Subscription {
+  return rendererSub("on_ime", opts);
 }
 
 /** Subscribe to file drop events. */
-export function onFileDrop(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_file_drop", tag, opts);
+export function onFileDrop(opts?: SubOpts): Subscription {
+  return rendererSub("on_file_drop", opts);
 }
 
 /** Subscribe to general window events (resize, move, focus, etc.). */
-export function onWindowEvent(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_window_event", tag, opts);
+export function onWindowEvent(opts?: SubOpts): Subscription {
+  return rendererSub("on_window_event", opts);
 }
 
 /** Subscribe to window open events. */
-export function onWindowOpen(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_window_open", tag, opts);
+export function onWindowOpen(opts?: SubOpts): Subscription {
+  return rendererSub("on_window_open", opts);
 }
 
 /** Subscribe to window move events. */
-export function onWindowMove(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_window_move", tag, opts);
+export function onWindowMove(opts?: SubOpts): Subscription {
+  return rendererSub("on_window_move", opts);
 }
 
 /** Subscribe to keyboard modifier state changes (shift, ctrl, alt, etc.). */
-export function onModifiersChanged(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_modifiers_changed", tag, opts);
+export function onModifiersChanged(opts?: SubOpts): Subscription {
+  return rendererSub("on_modifiers_changed", opts);
 }
 
 /** Subscribe to any renderer event (catch-all). */
-export function onEvent(tag: string, opts?: SubOpts): Subscription {
-  return sub("on_event", tag, opts);
+export function onEvent(opts?: SubOpts): Subscription {
+  return rendererSub("on_event", opts);
 }
 
 /** Set the maxRate on a subscription, returning a new subscription. */
@@ -169,8 +173,8 @@ export function maxRate(s: Subscription, rate: number): Subscription {
  * @example
  * ```ts
  * Subscription.forWindow("editor", [
- *   Subscription.onKeyPress("editor-keys"),
- *   Subscription.onMouseMove("editor-mouse", { maxRate: 60 }),
+ *   Subscription.onKeyPress(),
+ *   Subscription.onPointerMove({ maxRate: 60 }),
  * ])
  * ```
  */
@@ -186,8 +190,29 @@ export function batch(subs: Subscription[]): Subscription[] {
 /**
  * Unique key for diffing subscriptions.
  * Two subscriptions with the same key are considered identical.
+ *
+ * Timer subscriptions are keyed by `every:interval:tag`.
+ * Renderer subscriptions are keyed by `type:windowId`.
+ * Widget-namespaced subscriptions (tag starts with `__cw:`) are keyed by `type:tag`.
  */
 export function key(s: Subscription): string {
-  const base = s.type === "every" ? `every:${String(s.interval)}:${s.tag}` : `${s.type}:${s.tag}`;
-  return s.windowId ? `${base}@${s.windowId}` : base;
+  if (s.type === "every") {
+    return `every:${String(s.interval)}:${s.tag}`;
+  }
+  if (s.tag !== undefined) {
+    return `${s.type}:${s.tag}`;
+  }
+  return `${s.type}:${s.windowId ?? ""}`;
+}
+
+/**
+ * Derive the wire tag for a renderer subscription sent to the renderer.
+ * Window-scoped subscriptions include the window_id to avoid collisions
+ * with global subscriptions of the same kind.
+ */
+export function rendererWireTag(s: Subscription): string {
+  if (s.windowId) {
+    return `${s.type}:${s.windowId}`;
+  }
+  return s.type;
 }
