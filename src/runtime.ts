@@ -127,6 +127,8 @@ export class Runtime<M> {
   private readonly maxRestarts = 5;
   private readonly restartBaseMs = 100;
   private readonly restartMaxMs = 5000;
+  private readonly heartbeatIntervalMs: number | null;
+  private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
   private started = false;
   private stopped = false;
   private nextNonce = 0;
@@ -136,9 +138,11 @@ export class Runtime<M> {
     config: AppConfig<M>,
     transportOrFactory: Transport | TransportFactory,
     sessionId = "",
+    opts?: { readonly heartbeatInterval?: number | null },
   ) {
     this.config = config;
     this.sessionId = sessionId;
+    this.heartbeatIntervalMs = opts?.heartbeatInterval ?? 30_000;
     if (typeof transportOrFactory === "function") {
       this.transportFactory = transportOrFactory;
       this.transport = transportOrFactory();
@@ -337,6 +341,9 @@ export class Runtime<M> {
     // Wait for hello
     await this.awaitHello();
 
+    // Start heartbeat watchdog
+    this.resetHeartbeat();
+
     // Init model
     try {
       const initResult = this.config.init;
@@ -381,6 +388,7 @@ export class Runtime<M> {
     }
     this.state.pendingEffects.clear();
 
+    this.cancelHeartbeat();
     this.transport.close();
   }
 
@@ -458,6 +466,8 @@ export class Runtime<M> {
   private handleRawMessage(raw: Record<string, unknown>): void {
     const decoded = decodeMessage(raw);
     if (decoded === null) return;
+
+    this.resetHeartbeat();
 
     switch (decoded.type) {
       case "event":
@@ -1350,6 +1360,7 @@ export class Runtime<M> {
   }
 
   private handleRendererClose(reason: string): void {
+    this.cancelHeartbeat();
     console.warn(`[plushie] Renderer closed: ${reason}`);
 
     // Fail pending interact calls; they will never get a response
@@ -1437,6 +1448,7 @@ export class Runtime<M> {
 
           // Reset restart counter on success
           this.state.restartCount = 0;
+          this.resetHeartbeat();
           console.info("[plushie] Renderer restarted successfully");
         } catch (err) {
           console.error("[plushie] Restart failed:", err);
@@ -1446,6 +1458,29 @@ export class Runtime<M> {
         }
       })();
     }, delay);
+  }
+
+  // =======================================================================
+  // Heartbeat watchdog
+  // =======================================================================
+
+  private resetHeartbeat(): void {
+    if (this.heartbeatIntervalMs === null) return;
+    this.cancelHeartbeat();
+    this.heartbeatTimer = setTimeout(() => {
+      this.heartbeatTimer = null;
+      console.warn(
+        `[plushie] Renderer unresponsive (no message in ${String(this.heartbeatIntervalMs)}ms)`,
+      );
+      this.handleRendererClose("heartbeat_timeout");
+    }, this.heartbeatIntervalMs);
+  }
+
+  private cancelHeartbeat(): void {
+    if (this.heartbeatTimer !== null) {
+      clearTimeout(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 
   // =======================================================================
