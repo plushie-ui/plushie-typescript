@@ -123,6 +123,21 @@ describe("normalize", () => {
     expect(() => normalize(bad)).toThrow(/contains "\/"/i);
   });
 
+  test("throws on user ID containing #", () => {
+    const bad = node("my#button", "button");
+    expect(() => normalize(bad)).toThrow(/contains "#"/i);
+  });
+
+  test("throws on empty user ID", () => {
+    const bad = node("", "button");
+    expect(() => normalize(bad)).toThrow(/must not be empty/i);
+  });
+
+  test("throws on user ID with non-ASCII characters", () => {
+    const bad = node("bütton", "button");
+    expect(() => normalize(bad)).toThrow(/invalid characters/i);
+  });
+
   test("throws on duplicate sibling IDs", () => {
     const child1 = node("btn", "button");
     const child2 = node("btn", "button");

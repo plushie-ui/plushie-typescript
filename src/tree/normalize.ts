@@ -41,6 +41,33 @@ export function isAutoId(id: string): boolean {
   return id.startsWith("auto:");
 }
 
+const VALID_ID_RE = /^[\x21-\x7e]+$/;
+
+function validateUserId(id: string): void {
+  if (id === "") {
+    throw new Error("widget ID must not be empty");
+  }
+  if (id.includes("/")) {
+    throw new Error(
+      `Widget ID "${id}" contains "/" which is reserved for scoped IDs. ` +
+        `Use a different character or let the framework handle scoping.`,
+    );
+  }
+  if (id.includes("#")) {
+    throw new Error(`Widget ID "${id}" contains "#" which is reserved for window-qualified IDs.`);
+  }
+  const byteLength = new TextEncoder().encode(id).length;
+  if (byteLength > 1024) {
+    throw new Error(`Widget ID "${id}" exceeds maximum length of 1024 bytes`);
+  }
+  if (!VALID_ID_RE.test(id)) {
+    throw new Error(
+      `Widget ID "${id}" contains invalid characters. ` +
+        `IDs must contain only printable ASCII (0x21-0x7E).`,
+    );
+  }
+}
+
 /**
  * Normalize a UINode tree into wire-compatible form.
  *
@@ -119,12 +146,9 @@ function normalizeNode(
   const type = node.type;
   const currentWindowId = type === "window" ? id : windowId;
 
-  // Validate: user IDs must not contain "/"
-  if (!isAutoId(id) && id.includes("/")) {
-    throw new Error(
-      `Widget ID "${id}" contains "/" which is reserved for scoped IDs. ` +
-        `Use a different character or let the framework handle scoping.`,
-    );
+  // Validate user-provided IDs
+  if (!isAutoId(id)) {
+    validateUserId(id);
   }
 
   // Apply scope prefix to this node's ID
