@@ -498,10 +498,18 @@ export function decodeMessage(raw: WireMessage): DecodedResponse | null {
 // -- Hello ----------------------------------------------------------------
 
 function decodeHello(raw: WireMessage): HelloInfo {
+  const protocol = raw["protocol"];
+  const version = raw["version"];
+  const name = raw["name"];
+  if (typeof protocol !== "number")
+    throw new Error("hello message must include numeric 'protocol' field");
+  if (typeof version !== "string")
+    throw new Error("hello message must include string 'version' field");
+  if (typeof name !== "string") throw new Error("hello message must include string 'name' field");
   return {
-    protocol: num(raw, "protocol"),
-    version: str(raw, "version"),
-    name: str(raw, "name"),
+    protocol,
+    version,
+    name,
     mode: str(raw, "mode", "windowed") as HelloInfo["mode"],
     backend: str(raw, "backend", "unknown"),
     transport: str(raw, "transport", "stdio"),

@@ -25,7 +25,7 @@ export interface RectShape {
   readonly fill?: string | LinearGradient;
   readonly stroke?: Stroke;
   readonly opacity?: number;
-  readonly radius?: number;
+  readonly radius?: number | readonly [number, number, number, number];
   readonly fill_rule?: "non_zero" | "even_odd";
 }
 
@@ -132,7 +132,7 @@ export interface RectOpts {
   readonly fill?: string | LinearGradient;
   readonly stroke?: Stroke;
   readonly opacity?: number;
-  readonly radius?: number;
+  readonly radius?: number | readonly [number, number, number, number];
   readonly fill_rule?: "non_zero" | "even_odd";
 }
 

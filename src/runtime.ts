@@ -1375,8 +1375,12 @@ export class Runtime<M> {
     }
     this.state.pendingAwaitAsync.clear();
 
-    // Flush pending effects with error events
-    for (const [, pending] of this.state.pendingEffects) {
+    // Flush pending effects with error events.
+    // Drain first, then dispatch, to avoid the clear() bug where events
+    // added during dispatch would be wiped.
+    const effectsToFlush = [...this.state.pendingEffects.values()];
+    this.state.pendingEffects.clear();
+    for (const pending of effectsToFlush) {
       clearTimeout(pending.timer);
       this.dispatchEvent({
         kind: "effect",
@@ -1386,7 +1390,6 @@ export class Runtime<M> {
         error: "renderer_restarted",
       } as EffectEvent);
     }
-    this.state.pendingEffects.clear();
 
     if (this.config.handleRendererExit) {
       try {
