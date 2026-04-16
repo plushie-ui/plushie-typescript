@@ -409,6 +409,7 @@ export class Runtime<M> {
     if (s.fonts !== undefined) result["fonts"] = s.fonts;
     if (s.defaultEventRate !== undefined) result["default_event_rate"] = s.defaultEventRate;
     if (s.nativeWidgetConfig !== undefined) result["extension_config"] = s.nativeWidgetConfig;
+    if (s.validateProps !== undefined) result["validate_props"] = s.validateProps;
     return result;
   }
 
@@ -807,11 +808,19 @@ export class Runtime<M> {
   // =======================================================================
 
   private syncSubscriptions(): void {
-    const appSubs = this.config.subscriptions
-      ? this.config
+    let appSubs: Subscription[];
+    if (this.config.subscriptions) {
+      try {
+        appSubs = this.config
           .subscriptions(this.state.model as never)
-          .filter((s): s is Subscription => s !== false && s !== null && s !== undefined)
-      : [];
+          .filter((s): s is Subscription => s !== false && s !== null && s !== undefined);
+      } catch (error: unknown) {
+        this.handleUpdateError(error);
+        appSubs = [];
+      }
+    } else {
+      appSubs = [];
+    }
 
     // Merge widget handler subscriptions
     const widgetSubs = collectWidgetSubscriptions(this.state.widgetHandlerRegistry);
@@ -898,7 +907,14 @@ export class Runtime<M> {
     const newWindows = detectWindows(tree);
     const oldWindows = this.state.windowIds;
     const baseConfig = this.config.windowConfig
-      ? this.config.windowConfig(this.state.model as never)
+      ? (() => {
+          try {
+            return this.config.windowConfig!(this.state.model as never);
+          } catch (error: unknown) {
+            this.handleUpdateError(error);
+            return {};
+          }
+        })()
       : {};
     const newWindowProps = new Map<string, Record<string, unknown>>();
 
@@ -1406,8 +1422,17 @@ export class Runtime<M> {
       try {
         const exitInfo = normalizeExitReason(reason);
         this.state.model = this.config.handleRendererExit(this.state.model as never, exitInfo);
-      } catch {
-        // Ignore errors in exit handler
+      } catch (exitError: unknown) {
+        const recoveryEvent: Event = {
+          kind: "system",
+          type: "recovery_failed",
+          tag: "recovery_failed",
+          data: {
+            exit_reason: reason,
+            error: exitError instanceof Error ? exitError.message : String(exitError),
+          },
+        };
+        this.dispatchEvent(recoveryEvent);
       }
     }
 

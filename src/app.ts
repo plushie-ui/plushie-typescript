@@ -43,6 +43,7 @@ export interface AppSettings {
    * Sent in the Settings message so native widgets can initialize their state.
    */
   readonly nativeWidgetConfig?: Readonly<Record<string, unknown>>;
+  readonly validateProps?: boolean;
 }
 
 /**
