@@ -333,3 +333,13 @@ export type Event =
   | TimerEvent
   | AsyncEvent
   | StreamEvent;
+
+/** Reason the renderer exited. */
+export type RendererExitType = "crash" | "connection_lost" | "shutdown" | "heartbeat_timeout";
+
+/** Structured error describing why the renderer exited. */
+export interface RendererExit {
+  readonly type: RendererExitType;
+  readonly message: string;
+  readonly details?: Readonly<Record<string, unknown>> | undefined;
+}

@@ -101,6 +101,8 @@ export type {
   PointerButton,
   PointerData,
   PointerType,
+  RendererExit,
+  RendererExitType,
   ResizeData,
   ScrolledData,
   StreamEvent,

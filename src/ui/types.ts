@@ -589,6 +589,8 @@ export interface A11y {
   positionInSet?: number;
   sizeOfSet?: number;
   hasPopup?: "listbox" | "menu" | "dialog" | "tree" | "grid";
+  activeDescendant?: string;
+  radioGroup?: string;
 }
 
 /** Encode A11y to wire format (camelCase -> snake_case). */
@@ -606,7 +608,14 @@ export function encodeA11y(value: A11y): Record<string, unknown> {
   if (value.invalid !== undefined) result["invalid"] = value.invalid;
   if (value.modal !== undefined) result["modal"] = value.modal;
   if (value.readOnly !== undefined) result["read_only"] = value.readOnly;
-  if (value.mnemonic !== undefined) result["mnemonic"] = value.mnemonic;
+  if (value.mnemonic !== undefined) {
+    if (value.mnemonic.length !== 1) {
+      throw new Error(
+        `A11y mnemonic must be a single character, got "${value.mnemonic}" (${String(value.mnemonic.length)} characters)`,
+      );
+    }
+    result["mnemonic"] = value.mnemonic;
+  }
   if (value.toggled !== undefined) result["toggled"] = value.toggled;
   if (value.selected !== undefined) result["selected"] = value.selected;
   if (value.value !== undefined) result["value"] = value.value;
@@ -618,6 +627,8 @@ export function encodeA11y(value: A11y): Record<string, unknown> {
   if (value.positionInSet !== undefined) result["position_in_set"] = value.positionInSet;
   if (value.sizeOfSet !== undefined) result["size_of_set"] = value.sizeOfSet;
   if (value.hasPopup !== undefined) result["has_popup"] = value.hasPopup;
+  if (value.activeDescendant !== undefined) result["active_descendant"] = value.activeDescendant;
+  if (value.radioGroup !== undefined) result["radio_group"] = value.radioGroup;
   return result;
 }
 

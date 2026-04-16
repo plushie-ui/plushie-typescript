@@ -71,6 +71,8 @@ export interface Animation {
   readonly startedAt: number | null;
   readonly easing: EasingFn;
   readonly value: number;
+  readonly looping?: boolean;
+  readonly autoReverse?: boolean;
 }
 
 /** Result of advancing an animation by one frame. */
@@ -120,6 +122,25 @@ export function createAnimation(
   };
 }
 
+/** Create a looping animation that repeats forever with auto-reverse. */
+export function looping(
+  from: number,
+  to: number,
+  durationMs: number,
+  opts: { easing?: EasingFn } = {},
+): Animation {
+  return {
+    from,
+    to,
+    duration: durationMs,
+    startedAt: null,
+    easing: opts.easing ?? linear,
+    value: from,
+    looping: true,
+    autoReverse: true,
+  };
+}
+
 /** Start (or restart) the animation at the given timestamp. */
 export function startAnimation(anim: Animation, timestamp: number): Animation {
   return { ...anim, startedAt: timestamp, value: anim.from };
@@ -135,7 +156,27 @@ export function advanceAnimation(
   }
 
   const elapsed = timestamp - anim.startedAt;
-  const t = clamp(elapsed / anim.duration);
+  const rawT = elapsed / anim.duration;
+
+  if (anim.looping) {
+    const cycleT = rawT % 1;
+    let t: number;
+    if (anim.autoReverse) {
+      const fullCycle = rawT % 2;
+      t = fullCycle <= 1 ? fullCycle : 2 - fullCycle;
+    } else {
+      t = cycleT;
+    }
+    t = clamp(t);
+    const current = interpolate(anim.from, anim.to, t, anim.easing);
+    return {
+      value: current,
+      finished: false,
+      animation: { ...anim, value: current },
+    };
+  }
+
+  const t = clamp(rawT);
   const current = interpolate(anim.from, anim.to, t, anim.easing);
 
   if (t >= 1) {

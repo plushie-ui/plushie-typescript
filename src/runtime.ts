@@ -47,6 +47,7 @@ import type {
   EffectEvent,
   Event,
   Handler,
+  RendererExit,
   Subscription,
   UpdateResult,
   WidgetEvent,
@@ -1403,7 +1404,8 @@ export class Runtime<M> {
 
     if (this.config.handleRendererExit) {
       try {
-        this.state.model = this.config.handleRendererExit(this.state.model as never, reason);
+        const exitInfo = normalizeExitReason(reason);
+        this.state.model = this.config.handleRendererExit(this.state.model as never, exitInfo);
       } catch {
         // Ignore errors in exit handler
       }
@@ -1448,6 +1450,7 @@ export class Runtime<M> {
 
           // Reset restart counter on success
           this.state.restartCount = 0;
+          this.state.consecutiveErrors = 0;
           this.resetHeartbeat();
           console.info("[plushie] Renderer restarted successfully");
         } catch (err) {
@@ -1556,4 +1559,21 @@ function shallowEqual(
     if (a[key] !== b[key]) return false;
   }
   return true;
+}
+
+const KNOWN_EXIT_REASONS = new Set<string>([
+  "crash",
+  "connection_lost",
+  "shutdown",
+  "heartbeat_timeout",
+]);
+
+function normalizeExitReason(raw: string): RendererExit {
+  const parts = raw.split(":");
+  const exitType = parts[0]!;
+  const message = parts.length > 1 ? parts.slice(1).join(":").trim() : raw;
+  if (KNOWN_EXIT_REASONS.has(exitType)) {
+    return { type: exitType as RendererExit["type"], message: message || raw };
+  }
+  return { type: "crash", message: raw };
 }

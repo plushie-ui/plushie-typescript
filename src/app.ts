@@ -12,7 +12,15 @@ import type { WireFormat } from "./client/transport.js";
 import { SpawnTransport } from "./client/transport.js";
 import type { NativeWidgetConfig } from "./native-widget.js";
 import { Runtime } from "./runtime.js";
-import type { Command, DeepReadonly, Event, Subscription, UINode, UpdateResult } from "./types.js";
+import type {
+  Command,
+  DeepReadonly,
+  Event,
+  RendererExit,
+  Subscription,
+  UINode,
+  UpdateResult,
+} from "./types.js";
 
 export type WindowNode = UINode & { readonly type: "window" };
 export type AppView = WindowNode | readonly WindowNode[] | null;
@@ -74,7 +82,7 @@ export interface AppConfig<M> {
   expectedExtensions?: readonly (string | NativeWidgetConfig)[];
 
   /** Called when the renderer process exits unexpectedly. */
-  handleRendererExit?: (state: DeepReadonly<M>, reason: string) => M;
+  handleRendererExit?: (state: DeepReadonly<M>, reason: RendererExit) => M;
 }
 
 /** Options for running an app. */
