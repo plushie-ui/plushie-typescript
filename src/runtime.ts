@@ -1447,7 +1447,10 @@ export class Runtime<M> {
   }
 
   private handleStubAck(response: DecodedResponse): void {
-    if (response.type !== "effect_stub_register_ack" && response.type !== "effect_stub_unregister_ack")
+    if (
+      response.type !== "effect_stub_register_ack" &&
+      response.type !== "effect_stub_unregister_ack"
+    )
       return;
     const pending = this.state.pendingStubAcks.get(response.kind);
     if (pending) {
