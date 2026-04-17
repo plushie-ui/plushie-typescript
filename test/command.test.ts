@@ -267,10 +267,31 @@ describe("Command", () => {
     expect(cmd.payload["mapper"]).toBe(mapper);
   });
 
-  test("announce() creates a widget_op announce command", () => {
+  test("announce() defaults to polite politeness", () => {
     const cmd = Command.announce("File saved");
     expect(cmd.type).toBe("widget_op");
-    expect(cmd.payload).toEqual({ op: "announce", text: "File saved" });
+    expect(cmd.payload).toEqual({ op: "announce", text: "File saved", politeness: "polite" });
+  });
+
+  test("announce() accepts an assertive politeness", () => {
+    const cmd = Command.announce("Connection lost", "assertive");
+    expect(cmd.payload).toEqual({
+      op: "announce",
+      text: "Connection lost",
+      politeness: "assertive",
+    });
+  });
+
+  test("focusNextWithin() carries the scope in the payload", () => {
+    const cmd = Command.focusNextWithin("main#menu");
+    expect(cmd.type).toBe("widget_op");
+    expect(cmd.payload).toEqual({ op: "focus_next_within", scope: "main#menu" });
+  });
+
+  test("focusPreviousWithin() carries the scope in the payload", () => {
+    const cmd = Command.focusPreviousWithin("main#menu");
+    expect(cmd.type).toBe("widget_op");
+    expect(cmd.payload).toEqual({ op: "focus_previous_within", scope: "main#menu" });
   });
 
   // -- Window-qualified selectors --

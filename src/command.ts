@@ -123,6 +123,24 @@ export function focusPrevious(): Command {
   return cmd("widget_op", { op: "focus_previous" });
 }
 
+/**
+ * Move focus to the next focusable widget within the subtree rooted at
+ * `scope`. Focus wraps at the subtree boundary, keeping the Tab cycle
+ * bounded. Useful for menus, pane grids, and other keyboard containers
+ * that should not leak focus to siblings.
+ */
+export function focusNextWithin(scope: string): Command {
+  return cmd("widget_op", { op: "focus_next_within", scope });
+}
+
+/**
+ * Move focus to the previous focusable widget within the subtree
+ * rooted at `scope`. See {@link focusNextWithin} for semantics.
+ */
+export function focusPreviousWithin(scope: string): Command {
+  return cmd("widget_op", { op: "focus_previous_within", scope });
+}
+
 /** Select all text in a widget. Supports `"window#path"`. */
 export function selectAll(widgetId: string): Command {
   return widgetCommand(widgetId, "select_all");
@@ -163,9 +181,25 @@ export function moveWindow(windowId: string, x: number, y: number): Command {
   return cmd("window_op", { op: "move", window_id: windowId, x, y });
 }
 
-/** Screen reader announcement. */
-export function announce(text: string): Command {
-  return cmd("widget_op", { op: "announce", text });
+/**
+ * Politeness hint for screen reader announcements.
+ *
+ * `"polite"` waits for a gap in the user's current announcement and is
+ * the right default for toast-style feedback (saves, confirmations,
+ * counts). `"assertive"` interrupts the current announcement and
+ * should be reserved for urgent context.
+ */
+export type AnnouncePoliteness = "polite" | "assertive";
+
+/**
+ * Screen reader announcement.
+ *
+ * `politeness` defaults to `"polite"`, matching the Rust SDK. Pass
+ * `"assertive"` for urgent interruptions the user must hear
+ * immediately.
+ */
+export function announce(text: string, politeness: AnnouncePoliteness = "polite"): Command {
+  return cmd("widget_op", { op: "announce", text, politeness });
 }
 
 // -- Text editing -----------------------------------------------------------
