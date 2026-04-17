@@ -208,32 +208,42 @@ export function encodeWidgetOp(
   return { type: "widget_op", session, op, payload };
 }
 
-/** Encode a WindowOp message. */
+/** Encode a WindowOp message.
+ *
+ * Uses the unified `_op` envelope: op-specific data lives under `payload`;
+ * the `window_id` addressing field stays flat beside `op`.
+ */
 export function encodeWindowOp(
   session: string,
   op: string,
   windowId: string,
-  settings: Record<string, unknown>,
+  payload: Record<string, unknown>,
 ): WireMessage {
-  return { type: "window_op", session, op, window_id: windowId, settings };
+  return { type: "window_op", session, op, window_id: windowId, payload };
 }
 
-/** Encode a SystemOp message. */
+/** Encode a SystemOp message.
+ *
+ * Uses the unified `_op` envelope: op-specific data lives under `payload`.
+ */
 export function encodeSystemOp(
   session: string,
   op: string,
-  settings: Record<string, unknown>,
+  payload: Record<string, unknown>,
 ): WireMessage {
-  return { type: "system_op", session, op, settings };
+  return { type: "system_op", session, op, payload };
 }
 
-/** Encode a SystemQuery message. */
+/** Encode a SystemQuery message.
+ *
+ * Uses the unified `_op` envelope: query-specific data lives under `payload`.
+ */
 export function encodeSystemQuery(
   session: string,
   op: string,
-  settings: Record<string, unknown>,
+  payload: Record<string, unknown>,
 ): WireMessage {
-  return { type: "system_query", session, op, settings };
+  return { type: "system_query", session, op, payload };
 }
 
 /** Encode an Effect message. */
@@ -246,13 +256,16 @@ export function encodeEffect(
   return { type: "effect", session, id, kind, payload };
 }
 
-/** Encode an ImageOp message. Binary fields must already be encoded (base64 for JSON). */
+/** Encode an ImageOp message. Binary fields must already be encoded (base64 for JSON).
+ *
+ * Uses the unified `_op` envelope: op-specific data lives under `payload`.
+ */
 export function encodeImageOp(
   session: string,
   op: string,
   payload: Record<string, unknown>,
 ): WireMessage {
-  return { type: "image_op", session, op, ...payload };
+  return { type: "image_op", session, op, payload };
 }
 
 /** Encode a Command message (unified widget-targeted command). */
