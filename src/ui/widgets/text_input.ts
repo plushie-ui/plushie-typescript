@@ -18,6 +18,7 @@ import type {
   LineHeight,
   Padding,
   StyleMap,
+  ValidationState,
 } from "../types.js";
 import {
   encodeA11y,
@@ -28,6 +29,7 @@ import {
   encodeLineHeight,
   encodePadding,
   encodeStyleMap,
+  encodeValidation,
 } from "../types.js";
 
 /** Handler prop names -> wire event types for TextInput. */
@@ -84,6 +86,14 @@ export interface TextInputProps {
   selectionColor?: Color;
   /** When true, the input is non-interactive. */
   disabled?: boolean;
+  /** Marks the field as required. Flows into `a11y.required` automatically. */
+  required?: boolean;
+  /**
+   * Form validation state. `"valid"`, `"pending"`, or
+   * `["invalid", message]`. Flows into `a11y.invalid` and
+   * `a11y.error_message` automatically.
+   */
+  validation?: ValidationState;
   /** Accessibility properties. */
   a11y?: A11y;
   /** Maximum events per second for this widget's coalescable events. */
@@ -138,6 +148,8 @@ export function TextInput(props: TextInputProps): UINode {
   putIf(p, clean.placeholderColor, "placeholder_color", encodeColor);
   putIf(p, clean.selectionColor, "selection_color", encodeColor);
   putIf(p, clean.disabled, "disabled");
+  putIf(p, clean.required, "required");
+  putIf(p, clean.validation, "validation", encodeValidation);
   applyA11yDefaults(p, clean.a11y, { role: "text_input" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   return leafNodeWithMeta(id, "text_input", p, meta);

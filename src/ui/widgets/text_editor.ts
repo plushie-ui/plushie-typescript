@@ -8,7 +8,16 @@
 
 import type { Handler, UINode } from "../../types.js";
 import { applyA11yDefaults, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
-import type { A11y, Color, Font, Length, LineHeight, StyleMap, Wrapping } from "../types.js";
+import type {
+  A11y,
+  Color,
+  Font,
+  Length,
+  LineHeight,
+  StyleMap,
+  ValidationState,
+  Wrapping,
+} from "../types.js";
 import {
   encodeA11y,
   encodeColor,
@@ -16,6 +25,7 @@ import {
   encodeLength,
   encodeLineHeight,
   encodeStyleMap,
+  encodeValidation,
 } from "../types.js";
 
 const TEXT_EDITOR_HANDLERS = {
@@ -63,6 +73,13 @@ export interface TextEditorProps {
   selectionColor?: Color;
   /** Hint to the platform about the expected content type (keyboard layout, autocorrect). */
   inputPurpose?: "normal" | "secure" | "terminal";
+  /** Marks the field as required. Flows into `a11y.required` automatically. */
+  required?: boolean;
+  /**
+   * Form validation state. Flows into `a11y.invalid` and
+   * `a11y.error_message` automatically.
+   */
+  validation?: ValidationState;
   /** Accessibility properties. */
   a11y?: A11y;
   /** Maximum events per second for this widget's coalescable events. */
@@ -95,6 +112,8 @@ export function TextEditor(props: TextEditorProps): UINode {
   putIf(p, clean.placeholderColor, "placeholder_color", encodeColor);
   putIf(p, clean.selectionColor, "selection_color", encodeColor);
   putIf(p, clean.inputPurpose, "input_purpose");
+  putIf(p, clean.required, "required");
+  putIf(p, clean.validation, "validation", encodeValidation);
   applyA11yDefaults(p, clean.a11y, { role: "multiline_text_input" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   return leafNodeWithMeta(id, "text_editor", p, meta);

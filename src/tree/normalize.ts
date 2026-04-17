@@ -480,15 +480,78 @@ function collectRadioGroups(node: WireNode, scope: string, out: Map<string, stri
   }
 }
 
+const PLACEHOLDER_DESCRIPTION_WIDGETS = new Set([
+  "text_input",
+  "text_editor",
+  "combo_box",
+  "pick_list",
+]);
+
+const VALIDATABLE_WIDGETS = new Set([
+  "text_input",
+  "text_editor",
+  "checkbox",
+  "pick_list",
+  "combo_box",
+]);
+
+function placeholderDescription(
+  kind: string,
+  props: Readonly<Record<string, unknown>>,
+): string | undefined {
+  if (!PLACEHOLDER_DESCRIPTION_WIDGETS.has(kind)) return undefined;
+  const ph = props["placeholder"];
+  return typeof ph === "string" && ph !== "" ? ph : undefined;
+}
+
+function requiredFromProps(
+  kind: string,
+  props: Readonly<Record<string, unknown>>,
+): boolean | undefined {
+  if (!VALIDATABLE_WIDGETS.has(kind)) return undefined;
+  const req = props["required"];
+  return typeof req === "boolean" ? req : undefined;
+}
+
+function invalidFromProps(
+  kind: string,
+  props: Readonly<Record<string, unknown>>,
+): { invalid: boolean | undefined; errorMessage: string | undefined } {
+  if (!VALIDATABLE_WIDGETS.has(kind)) return { invalid: undefined, errorMessage: undefined };
+  const v = props["validation"];
+  if (v === undefined || v === null) return { invalid: undefined, errorMessage: undefined };
+  if (v === "valid") return { invalid: false, errorMessage: undefined };
+  if (v === "pending") return { invalid: undefined, errorMessage: undefined };
+  if (Array.isArray(v) && v.length === 2 && v[0] === "invalid") {
+    const msg = v[1];
+    return { invalid: true, errorMessage: typeof msg === "string" ? msg : undefined };
+  }
+  if (typeof v === "object" && !Array.isArray(v)) {
+    const rec = v as Record<string, unknown>;
+    const state = rec["state"];
+    if (state === "valid") return { invalid: false, errorMessage: undefined };
+    if (state === "pending") return { invalid: undefined, errorMessage: undefined };
+    if (state === "invalid") {
+      const msg = rec["message"];
+      return { invalid: true, errorMessage: typeof msg === "string" ? msg : undefined };
+    }
+  }
+  return { invalid: undefined, errorMessage: undefined };
+}
+
 function rewriteA11y(
   node: WireNode,
   scope: string,
   declared: Set<string>,
   radioGroups: Map<string, string[]>,
+  tooltipParentId: string | undefined = undefined,
 ): WireNode {
-  const props = applyA11yRewrites(node, scope, declared, radioGroups);
+  const props = applyA11yRewrites(node, scope, declared, radioGroups, tooltipParentId);
   const childScope = childScopeOf(node, scope);
-  const children = node.children.map((c) => rewriteA11y(c, childScope, declared, radioGroups));
+  const tooltipForChildren = node.type === "tooltip" ? node.id : undefined;
+  const children = node.children.map((c) =>
+    rewriteA11y(c, childScope, declared, radioGroups, tooltipForChildren),
+  );
   return { ...node, props, children };
 }
 
@@ -497,6 +560,7 @@ function applyA11yRewrites(
   scope: string,
   declared: Set<string>,
   radioGroups: Map<string, string[]>,
+  tooltipParentId: string | undefined,
 ): Record<string, unknown> {
   const props = node.props;
   const roleDefault = WIDGET_ROLE_DEFAULTS[node.type];
@@ -508,6 +572,10 @@ function applyA11yRewrites(
       radioIds = radioGroups.get(radioGroupKey(scope, group));
     }
   }
+
+  const placeholderDesc = placeholderDescription(node.type, props);
+  const requiredProp = requiredFromProps(node.type, props);
+  const { invalid: invalidProp, errorMessage: errorText } = invalidFromProps(node.type, props);
 
   const existing = props["a11y"];
   let a11y: Record<string, unknown> | undefined =
@@ -522,7 +590,14 @@ function applyA11yRewrites(
       a11y["radio_group"] !== undefined);
 
   const needsUpdate =
-    (roleDefault !== undefined && !hasRole) || radioIds !== undefined || hasAnyRef;
+    (roleDefault !== undefined && !hasRole) ||
+    radioIds !== undefined ||
+    hasAnyRef ||
+    placeholderDesc !== undefined ||
+    requiredProp !== undefined ||
+    invalidProp !== undefined ||
+    errorText !== undefined ||
+    tooltipParentId !== undefined;
 
   if (a11y === undefined && !needsUpdate) return props;
 
@@ -559,6 +634,26 @@ function applyA11yRewrites(
     });
   } else if (radioIds !== undefined) {
     a11y["radio_group"] = [...radioIds];
+  }
+
+  if (placeholderDesc !== undefined && a11y["description"] === undefined) {
+    a11y["description"] = placeholderDesc;
+  }
+
+  if (requiredProp === true && a11y["required"] === undefined) {
+    a11y["required"] = true;
+  }
+
+  if (invalidProp !== undefined && a11y["invalid"] === undefined) {
+    a11y["invalid"] = invalidProp;
+  }
+
+  if (errorText !== undefined && a11y["error_message"] === undefined) {
+    a11y["error_message"] = errorText;
+  }
+
+  if (tooltipParentId !== undefined && a11y["described_by"] === undefined) {
+    a11y["described_by"] = tooltipParentId;
   }
 
   return { ...props, a11y };

@@ -633,6 +633,46 @@ export function encodeA11y(value: A11y): Record<string, unknown> {
 }
 
 // =========================================================================
+// ValidationState
+// =========================================================================
+
+/**
+ * Form-validation state for input widgets.
+ *
+ * Accepted shapes (builders on text_input, text_editor, checkbox,
+ * pick_list, combo_box accept this as their `validation` prop):
+ *
+ * - `"valid"` - validated and OK
+ * - `"pending"` - validation in progress (sets `a11y.busy`)
+ * - `["invalid", message]` or `{ state: "invalid", message }` -
+ *   failed with a human-readable message (sets `a11y.invalid` and
+ *   `a11y.error_message`)
+ *
+ * The normalizer projects this onto the `a11y` map automatically.
+ */
+export type ValidationState =
+  | "valid"
+  | "pending"
+  | readonly ["invalid", string]
+  | { readonly state: "valid" | "pending" }
+  | { readonly state: "invalid"; readonly message: string };
+
+/** Build an invalid validation tuple. */
+export function invalid(message: string): readonly ["invalid", string] {
+  return ["invalid", message] as const;
+}
+
+/**
+ * Encode a {@link ValidationState} for the wire. Passes through as-is;
+ * the normalizer understands all accepted shapes.
+ */
+export function encodeValidation(value: ValidationState): unknown {
+  if (Array.isArray(value)) return [...value];
+  if (typeof value === "object") return { ...value };
+  return value;
+}
+
+// =========================================================================
 // Other prop enums
 // =========================================================================
 

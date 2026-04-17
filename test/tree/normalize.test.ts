@@ -278,6 +278,67 @@ describe("normalize", () => {
   });
 });
 
+// -- Builder-default projections into a11y --
+
+describe("normalize builder-default a11y", () => {
+  test("text_input placeholder flows into a11y.description", () => {
+    const parent = node("form", "container", {}, [
+      node("email", "text_input", { placeholder: "Your email" }),
+    ]);
+    const wire = normalize(parent);
+    const a11y = wire.children[0]!.props["a11y"] as Record<string, unknown>;
+    expect(a11y["description"]).toBe("Your email");
+  });
+
+  test("explicit a11y.description wins over placeholder-derived default", () => {
+    const parent = node("form", "container", {}, [
+      node("email", "text_input", {
+        placeholder: "Ph",
+        a11y: { description: "Explicit" },
+      }),
+    ]);
+    const wire = normalize(parent);
+    const a11y = wire.children[0]!.props["a11y"] as Record<string, unknown>;
+    expect(a11y["description"]).toBe("Explicit");
+  });
+
+  test("required prop flows into a11y.required", () => {
+    const parent = node("form", "container", {}, [node("email", "text_input", { required: true })]);
+    const wire = normalize(parent);
+    const a11y = wire.children[0]!.props["a11y"] as Record<string, unknown>;
+    expect(a11y["required"]).toBe(true);
+  });
+
+  test("validation invalid tuple flows into a11y.invalid + error_message", () => {
+    const parent = node("form", "container", {}, [
+      node("email", "text_input", { validation: ["invalid", "Not valid"] }),
+    ]);
+    const wire = normalize(parent);
+    const a11y = wire.children[0]!.props["a11y"] as Record<string, unknown>;
+    expect(a11y["invalid"]).toBe(true);
+    expect(a11y["error_message"]).toBe("Not valid");
+  });
+
+  test("validation valid sets a11y.invalid = false", () => {
+    const parent = node("form", "container", {}, [
+      node("email", "text_input", { validation: "valid" }),
+    ]);
+    const wire = normalize(parent);
+    const a11y = wire.children[0]!.props["a11y"] as Record<string, unknown>;
+    expect(a11y["invalid"]).toBe(false);
+  });
+
+  test("tooltip scopes described_by onto its trigger child", () => {
+    const parent = node("form", "container", {}, [
+      node("help", "tooltip", { tip: "Enter your email" }, [node("email", "text_input", {})]),
+    ]);
+    const wire = normalize(parent);
+    const trigger = wire.children[0]!.children[0]!;
+    const a11y = trigger.props["a11y"] as Record<string, unknown>;
+    expect(a11y["described_by"]).toBe("form/help");
+  });
+});
+
 // -- Memo cache tests --
 
 describe("memo", () => {

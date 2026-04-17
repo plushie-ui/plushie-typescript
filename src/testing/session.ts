@@ -509,11 +509,38 @@ export class TestSession<M> {
     }
   }
 
-  /** Assert that a widget's a11y props match expected values. */
-  async assertA11y(selector: string, expected: Record<string, unknown>): Promise<void> {
+  /**
+   * Return the resolved a11y map for a widget.
+   *
+   * Layers render-pipeline inference on top of the normalized `a11y`
+   * prop so tests see what assistive technology will see:
+   *
+   * - `text_input` / `text_editor` / `combo_box` / `pick_list`:
+   *   `placeholder` flows into `description` when unset.
+   * - `image` / `svg` / `qr_code`: `alt` flows into `label` when
+   *   unset.
+   *
+   * Returns an empty object for widgets the normalizer left
+   * untouched, so callers can assert on individual keys without
+   * special-casing absence.
+   *
+   * Throws if the selector matches nothing.
+   */
+  async resolvedA11y(selector: string): Promise<Record<string, unknown>> {
     const el = await this.find(selector);
-    if (!el) throw new Error(`assertA11y: widget "${selector}" not found`);
-    const a11y = (el.props["a11y"] ?? {}) as Record<string, unknown>;
+    if (!el) throw new Error(`resolvedA11y: widget "${selector}" not found`);
+    return resolveA11yForNode(el.type, el.props);
+  }
+
+  /**
+   * Assert that a widget's resolved a11y props match expected values.
+   *
+   * Reads through {@link resolvedA11y}, so inferred defaults
+   * (placeholder -> description, alt -> label) compose with the
+   * author's explicit `a11y` overrides.
+   */
+  async assertA11y(selector: string, expected: Record<string, unknown>): Promise<void> {
+    const a11y = await this.resolvedA11y(selector);
     for (const [key, value] of Object.entries(expected)) {
       if (a11y[key] !== value) {
         throw new Error(
@@ -837,4 +864,37 @@ function parseSelector(selector: string): WireSelector {
 
   // Plain ID
   return { by: "id", value: selector };
+}
+
+// ---------------------------------------------------------------------------
+// Resolved a11y helper
+// ---------------------------------------------------------------------------
+
+const PLACEHOLDER_A11Y_WIDGETS = new Set(["text_input", "text_editor", "combo_box", "pick_list"]);
+const ALT_A11Y_WIDGETS = new Set(["image", "svg", "qr_code"]);
+
+/**
+ * Apply widget-sdk-equivalent a11y inference on top of the normalized
+ * a11y prop. Kept aligned with the Rust SDK's `resolve_a11y_for_node`.
+ */
+export function resolveA11yForNode(
+  widgetType: string,
+  props: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  const explicit = (props["a11y"] ?? {}) as Record<string, unknown>;
+  const inferred: Record<string, unknown> = {};
+
+  if (PLACEHOLDER_A11Y_WIDGETS.has(widgetType)) {
+    const ph = props["placeholder"];
+    if (typeof ph === "string" && ph.length > 0) {
+      inferred["description"] = ph;
+    }
+  } else if (ALT_A11Y_WIDGETS.has(widgetType)) {
+    const alt = props["alt"];
+    if (typeof alt === "string" && alt.length > 0) {
+      inferred["label"] = alt;
+    }
+  }
+
+  return { ...inferred, ...explicit };
 }

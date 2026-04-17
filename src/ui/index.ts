@@ -41,6 +41,7 @@ export type {
   StatusOverride,
   StyleMap,
   Theme,
+  ValidationState,
   Wrapping,
 } from "./types.js";
 export {
@@ -57,6 +58,8 @@ export {
   encodePadding,
   encodeShadow,
   encodeStyleMap,
+  encodeValidation,
+  invalid,
   linearGradient,
   linearGradientFromAngle,
 } from "./types.js";

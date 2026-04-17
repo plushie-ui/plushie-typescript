@@ -5,13 +5,23 @@
  */
 
 import type { Handler, UINode } from "../../types.js";
-import type { A11y, Font, Length, LineHeight, Shaping, StyleMap, Wrapping } from "../types.js";
+import type {
+  A11y,
+  Font,
+  Length,
+  LineHeight,
+  Shaping,
+  StyleMap,
+  ValidationState,
+  Wrapping,
+} from "../types.js";
 import {
   encodeA11y,
   encodeFont,
   encodeLength,
   encodeLineHeight,
   encodeStyleMap,
+  encodeValidation,
 } from "../types.js";
 
 /**
@@ -60,6 +70,13 @@ export interface CheckboxProps {
   icon?: CheckboxIcon;
   /** When true, the checkbox is non-interactive. */
   disabled?: boolean;
+  /** Marks the field as required. Flows into `a11y.required` automatically. */
+  required?: boolean;
+  /**
+   * Form validation state. Flows into `a11y.invalid` and
+   * `a11y.error_message` automatically.
+   */
+  validation?: ValidationState;
   /** Accessibility properties. */
   a11y?: A11y;
   /** Maximum events per second for this widget's coalescable events. */
@@ -102,6 +119,8 @@ export function Checkbox(props: CheckboxProps): UINode {
     p["icon"] = icon;
   }
   putIf(p, clean.disabled, "disabled");
+  putIf(p, clean.required, "required");
+  putIf(p, clean.validation, "validation", encodeValidation);
   applyA11yDefaults(p, clean.a11y, { role: "check_box" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   return leafNodeWithMeta(id, "checkbox", p, meta);

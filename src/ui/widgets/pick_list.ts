@@ -6,7 +6,16 @@
 
 import type { Handler, UINode } from "../../types.js";
 import { applyA11yDefaults, autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
-import type { A11y, Font, Length, LineHeight, Padding, Shaping, StyleMap } from "../types.js";
+import type {
+  A11y,
+  Font,
+  Length,
+  LineHeight,
+  Padding,
+  Shaping,
+  StyleMap,
+  ValidationState,
+} from "../types.js";
 import {
   encodeA11y,
   encodeFont,
@@ -14,6 +23,7 @@ import {
   encodeLineHeight,
   encodePadding,
   encodeStyleMap,
+  encodeValidation,
 } from "../types.js";
 
 const _PICK_LIST_HANDLERS = {
@@ -54,6 +64,13 @@ export interface PickListProps {
   menuStyle?: Record<string, unknown>;
   /** Style preset name or StyleMap overrides for the pick list itself. */
   style?: StyleMap;
+  /** Marks the field as required. Flows into `a11y.required` automatically. */
+  required?: boolean;
+  /**
+   * Form validation state. Flows into `a11y.invalid` and
+   * `a11y.error_message` automatically.
+   */
+  validation?: ValidationState;
   /** Accessibility properties. */
   a11y?: A11y;
   /** Maximum events per second for this widget's coalescable events. */
@@ -88,6 +105,8 @@ export function PickList(props: PickListProps): UINode {
   putIf(p, clean.ellipsis, "ellipsis");
   putIf(p, clean.menuStyle, "menu_style");
   putIf(p, clean.style, "style", encodeStyleMap);
+  putIf(p, clean.required, "required");
+  putIf(p, clean.validation, "validation", encodeValidation);
   applyA11yDefaults(p, clean.a11y, { role: "combo_box", hasPopup: "listbox" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   if (typeof props.onOpen === "boolean") putIf(p, props.onOpen, "on_open");
