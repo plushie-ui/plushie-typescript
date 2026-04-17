@@ -99,8 +99,8 @@ describe("Command", () => {
 
   // -- Window queries -------------------------------------------------------
 
-  test("getWindowSize() creates a window_query command", () => {
-    const cmd = Command.getWindowSize("main", "size_result");
+  test("windowSize() creates a window_query command", () => {
+    const cmd = Command.windowSize("main", "size_result");
     expect(cmd.type).toBe("window_query");
     expect(cmd.payload).toEqual({ op: "get_size", window_id: "main", tag: "size_result" });
   });
@@ -118,14 +118,14 @@ describe("Command", () => {
 
   // -- System queries -------------------------------------------------------
 
-  test("getSystemTheme() creates a system_query command", () => {
-    const cmd = Command.getSystemTheme("theme");
+  test("systemTheme() creates a system_query command", () => {
+    const cmd = Command.systemTheme("theme");
     expect(cmd.type).toBe("system_query");
     expect(cmd.payload).toEqual({ op: "get_system_theme", tag: "theme" });
   });
 
-  test("getSystemInfo() creates a system_query command", () => {
-    const cmd = Command.getSystemInfo("info");
+  test("systemInfo() creates a system_query command", () => {
+    const cmd = Command.systemInfo("info");
     expect(cmd.type).toBe("system_query");
     expect(cmd.payload).toEqual({ op: "get_system_info", tag: "info" });
   });

@@ -315,12 +315,12 @@ export function screenshotWindow(windowId: string, tag: string): Command {
 // -- Window queries ---------------------------------------------------------
 
 /** Query the size of a window. */
-export function getWindowSize(windowId: string, tag: string): Command {
+export function windowSize(windowId: string, tag: string): Command {
   return cmd("window_query", { op: "get_size", window_id: windowId, tag });
 }
 
 /** Query the position of a window. */
-export function getWindowPosition(windowId: string, tag: string): Command {
+export function windowPosition(windowId: string, tag: string): Command {
   return cmd("window_query", { op: "get_position", window_id: windowId, tag });
 }
 
@@ -335,12 +335,12 @@ export function isMinimized(windowId: string, tag: string): Command {
 }
 
 /** Query the current window mode (windowed, fullscreen, hidden). */
-export function getMode(windowId: string, tag: string): Command {
+export function windowMode(windowId: string, tag: string): Command {
   return cmd("window_query", { op: "get_mode", window_id: windowId, tag });
 }
 
 /** Query the window's current scale factor (DPI scaling). */
-export function getScaleFactor(windowId: string, tag: string): Command {
+export function scaleFactor(windowId: string, tag: string): Command {
   return cmd("window_query", { op: "get_scale_factor", window_id: windowId, tag });
 }
 
@@ -357,12 +357,12 @@ export function monitorSize(windowId: string, tag: string): Command {
 // -- System queries ---------------------------------------------------------
 
 /** Query the current system theme (light/dark mode). */
-export function getSystemTheme(tag: string): Command {
+export function systemTheme(tag: string): Command {
   return cmd("system_query", { op: "get_system_theme", tag });
 }
 
 /** Query system information (OS, CPU, memory, graphics). */
-export function getSystemInfo(tag: string): Command {
+export function systemInfo(tag: string): Command {
   return cmd("system_query", { op: "get_system_info", tag });
 }
 
