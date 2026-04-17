@@ -424,8 +424,8 @@ export type DecodedResponse =
       rgba: unknown;
     }
   | { type: "reset_response"; id: string; status: string }
-  | { type: "effect_stub_registered"; kind: string }
-  | { type: "effect_stub_unregistered"; kind: string }
+  | { type: "effect_stub_register_ack"; kind: string }
+  | { type: "effect_stub_unregister_ack"; kind: string }
   | { type: "session_error"; session: string; error: string }
   | { type: "session_closed"; session: string; reason: string };
 
@@ -510,11 +510,11 @@ export function decodeMessage(raw: WireMessage): DecodedResponse | null {
         status: str(raw, "status"),
       };
 
-    case "effect_stub_registered":
-      return { type: "effect_stub_registered", kind: str(raw, "kind") };
+    case "effect_stub_register_ack":
+      return { type: "effect_stub_register_ack", kind: str(raw, "kind") };
 
-    case "effect_stub_unregistered":
-      return { type: "effect_stub_unregistered", kind: str(raw, "kind") };
+    case "effect_stub_unregister_ack":
+      return { type: "effect_stub_unregister_ack", kind: str(raw, "kind") };
 
     default:
       return null;

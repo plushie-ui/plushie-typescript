@@ -518,8 +518,8 @@ export class Runtime<M> {
       case "op_query_response":
         this.handleOpQueryResponse(decoded);
         break;
-      case "effect_stub_registered":
-      case "effect_stub_unregistered":
+      case "effect_stub_register_ack":
+      case "effect_stub_unregister_ack":
         this.handleStubAck(decoded);
         break;
       case "interact_step":
@@ -1447,7 +1447,7 @@ export class Runtime<M> {
   }
 
   private handleStubAck(response: DecodedResponse): void {
-    if (response.type !== "effect_stub_registered" && response.type !== "effect_stub_unregistered")
+    if (response.type !== "effect_stub_register_ack" && response.type !== "effect_stub_unregister_ack")
       return;
     const pending = this.state.pendingStubAcks.get(response.kind);
     if (pending) {

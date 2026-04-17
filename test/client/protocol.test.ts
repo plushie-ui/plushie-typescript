@@ -873,26 +873,26 @@ describe("encodeUnregisterEffectStub", () => {
 // =========================================================================
 
 describe("decodeMessage effect stub acks", () => {
-  test("decodes effect_stub_registered", () => {
+  test("decodes effect_stub_register_ack", () => {
     const result = decodeMessage({
-      type: "effect_stub_registered",
+      type: "effect_stub_register_ack",
       session: "",
       kind: "clipboard_read",
     });
-    expect(result?.type).toBe("effect_stub_registered");
-    if (result?.type === "effect_stub_registered") {
+    expect(result?.type).toBe("effect_stub_register_ack");
+    if (result?.type === "effect_stub_register_ack") {
       expect(result.kind).toBe("clipboard_read");
     }
   });
 
-  test("decodes effect_stub_unregistered", () => {
+  test("decodes effect_stub_unregister_ack", () => {
     const result = decodeMessage({
-      type: "effect_stub_unregistered",
+      type: "effect_stub_unregister_ack",
       session: "",
       kind: "save_file",
     });
-    expect(result?.type).toBe("effect_stub_unregistered");
-    if (result?.type === "effect_stub_unregistered") {
+    expect(result?.type).toBe("effect_stub_unregister_ack");
+    if (result?.type === "effect_stub_unregister_ack") {
       expect(result.kind).toBe("save_file");
     }
   });
