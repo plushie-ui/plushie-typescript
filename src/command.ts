@@ -238,7 +238,7 @@ export function dragResizeWindow(windowId: string, direction: string): Command {
 }
 
 /** Request user attention for a window. Urgency can be "informational" or "critical". */
-export function requestUserAttention(windowId: string, urgency: string | null = null): Command {
+export function requestAttention(windowId: string, urgency: string | null = null): Command {
   return cmd("window_op", { op: "request_attention", window_id: windowId, urgency });
 }
 
