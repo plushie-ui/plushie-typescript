@@ -50,7 +50,8 @@ describe("normalize", () => {
     const result = normalize(n);
     expect(result.id).toBe("root");
     expect(result.type).toBe("column");
-    expect(result.props).toEqual({ spacing: 8 });
+    // Post-normalize auto-populates a11y.role from the widget type.
+    expect(result.props).toEqual({ spacing: 8, a11y: { role: "generic_container" } });
   });
 
   test("single-element array unwraps", () => {
@@ -159,7 +160,8 @@ describe("normalize", () => {
     const wire = normalize(tree);
     // Wire node should have id, type, props, children; no meta
     expect(wire.id).toBe("root");
-    expect(wire.props).toEqual({ spacing: 8 });
+    // Post-normalize auto-populates a11y.role from the widget type.
+    expect(wire.props).toEqual({ spacing: 8, a11y: { role: "generic_container" } });
     expect("meta" in wire).toBe(false);
   });
 
@@ -223,9 +225,25 @@ describe("normalize", () => {
     ]);
     const wire = normalize(parent);
     const radios = wire.children;
-    expect(radios[0]!.props["a11y"]).toEqual({ position_in_set: 1, size_of_set: 3 });
-    expect(radios[1]!.props["a11y"]).toEqual({ position_in_set: 2, size_of_set: 3 });
-    expect(radios[2]!.props["a11y"]).toEqual({ position_in_set: 3, size_of_set: 3 });
+    // Post-normalize also adds role and implicit radio_group peers.
+    expect(radios[0]!.props["a11y"]).toEqual({
+      position_in_set: 1,
+      size_of_set: 3,
+      role: "radio_button",
+      radio_group: ["form/r1", "form/r2", "form/r3"],
+    });
+    expect(radios[1]!.props["a11y"]).toEqual({
+      position_in_set: 2,
+      size_of_set: 3,
+      role: "radio_button",
+      radio_group: ["form/r1", "form/r2", "form/r3"],
+    });
+    expect(radios[2]!.props["a11y"]).toEqual({
+      position_in_set: 3,
+      size_of_set: 3,
+      role: "radio_button",
+      radio_group: ["form/r1", "form/r2", "form/r3"],
+    });
   });
 
   test("preserves manual position_in_set, fills size_of_set", () => {
@@ -234,8 +252,18 @@ describe("normalize", () => {
       node("r2", "radio", { group: "size", value: "m" }),
     ]);
     const wire = normalize(parent);
-    expect(wire.children[0]!.props["a11y"]).toEqual({ position_in_set: 5, size_of_set: 2 });
-    expect(wire.children[1]!.props["a11y"]).toEqual({ position_in_set: 2, size_of_set: 2 });
+    expect(wire.children[0]!.props["a11y"]).toEqual({
+      position_in_set: 5,
+      size_of_set: 2,
+      role: "radio_button",
+      radio_group: ["form/r1", "form/r2"],
+    });
+    expect(wire.children[1]!.props["a11y"]).toEqual({
+      position_in_set: 2,
+      size_of_set: 2,
+      role: "radio_button",
+      radio_group: ["form/r1", "form/r2"],
+    });
   });
 
   test("skips radios without a group", () => {
@@ -244,8 +272,9 @@ describe("normalize", () => {
       node("r2", "radio", { value: "b" }),
     ]);
     const wire = normalize(parent);
-    expect(wire.children[0]!.props["a11y"]).toBeUndefined();
-    expect(wire.children[1]!.props["a11y"]).toBeUndefined();
+    // Post-normalize still adds the default role.
+    expect(wire.children[0]!.props["a11y"]).toEqual({ role: "radio_button" });
+    expect(wire.children[1]!.props["a11y"]).toEqual({ role: "radio_button" });
   });
 });
 
@@ -300,8 +329,11 @@ describe("memo", () => {
     };
     const result2 = normalize(m2, ctx2);
 
+    // Cache hit: body not re-evaluated. The top-level result is
+    // rebuilt by the post-normalize pass, so reference equality no
+    // longer holds, but structural equality does.
     expect(callCount).toBe(1);
-    expect(result2).toBe(result1);
+    expect(result2).toEqual(result1);
   });
 
   test("memo body is re-evaluated when deps change", () => {

@@ -145,24 +145,28 @@ export function normalize(
     return { id: "auto:root", type: "container", props: {}, children: [] };
   }
 
+  let result: WireNode;
   if (Array.isArray(tree)) {
     if (tree.length === 0) {
       return { id: "auto:root", type: "container", props: {}, children: [] };
     }
     if (tree.length === 1) {
-      return normalizeNode(tree[0]!, "", undefined, ctx);
+      result = normalizeNode(tree[0]!, "", undefined, ctx);
+    } else {
+      // Wrap multiple nodes in a synthetic root. Synthetic root doesn't
+      // create scope (it uses an auto-ID).
+      result = {
+        id: "auto:root",
+        type: "container",
+        props: {},
+        children: tree.map((child) => normalizeNode(child, "", undefined, ctx)),
+      };
     }
-    // Wrap multiple nodes in a synthetic root. Synthetic root doesn't
-    // create scope (it uses an auto-ID).
-    return {
-      id: "auto:root",
-      type: "container",
-      props: {},
-      children: tree.map((child) => normalizeNode(child, "", undefined, ctx)),
-    };
+  } else {
+    result = normalizeNode(tree as UINode, "", undefined, ctx);
   }
 
-  return normalizeNode(tree as UINode, "", undefined, ctx);
+  return postNormalize(result);
 }
 
 /**
@@ -370,12 +374,245 @@ function resolveA11yRefs(props: Record<string, unknown>, scope: string): Record<
   let changed = false;
   for (const refField of ["labelled_by", "described_by", "error_message"]) {
     const val = a11y[refField];
-    if (typeof val === "string" && !val.includes("/")) {
+    if (typeof val === "string" && !val.includes("/") && !val.includes("#")) {
       a11y[refField] = `${scope}/${val}`;
       changed = true;
     }
   }
   return changed ? { ...props, a11y } : props;
+}
+
+// ---------------------------------------------------------------------------
+// Post-normalize a11y pass
+// ---------------------------------------------------------------------------
+//
+// Runs once after the main pass produces a fully scoped tree. Mirrors
+// the Rust SDK: auto-populate a11y.role, rewrite active_descendant and
+// radio_group list refs, populate implicit radio_group when radios
+// share a `group` prop, emit a11y_ref_unresolved warnings for dangling
+// refs, emit missing_accessible_name warnings for interactive widgets
+// with no accessible name source.
+
+const WIDGET_ROLE_DEFAULTS: Record<string, string> = {
+  button: "button",
+  checkbox: "check_box",
+  toggler: "switch",
+  radio: "radio_button",
+  text_input: "text_input",
+  text_editor: "multiline_text_input",
+  text: "label",
+  rich_text: "label",
+  slider: "slider",
+  vertical_slider: "slider",
+  pick_list: "combo_box",
+  combo_box: "combo_box",
+  progress_bar: "progress_indicator",
+  image: "image",
+  svg: "image",
+  qr_code: "image",
+  scrollable: "scroll_view",
+  container: "generic_container",
+  column: "generic_container",
+  row: "generic_container",
+  stack: "generic_container",
+  grid: "generic_container",
+  pane_grid: "generic_container",
+  table: "table",
+  canvas: "canvas",
+  rule: "separator",
+};
+
+const A11Y_SINGLE_REF_KEYS = [
+  "labelled_by",
+  "described_by",
+  "error_message",
+  "active_descendant",
+] as const;
+
+const NAMED_INTERACTIVE_TYPES = new Set(["button", "toggler", "checkbox", "pointer_area"]);
+
+function postNormalize(tree: WireNode): WireNode {
+  const declared = new Set<string>();
+  collectDeclaredIds(tree, declared);
+  const radioGroups = new Map<string, string[]>();
+  collectRadioGroups(tree, "", radioGroups);
+  const rewritten = rewriteA11y(tree, "", declared, radioGroups);
+  checkMissingAccessibleName(rewritten);
+  return rewritten;
+}
+
+function collectDeclaredIds(node: WireNode, out: Set<string>): void {
+  const id = node.id;
+  if (typeof id === "string" && id !== "" && !id.startsWith("auto:")) {
+    out.add(id);
+  }
+  for (const child of node.children) {
+    collectDeclaredIds(child, out);
+  }
+}
+
+function childScopeOf(node: WireNode, scope: string): string {
+  if (node.type === "window") return `${node.id}#`;
+  if (!node.id || node.id.startsWith("auto:")) return scope;
+  return node.id;
+}
+
+function radioGroupKey(scope: string, group: string): string {
+  return `${scope}\t${group}`;
+}
+
+function collectRadioGroups(node: WireNode, scope: string, out: Map<string, string[]>): void {
+  if (node.type === "radio") {
+    const group = node.props["group"];
+    if (typeof group === "string" && group !== "") {
+      const key = radioGroupKey(scope, group);
+      const ids = out.get(key);
+      if (ids) {
+        ids.push(node.id);
+      } else {
+        out.set(key, [node.id]);
+      }
+    }
+  }
+  const childScope = childScopeOf(node, scope);
+  for (const child of node.children) {
+    collectRadioGroups(child, childScope, out);
+  }
+}
+
+function rewriteA11y(
+  node: WireNode,
+  scope: string,
+  declared: Set<string>,
+  radioGroups: Map<string, string[]>,
+): WireNode {
+  const props = applyA11yRewrites(node, scope, declared, radioGroups);
+  const childScope = childScopeOf(node, scope);
+  const children = node.children.map((c) => rewriteA11y(c, childScope, declared, radioGroups));
+  return { ...node, props, children };
+}
+
+function applyA11yRewrites(
+  node: WireNode,
+  scope: string,
+  declared: Set<string>,
+  radioGroups: Map<string, string[]>,
+): Record<string, unknown> {
+  const props = node.props;
+  const roleDefault = WIDGET_ROLE_DEFAULTS[node.type];
+
+  let radioIds: string[] | undefined;
+  if (node.type === "radio") {
+    const group = props["group"];
+    if (typeof group === "string" && group !== "") {
+      radioIds = radioGroups.get(radioGroupKey(scope, group));
+    }
+  }
+
+  const existing = props["a11y"];
+  let a11y: Record<string, unknown> | undefined =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? { ...(existing as Record<string, unknown>) }
+      : undefined;
+
+  const hasRole = a11y !== undefined && a11y["role"] !== undefined && a11y["role"] !== null;
+  const hasAnyRef =
+    a11y !== undefined &&
+    (A11Y_SINGLE_REF_KEYS.some((k) => a11y?.[k] !== undefined) ||
+      a11y["radio_group"] !== undefined);
+
+  const needsUpdate =
+    (roleDefault !== undefined && !hasRole) || radioIds !== undefined || hasAnyRef;
+
+  if (a11y === undefined && !needsUpdate) return props;
+
+  if (a11y === undefined) {
+    a11y = {};
+  }
+
+  if (roleDefault !== undefined && !hasRole) {
+    a11y["role"] = roleDefault;
+  }
+
+  for (const key of A11Y_SINGLE_REF_KEYS) {
+    const ref = a11y[key];
+    if (typeof ref === "string" && ref !== "") {
+      const rewritten = scopeRef(ref, scope);
+      if (!declared.has(rewritten)) {
+        warnUnresolved(key, ref, node.id);
+      }
+      a11y[key] = rewritten;
+    }
+  }
+
+  const existingGroup = a11y["radio_group"];
+  if (Array.isArray(existingGroup)) {
+    a11y["radio_group"] = existingGroup.map((item) => {
+      if (typeof item === "string" && item !== "") {
+        const r = scopeRef(item, scope);
+        if (!declared.has(r)) {
+          warnUnresolved("radio_group", item, node.id);
+        }
+        return r;
+      }
+      return item;
+    });
+  } else if (radioIds !== undefined) {
+    a11y["radio_group"] = [...radioIds];
+  }
+
+  return { ...props, a11y };
+}
+
+function scopeRef(ref: string, scope: string): string {
+  if (scope === "" || ref === "") return ref;
+  if (ref.includes("/") || ref.includes("#")) return ref;
+  return scope.endsWith("#") ? `${scope}${ref}` : `${scope}/${ref}`;
+}
+
+function warnUnresolved(key: string, ref: string, ownerId: string): void {
+  console.warn(
+    `[plushie a11y] a11y_ref_unresolved: a11y.${key} "${ref}" on "${ownerId}" ` +
+      `does not match any declared widget ID`,
+  );
+}
+
+function checkMissingAccessibleName(node: WireNode): void {
+  if (NAMED_INTERACTIVE_TYPES.has(node.type) && !hasAccessibleName(node)) {
+    console.warn(
+      `[plushie a11y] missing_accessible_name: ${node.type} "${node.id}" ` +
+        `has no label, text child, a11y.label, or a11y.labelled_by; ` +
+        `screen readers will announce no name`,
+    );
+  }
+  for (const child of node.children) {
+    checkMissingAccessibleName(child);
+  }
+}
+
+function hasAccessibleName(node: WireNode): boolean {
+  const label = node.props["label"];
+  if (typeof label === "string" && label !== "") return true;
+
+  const a11y = node.props["a11y"];
+  if (a11y !== null && typeof a11y === "object") {
+    const a = a11y as Record<string, unknown>;
+    if (typeof a["label"] === "string" && a["label"] !== "") return true;
+    if (typeof a["labelled_by"] === "string" && a["labelled_by"] !== "") return true;
+  }
+
+  return hasTextChild(node.children);
+}
+
+function hasTextChild(children: readonly WireNode[]): boolean {
+  for (const child of children) {
+    if (child.type === "text") {
+      const content = child.props["content"];
+      if (typeof content === "string" && content !== "") return true;
+    }
+    if (hasTextChild(child.children)) return true;
+  }
+  return false;
 }
 
 // -- Memo cache handling -------------------------------------------------------
