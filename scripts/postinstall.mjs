@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, chmodSync, createWriteStream, readFileSync, unli
 import { get as httpsGet } from "node:https"
 import { join, resolve } from "node:path"
 
-const BINARY_VERSION = "0.5.1"
+const PLUSHIE_RUST_VERSION = "0.6.1"
 const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-renderer/releases/download"
 
 // Skip conditions
@@ -71,9 +71,9 @@ if (existsSync(destPath)) {
   process.exit(0)
 }
 
-const url = `${RELEASE_BASE_URL}/v${BINARY_VERSION}/${binaryName}`
+const url = `${RELEASE_BASE_URL}/v${PLUSHIE_RUST_VERSION}/${binaryName}`
 
-console.log(`plushie: downloading binary (v${BINARY_VERSION}) for ${platformOs()}-${platformArch()}...`)
+console.log(`plushie: downloading binary (v${PLUSHIE_RUST_VERSION}) for ${platformOs()}-${platformArch()}...`)
 
 function download(currentUrl, depth = 0) {
   if (depth > 5) {

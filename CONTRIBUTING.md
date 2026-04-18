@@ -227,9 +227,9 @@ The postinstall is skipped when:
 - `PLUSHIE_BINARY_PATH` is set (user has their own binary)
 - Running in CI without `PLUSHIE_DOWNLOAD_IN_CI=1`
 
-Binary version is pinned in `src/client/binary.ts` (`BINARY_VERSION`).
-When updating, change both the constant and the version in
-`scripts/postinstall.mjs`.
+The plushie-rust release version is pinned in `src/client/binary.ts`
+(`PLUSHIE_RUST_VERSION`). When updating, change both the constant and
+the version in `scripts/postinstall.mjs`.
 
 ## Releasing
 

@@ -465,9 +465,9 @@ npx plushie run my-app.tsx --json
 If you have the plushie Rust source checkout:
 
 ```sh
-PLUSHIE_SOURCE_PATH=~/plushie npx plushie build
-PLUSHIE_SOURCE_PATH=~/plushie npx plushie build --wasm
-PLUSHIE_SOURCE_PATH=~/plushie npx plushie build --release
+PLUSHIE_RUST_SOURCE_PATH=~/plushie npx plushie build
+PLUSHIE_RUST_SOURCE_PATH=~/plushie npx plushie build --wasm
+PLUSHIE_RUST_SOURCE_PATH=~/plushie npx plushie build --release
 ```
 
 Requires `cargo` (Rust) and optionally `wasm-pack` for WASM builds.

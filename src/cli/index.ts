@@ -35,8 +35,8 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import {
   RELEASE_BASE_URL as BASE_URL,
-  BINARY_VERSION,
   downloadBinary as downloadBinaryAPI,
+  PLUSHIE_RUST_VERSION,
   platformBinaryName,
 } from "../client/binary.js";
 import { DEFAULT_WASM_DIR, WASM_BG_FILE, WASM_JS_FILE } from "../wasm.js";
@@ -241,7 +241,7 @@ async function handleDownloadBinary(force: boolean, binFile?: string): Promise<v
   const binaryName = platformBinaryName();
   const destDir = binFile ? dirname(resolve(binFile)) : resolve("node_modules", ".plushie", "bin");
   const destPath = binFile ? resolve(binFile) : join(destDir, binaryName);
-  const url = `${BASE_URL}/v${BINARY_VERSION}/${binaryName}`;
+  const url = `${BASE_URL}/v${PLUSHIE_RUST_VERSION}/${binaryName}`;
 
   if (!force && existsSync(destPath)) {
     console.log(`Binary already exists at ${destPath}`);
@@ -249,7 +249,7 @@ async function handleDownloadBinary(force: boolean, binFile?: string): Promise<v
     return;
   }
 
-  console.log(`Downloading plushie binary v${BINARY_VERSION}`);
+  console.log(`Downloading plushie binary v${PLUSHIE_RUST_VERSION}`);
   console.log(`  Platform: ${binaryName}`);
   console.log(`  From: ${url}`);
   console.log();
@@ -285,7 +285,7 @@ async function handleDownloadBinary(force: boolean, binFile?: string): Promise<v
 
 async function downloadWasm(force: boolean, wasmDir?: string): Promise<void> {
   const destDir = wasmDir ? resolve(wasmDir) : resolve(DEFAULT_WASM_DIR);
-  const tarUrl = `${BASE_URL}/v${BINARY_VERSION}/plushie-renderer-wasm.tar.gz`;
+  const tarUrl = `${BASE_URL}/v${PLUSHIE_RUST_VERSION}/plushie-renderer-wasm.tar.gz`;
   const tarPath = join(destDir, "plushie-renderer-wasm.tar.gz");
 
   if (
@@ -298,7 +298,7 @@ async function downloadWasm(force: boolean, wasmDir?: string): Promise<void> {
     return;
   }
 
-  console.log(`Downloading plushie WASM renderer v${BINARY_VERSION}`);
+  console.log(`Downloading plushie WASM renderer v${PLUSHIE_RUST_VERSION}`);
   console.log(`  From: ${tarUrl}`);
   console.log();
 
@@ -330,7 +330,7 @@ async function downloadWasm(force: boolean, wasmDir?: string): Promise<void> {
 
 function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConfig): void {
   // Resolve source path: env var > config > undefined (uses crates.io for extensions)
-  const sourcePath = process.env["PLUSHIE_SOURCE_PATH"] ?? config?.source_path;
+  const sourcePath = process.env["PLUSHIE_RUST_SOURCE_PATH"] ?? config?.source_path;
 
   const explicitBin = flags.includes("--bin");
   const explicitWasm = flags.includes("--wasm");
@@ -361,7 +361,7 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
     if (!sourcePath) {
       console.error(
         "Rust source path required for WASM builds.\n" +
-          "Set PLUSHIE_SOURCE_PATH or add source_path to plushie.extensions.json.",
+          "Set PLUSHIE_RUST_SOURCE_PATH or add source_path to plushie.extensions.json.",
       );
       process.exitCode = 1;
       return;
@@ -439,7 +439,7 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
     if (!sourcePath) {
       console.error(
         "Rust source path required for stock binary builds.\n" +
-          "Set PLUSHIE_SOURCE_PATH or add source_path to plushie.extensions.json.",
+          "Set PLUSHIE_RUST_SOURCE_PATH or add source_path to plushie.extensions.json.",
       );
       process.exitCode = 1;
       return;
@@ -483,7 +483,9 @@ function handleExtensionBuild(
     if (raw.binaryName !== undefined) buildConfig["binaryName"] = raw.binaryName;
     config = buildConfig as unknown as import("../native-widget-build.js").NativeWidgetBuildConfig;
     validateExtensions(extensions);
-    checkExtensionVersions(extensions, BINARY_VERSION, (msg) => console.warn(`[plushie] ${msg}`));
+    checkExtensionVersions(extensions, PLUSHIE_RUST_VERSION, (msg) =>
+      console.warn(`[plushie] ${msg}`),
+    );
   } catch (err) {
     console.error(`Failed to read ${configPath}: ${String(err)}`);
     process.exitCode = 1;

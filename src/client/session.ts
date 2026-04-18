@@ -11,7 +11,7 @@
  */
 
 import { type NativeWidgetConfig, nativeWidgetConfigKey } from "../native-widget.js";
-import { BINARY_VERSION } from "./binary.js";
+import { PLUSHIE_RUST_VERSION } from "./binary.js";
 import type { DecodedResponse, HelloInfo, WireMessage } from "./protocol.js";
 import { decodeMessage, PROTOCOL_VERSION } from "./protocol.js";
 import type { Transport } from "./transport.js";
@@ -120,11 +120,11 @@ export class Session {
           if (
             info.version &&
             info.version !== "*" &&
-            !info.version.startsWith(BINARY_VERSION.split(".").slice(0, 2).join("."))
+            !info.version.startsWith(PLUSHIE_RUST_VERSION.split(".").slice(0, 2).join("."))
           ) {
             console.warn(
               `Plushie binary version mismatch: renderer reports ${info.version}, ` +
-                `SDK targets ${BINARY_VERSION}. Consider updating the binary.`,
+                `SDK targets ${PLUSHIE_RUST_VERSION}. Consider updating the binary.`,
             );
           }
 

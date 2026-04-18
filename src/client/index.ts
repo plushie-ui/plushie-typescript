@@ -19,8 +19,8 @@ export type {
 } from "../tree/normalize.js";
 export { normalize } from "../tree/normalize.js";
 export {
-  BINARY_VERSION,
   downloadBinary,
+  PLUSHIE_RUST_VERSION,
   platformBinaryName,
   RELEASE_BASE_URL,
   resolveBinary,

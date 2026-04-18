@@ -573,8 +573,8 @@ Create `plushie.extensions.json` at your project root:
 ### Build command
 
 ```sh
-PLUSHIE_SOURCE_PATH=~/plushie-rust npx plushie build
-PLUSHIE_SOURCE_PATH=~/plushie-rust npx plushie build --release
+PLUSHIE_RUST_SOURCE_PATH=~/plushie-rust npx plushie build
+PLUSHIE_RUST_SOURCE_PATH=~/plushie-rust npx plushie build --release
 ```
 
 The build:
@@ -634,7 +634,7 @@ fn handle_command_push_adds_sample() {
 Build a custom binary and test with the headless backend:
 
 ```sh
-PLUSHIE_SOURCE_PATH=~/plushie-rust npx plushie build
+PLUSHIE_RUST_SOURCE_PATH=~/plushie-rust npx plushie build
 PLUSHIE_TEST_BACKEND=headless pnpm test
 ```
 
@@ -1007,7 +1007,7 @@ my-app/
 
 ```sh
 # Set the plushie source path
-export PLUSHIE_SOURCE_PATH=~/plushie
+export PLUSHIE_RUST_SOURCE_PATH=~/plushie
 
 # Build the custom binary with the gauge extension
 npx plushie build
