@@ -17,7 +17,7 @@
  * @module
  */
 
-import { chmodSync, createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { chmodSync, createWriteStream, existsSync, mkdirSync } from "node:fs";
 import { get as httpsGet } from "node:https";
 import { dirname, join, resolve } from "node:path";
 import { arch, platform } from "node:process";
@@ -98,27 +98,9 @@ export function resolveBinary(): string {
     }
   }
 
-  // 3. Custom extension build (from npx plushie build with extensions)
-  const buildDir = resolve("node_modules", ".plushie", "build", "target");
-  for (const profile of ["release", "debug"]) {
-    // Check for custom binary name from plushie.extensions.json
-    const extConfigPath = resolve("plushie.extensions.json");
-    if (existsSync(extConfigPath)) {
-      try {
-        const raw = JSON.parse(readFileSync(extConfigPath, "utf-8")) as { binaryName?: string };
-        const binName = raw.binaryName ?? "plushie-custom";
-        const customPath = join(buildDir, profile, binName);
-        if (existsSync(customPath)) {
-          validateArchitecture(customPath);
-          return customPath;
-        }
-      } catch {
-        // Invalid config; fall through
-      }
-    }
-  }
-
-  // 4. Downloaded binary in node_modules
+  // 3. Downloaded or cargo-plushie-installed binary in node_modules.
+  //    `npx plushie build` copies its output here, so stock downloads
+  //    and custom renderers share the same resolution step.
   const downloadDir = resolve("node_modules", ".plushie", "bin");
   const downloadPath = join(downloadDir, platformBinaryName());
   if (existsSync(downloadPath)) {

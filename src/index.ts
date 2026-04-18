@@ -207,9 +207,6 @@ export type {
 } from "./native-widget.js";
 // Native widget system (Rust-backed widgets).
 export { defineNativeWidget, nativeWidgetCommands } from "./native-widget.js";
-// Native widget build-time types (values are in native-widget-build.ts,
-// imported only by the CLI to avoid pulling node:path into browser builds).
-export type { NativeWidgetBuildConfig } from "./native-widget-build.js";
 export type { Instruction, RunResult, Script, ScriptHeader } from "./script.js";
 // Script parser/runner.
 export { parseScript, parseScriptFile, runScript } from "./script.js";

@@ -23,6 +23,7 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import {
+  copyFileSync,
   createWriteStream,
   existsSync,
   mkdirSync,
@@ -40,6 +41,7 @@ import {
   platformBinaryName,
 } from "../client/binary.js";
 import { DEFAULT_WASM_DIR, WASM_BG_FILE, WASM_JS_FILE } from "../wasm.js";
+import { resolveCargoPlushie } from "./cargo-plushie.js";
 
 function readVersion(): string {
   const require = createRequire(import.meta.url);
@@ -351,10 +353,10 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
   // Check for extension config (plushie.extensions.json)
   const extConfigPath = resolve("plushie.extensions.json");
   if (wantBin && existsSync(extConfigPath)) {
-    if (handleExtensionBuild(sourcePath, extConfigPath, isRelease)) {
-      return; // Extension build handled it
+    if (handleNativeWidgetBuild(extConfigPath, isRelease, sourcePath)) {
+      return; // Custom renderer build handled it
     }
-    // No native extensions found; fall through to stock build
+    // No native widgets found; fall through to stock build
   }
 
   if (wantWasm) {
@@ -459,83 +461,183 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
   }
 }
 
-/** Returns true if the extension build was initiated, false if no native extensions found. */
-function handleExtensionBuild(
-  sourcePath: string | undefined,
+/** Returns true if the native widget build was initiated, false if no native widgets found. */
+function handleNativeWidgetBuild(
   configPath: string,
   release: boolean,
+  sourcePath: string | undefined,
 ): boolean {
-  const { validateExtensions, checkExtensionVersions, generateCargoToml, generateMainRs } =
-    require("../native-widget-build.js") as typeof import("../native-widget-build.js");
-
-  let config: import("../native-widget-build.js").NativeWidgetBuildConfig;
+  let parsed: {
+    extensions?: Array<import("../native-widget.js").NativeWidgetConfig>;
+    binaryName?: string;
+  };
   try {
-    const raw = JSON.parse(readFileSync(configPath, "utf-8")) as {
-      extensions?: Array<import("../native-widget.js").NativeWidgetConfig>;
-      binaryName?: string;
-    };
-    const extensions = raw.extensions ?? [];
-    const nativeExts = extensions.filter((e) => e.rustCrate);
-    if (nativeExts.length === 0) {
-      return false; // No native extensions; caller should do stock build
-    }
-    const buildConfig: Record<string, unknown> = { extensions, sourcePath, release };
-    if (raw.binaryName !== undefined) buildConfig["binaryName"] = raw.binaryName;
-    config = buildConfig as unknown as import("../native-widget-build.js").NativeWidgetBuildConfig;
-    validateExtensions(extensions);
-    checkExtensionVersions(extensions, PLUSHIE_RUST_VERSION, (msg) =>
-      console.warn(`[plushie] ${msg}`),
-    );
+    parsed = JSON.parse(readFileSync(configPath, "utf-8")) as typeof parsed;
   } catch (err) {
     console.error(`Failed to read ${configPath}: ${String(err)}`);
-    process.exitCode = 1;
-    return true; // Error handled, don't fall through to stock build
-  }
-
-  const nativeExts = config.extensions.filter((e) => e.rustCrate);
-  console.log(`Building custom binary with ${String(nativeExts.length)} extension(s):`);
-  for (const ext of nativeExts) {
-    console.log(`  ${ext.type} (${ext.rustCrate})`);
-  }
-
-  // Generate workspace
-  const buildDir = resolve("node_modules", ".plushie", "build");
-  mkdirSync(buildDir, { recursive: true });
-  mkdirSync(join(buildDir, "src"), { recursive: true });
-
-  const cargoToml = generateCargoToml(config);
-  writeFileSync(join(buildDir, "Cargo.toml"), cargoToml, "utf-8");
-
-  const mainRs = generateMainRs(config.extensions);
-  writeFileSync(join(buildDir, "src", "main.rs"), mainRs, "utf-8");
-
-  console.log(`Generated workspace at ${buildDir}`);
-
-  // Validate cargo is available before attempting the build
-  const cargoCheck = spawnSync("cargo", ["--version"], { stdio: "pipe" });
-  if (cargoCheck.status !== 0) {
-    console.error("cargo (Rust) is required for native widget builds.\nInstall: https://rustup.rs");
     process.exitCode = 1;
     return true;
   }
 
-  // Build
-  const buildArgs = ["build"];
-  if (release) buildArgs.push("--release");
-  console.log(`\nBuilding${release ? " (release)" : ""}...`);
+  // A native widget crate is any extension that declares a rustCrate
+  // path. Pure TS extensions have no rustCrate and don't need a
+  // custom renderer build.
+  const nativeExts = (parsed.extensions ?? []).filter((e) => e.rustCrate);
+  if (nativeExts.length === 0) {
+    return false;
+  }
 
-  const child = spawn("cargo", buildArgs, { cwd: buildDir, stdio: "inherit" });
+  console.log(`Building custom renderer with ${String(nativeExts.length)} native widget(s):`);
+  for (const ext of nativeExts) {
+    console.log(`  ${ext.type} (${ext.rustCrate})`);
+  }
+
+  // Write a virtual app crate that lists each native widget as a
+  // path dependency. cargo plushie build walks the dep graph via
+  // cargo metadata, finds each widget's
+  // [package.metadata.plushie.widget] table, and generates the
+  // renderer workspace that registers them.
+  const scratchDir = resolve("node_modules", ".plushie", "renderer-spec");
+  const scratchCargoToml = join(scratchDir, "Cargo.toml");
+  mkdirSync(join(scratchDir, "src"), { recursive: true });
+
+  const binaryName = parsed.binaryName;
+  writeFileSync(scratchCargoToml, renderSpecCargoToml(nativeExts, binaryName), "utf-8");
+  writeFileSync(join(scratchDir, "src", "lib.rs"), "// generated by plushie CLI\n", "utf-8");
+
+  // Merge config source_path into the env before resolving so both
+  // resolveCargoPlushie and the spawned child see the same value.
+  const childEnv: NodeJS.ProcessEnv = { ...process.env };
+  if (sourcePath !== undefined && childEnv["PLUSHIE_RUST_SOURCE_PATH"] === undefined) {
+    childEnv["PLUSHIE_RUST_SOURCE_PATH"] = resolve(sourcePath);
+  }
+
+  // Resolve how to invoke cargo plushie (source-path checkout or
+  // installed binary at a matching PLUSHIE_RUST_VERSION).
+  let invocation: ReturnType<typeof resolveCargoPlushie>;
+  try {
+    invocation = resolveCargoPlushie({ env: childEnv });
+  } catch (err) {
+    console.error(String(err instanceof Error ? err.message : err));
+    process.exitCode = 1;
+    return true;
+  }
+
+  const userArgs = ["build", "--manifest-path", scratchCargoToml];
+  if (release) userArgs.push("--release");
+
+  const cargoPlushieArgs = [...invocation.argsPrefix, ...userArgs];
+  console.log(`\nRunning cargo plushie build (${invocation.source})...`);
+
+  const child = spawn(invocation.command, cargoPlushieArgs, { stdio: "inherit", env: childEnv });
   child.on("exit", (code) => {
-    if (code === 0) {
-      const profile = release ? "release" : "debug";
-      const binName = config.binaryName ?? "plushie-custom";
-      const binPath = resolve(buildDir, "target", profile, binName);
-      console.log(`\nCustom binary built at: ${binPath}`);
-      console.log(`Binary resolution will find it automatically via plushie.extensions.json.`);
+    if (code !== 0) {
+      process.exitCode = code ?? 1;
+      return;
     }
-    process.exitCode = code ?? 1;
+    try {
+      const installedPath = installBuiltBinary(scratchDir, binaryName, release);
+      console.log(`\nCustom renderer installed at ${installedPath}`);
+    } catch (err) {
+      console.error(String(err instanceof Error ? err.message : err));
+      process.exitCode = 1;
+    }
   });
   return true;
+}
+
+/**
+ * Render the scratch app crate's `Cargo.toml`.
+ *
+ * The crate exists solely to anchor a `cargo metadata` walk from
+ * `cargo plushie build`: it lists every native widget as a path
+ * dependency so the build tool can find their
+ * `[package.metadata.plushie.widget]` tables. The `[package.metadata.plushie]`
+ * block forwards the optional `binary_name` override; cargo-plushie
+ * derives it as `<app>-renderer` otherwise.
+ */
+function renderSpecCargoToml(
+  widgets: readonly import("../native-widget.js").NativeWidgetConfig[],
+  binaryName: string | undefined,
+): string {
+  const scratchDir = resolve("node_modules", ".plushie", "renderer-spec");
+  const depLines = widgets
+    .map((w) => {
+      const absolute = resolve(w.rustCrate!);
+      const rel = relativePath(scratchDir, absolute);
+      const crateName = basenameOf(w.rustCrate!);
+      return `${crateName} = { path = ${JSON.stringify(rel)} }`;
+    })
+    .join("\n");
+
+  const metadataBlock =
+    binaryName !== undefined
+      ? `\n[package.metadata.plushie]\nbinary_name = ${JSON.stringify(binaryName)}\n`
+      : "";
+
+  return [
+    "[package]",
+    `name = "plushie-renderer-spec"`,
+    `version = "0.0.0"`,
+    `edition = "2024"`,
+    `publish = false`,
+    "",
+    "[lib]",
+    `path = "src/lib.rs"`,
+    "",
+    "[dependencies]",
+    depLines,
+    metadataBlock,
+  ].join("\n");
+}
+
+/** Basename of a path string (crate directory name). */
+function basenameOf(p: string): string {
+  const parts = resolve(p).split(/[\\/]/);
+  return parts[parts.length - 1] ?? p;
+}
+
+/**
+ * Produce a relative path from `from` to `to` using forward slashes,
+ * which Cargo understands on every platform.
+ */
+function relativePath(from: string, to: string): string {
+  const { relative } = require("node:path") as typeof import("node:path");
+  return relative(from, to).split("\\").join("/");
+}
+
+/**
+ * Copy the freshly-built renderer binary from the cargo-plushie
+ * workspace into `node_modules/.plushie/bin/` using the platform
+ * naming convention the SDK's binary resolver expects.
+ *
+ * cargo-plushie writes to `{scratch}/target/plushie-renderer/target/{profile}/{bin}`.
+ */
+function installBuiltBinary(
+  scratchDir: string,
+  binaryName: string | undefined,
+  release: boolean,
+): string {
+  const profile = release ? "release" : "debug";
+  // cargo-plushie defaults binary_name to `<app>-renderer`. Our
+  // scratch app is named `plushie-renderer-spec` so the default is
+  // `plushie-renderer-spec-renderer`. Keep the override when set.
+  const resolvedBin = binaryName ?? "plushie-renderer-spec-renderer";
+  const ext = process.platform === "win32" ? ".exe" : "";
+  const src = join(scratchDir, "target", "plushie-renderer", "target", profile, resolvedBin + ext);
+  if (!existsSync(src)) {
+    throw new Error(`cargo plushie build succeeded but the expected binary is missing:\n  ${src}`);
+  }
+  const destDir = resolve("node_modules", ".plushie", "bin");
+  mkdirSync(destDir, { recursive: true });
+  const destName = platformBinaryName();
+  const dest = join(destDir, destName);
+  copyFileSync(src, dest);
+  if (process.platform !== "win32") {
+    const { chmodSync } = require("node:fs") as typeof import("node:fs");
+    chmodSync(dest, 0o755);
+  }
+  return dest;
 }
 
 // =========================================================================

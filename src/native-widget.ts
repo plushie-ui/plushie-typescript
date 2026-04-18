@@ -52,16 +52,14 @@ export interface NativeWidgetConfig {
   readonly commands?: readonly string[];
   /**
    * Path to the Rust crate (relative to project root).
-   * Required for `npx plushie build` to include this widget in the custom binary.
-   * The crate must implement the `PlushieWidget` trait from `plushie_widget_sdk`.
+   * Required for `npx plushie build` to include this widget in the
+   * custom renderer. The crate must implement the `PlushieWidget`
+   * trait from `plushie_widget_sdk` and declare
+   * `[package.metadata.plushie.widget] { type_name, constructor }`
+   * in its own `Cargo.toml`. `cargo plushie build` discovers the
+   * metadata and wires the widget into the renderer workspace.
    */
   readonly rustCrate?: string;
-  /**
-   * Rust constructor expression for registering the widget.
-   * Called in the generated main.rs via `.extension(constructor)`.
-   * Example: `"MyWidget::new()"` or `"sparkline::SparklineWidget::new()"`
-   */
-  readonly rustConstructor?: string;
 }
 
 /**
