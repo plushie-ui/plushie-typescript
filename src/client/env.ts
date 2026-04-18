@@ -5,7 +5,10 @@
  * whitelisted variables. This prevents credential leakage and
  * ensures a predictable rendering environment.
  *
- * The whitelist matches the Elixir SDK's `Plushie.RendererEnv`.
+ * The whitelist matches the canonical list shared across every host
+ * SDK: exact entries for display/rendering/locale/accessibility/font
+ * vars, prefix entries for families (`LC_`, `MESA_`, etc.), and the
+ * `PLUSHIE_` prefix for plushie-reserved debug toggles.
  *
  * @module
  */
@@ -35,7 +38,12 @@ const EXACT_WHITELIST = new Set([
   "USER",
 ]);
 
-/** Prefix-based forwarding: any variable starting with these. */
+/**
+ * Prefix-based forwarding: any variable starting with these.
+ *
+ * `PLUSHIE_` is a catch-all for plushie-reserved debug/diagnostic
+ * toggles read by the renderer (e.g. `PLUSHIE_NO_CATCH_UNWIND`).
+ */
 const PREFIX_WHITELIST = [
   "LC_",
   "MESA_",
@@ -45,6 +53,7 @@ const PREFIX_WHITELIST = [
   "GALLIUM_",
   "AT_SPI_",
   "FONTCONFIG_",
+  "PLUSHIE_",
 ];
 
 /**

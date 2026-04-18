@@ -35,6 +35,30 @@ describe("buildRendererEnv", () => {
     }
   });
 
+  test("forwards PLUSHIE_ prefixed variables", () => {
+    const original = process.env["PLUSHIE_NO_CATCH_UNWIND"];
+    process.env["PLUSHIE_NO_CATCH_UNWIND"] = "1";
+    const env = buildRendererEnv();
+    expect(env["PLUSHIE_NO_CATCH_UNWIND"]).toBe("1");
+    if (original !== undefined) {
+      process.env["PLUSHIE_NO_CATCH_UNWIND"] = original;
+    } else {
+      delete process.env["PLUSHIE_NO_CATCH_UNWIND"];
+    }
+  });
+
+  test("strips non-whitelisted secrets", () => {
+    const original = process.env["AWS_ACCESS_KEY_ID"];
+    process.env["AWS_ACCESS_KEY_ID"] = "must-not-leak";
+    const env = buildRendererEnv();
+    expect(env["AWS_ACCESS_KEY_ID"]).toBeUndefined();
+    if (original !== undefined) {
+      process.env["AWS_ACCESS_KEY_ID"] = original;
+    } else {
+      delete process.env["AWS_ACCESS_KEY_ID"];
+    }
+  });
+
   test("overrides RUST_LOG when specified", () => {
     const env = buildRendererEnv({ rustLog: "plushie=debug" });
     expect(env["RUST_LOG"]).toBe("plushie=debug");
