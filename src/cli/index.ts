@@ -375,7 +375,7 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
       process.exitCode = 1;
       return;
     }
-    const wasmDir = resolve(sourcePath, "plushie-renderer-wasm");
+    const wasmDir = resolve(sourcePath, "crates", "plushie-renderer-wasm");
     const buildArgs = ["build", "--target", "web"];
     if (isRelease) {
       buildArgs.push("--release");

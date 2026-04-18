@@ -11,7 +11,7 @@
  * 1. `PLUSHIE_BINARY_PATH` env var (must exist, error if file missing)
  * 2. SEA-bundled binary (if running in Node.js Single Executable context)
  * 3. Downloaded binary at `node_modules/.plushie/bin/<name>`
- * 4. Common local paths: `./plushie`, `../plushie/target/release/plushie`
+ * 4. Common local paths: `./plushie-renderer`, `../plushie-rust/target/release/plushie-renderer`
  * 5. Error with guidance to download
  *
  * @module
@@ -129,8 +129,8 @@ export function resolveBinary(): string {
   // 4. Common local paths (for development against local builds)
   const localPaths = [
     resolve("plushie-renderer"),
-    resolve("..", "plushie-renderer", "target", "release", "plushie-renderer"),
-    resolve("..", "plushie-renderer", "target", "debug", "plushie-renderer"),
+    resolve("..", "plushie-rust", "target", "release", "plushie-renderer"),
+    resolve("..", "plushie-rust", "target", "debug", "plushie-renderer"),
   ];
   for (const p of localPaths) {
     if (existsSync(p)) {

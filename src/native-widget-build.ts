@@ -225,11 +225,11 @@ export function generateCargoToml(config: NativeWidgetBuildConfig): string {
   if (config.sourcePath) {
     const plushieWidgetSdkRel = nodePath.relative(
       buildDir,
-      nodePath.join(config.sourcePath, "plushie-widget-sdk"),
+      nodePath.join(config.sourcePath, "crates", "plushie-widget-sdk"),
     );
     const plushieRendererRel = nodePath.relative(
       buildDir,
-      nodePath.join(config.sourcePath, "plushie-renderer"),
+      nodePath.join(config.sourcePath, "crates", "plushie-renderer"),
     );
     plushieWidgetSdkDep = `plushie-widget-sdk = { path = "${plushieWidgetSdkRel}" }`;
     plushieRendererDep = `plushie-renderer = { path = "${plushieRendererRel}" }`;
@@ -251,14 +251,32 @@ export function generateCargoToml(config: NativeWidgetBuildConfig): string {
 
   // When using local source paths, add [patch.crates-io] so widget
   // crates that depend on plushie-widget-sdk from crates.io get redirected
-  // to the same local checkout.
+  // to the same local checkout. Forward any additional [patch.crates-io]
+  // entries from the renderer workspace's Cargo.toml and .cargo/config.toml
+  // so the generated workspace shares the same local overrides (e.g. the
+  // unreleased plushie-iced sibling checkout).
   const patchSection = config.sourcePath
-    ? `
-
-[patch.crates-io]
-plushie-widget-sdk = { path = "${nodePath.relative(buildDir, nodePath.join(config.sourcePath, "plushie-widget-sdk"))}" }
-plushie-renderer = { path = "${nodePath.relative(buildDir, nodePath.join(config.sourcePath, "plushie-renderer"))}" }
-`
+    ? (() => {
+        const widgetSdkRel = nodePath.relative(
+          buildDir,
+          nodePath.join(config.sourcePath, "crates", "plushie-widget-sdk"),
+        );
+        const rendererRel = nodePath.relative(
+          buildDir,
+          nodePath.join(config.sourcePath, "crates", "plushie-renderer"),
+        );
+        const extraPatches = rendererPatchEntries(config.sourcePath);
+        const lines = [
+          "",
+          "",
+          "[patch.crates-io]",
+          `plushie-widget-sdk = { path = "${widgetSdkRel}" }`,
+          `plushie-renderer = { path = "${rendererRel}" }`,
+          ...extraPatches,
+          "",
+        ];
+        return lines.join("\n");
+      })()
     : "";
 
   return `[package]
@@ -274,6 +292,77 @@ path = "src/main.rs"
 ${plushieWidgetSdkDep}
 ${plushieRendererDep}
 ${extDeps}${patchSection}`;
+}
+
+/**
+ * Read [patch.crates-io] entries from the renderer workspace's
+ * `Cargo.toml` and `.cargo/config.toml` (local-only dev overrides,
+ * gitignored), returning patch lines with paths resolved against the
+ * renderer root. Entries for plushie-widget-sdk and plushie-renderer
+ * are skipped (already added as explicit patches above).
+ */
+function rendererPatchEntries(sourcePath: string): string[] {
+  const files = [
+    nodePath.join(sourcePath, "Cargo.toml"),
+    nodePath.join(sourcePath, ".cargo", "config.toml"),
+  ];
+
+  const lines: string[] = [];
+  const seen = new Set<string>();
+
+  for (const file of files) {
+    if (!existsSync(file)) continue;
+
+    let content: string;
+    try {
+      content = readFileSync(file, "utf-8");
+    } catch {
+      continue;
+    }
+
+    for (const [name, relPath] of parseCargoPatchEntries(content)) {
+      if (name === "plushie-widget-sdk" || name === "plushie-renderer") continue;
+      if (seen.has(name)) continue;
+      const resolved = nodePath.resolve(sourcePath, relPath);
+      if (!existsSync(resolved)) continue;
+      lines.push(`${name} = { path = "${resolved}" }`);
+      seen.add(name);
+    }
+  }
+
+  return lines;
+}
+
+/**
+ * Parse [patch.crates-io] path entries from a Cargo.toml / config.toml
+ * string. Returns pairs of [crate_name, relative_path].
+ */
+function parseCargoPatchEntries(content: string): Array<[string, string]> {
+  const entries: Array<[string, string]> = [];
+  let inSection = false;
+
+  for (const raw of content.split("\n")) {
+    const line = raw.trim();
+
+    if (line === "[patch.crates-io]") {
+      inSection = true;
+      continue;
+    }
+
+    if (inSection && line.startsWith("[")) {
+      inSection = false;
+      continue;
+    }
+
+    if (!inSection) continue;
+
+    const match = line.match(/^(\S+)\s*=\s*\{[^}]*path\s*=\s*"([^"]+)"/);
+    if (match?.[1] && match[2]) {
+      entries.push([match[1], match[2]]);
+    }
+  }
+
+  return entries;
 }
 
 /**

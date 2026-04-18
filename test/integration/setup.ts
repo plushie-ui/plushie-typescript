@@ -28,8 +28,8 @@ export const binaryPath: string | null = (() => {
 
   // 3. Local build paths
   const localPaths = [
-    resolve("..", "plushie-renderer", "target", "release", "plushie-renderer"),
-    resolve("..", "plushie-renderer", "target", "debug", "plushie-renderer"),
+    resolve("..", "plushie-rust", "target", "release", "plushie-renderer"),
+    resolve("..", "plushie-rust", "target", "debug", "plushie-renderer"),
   ];
   for (const p of localPaths) {
     if (existsSync(p)) return p;
