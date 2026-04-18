@@ -122,7 +122,8 @@ test("commands_scroll_by_construct", () => {
 
 test("commands_close_window_construct", () => {
   const cmd = Command.closeWindow("main");
-  expect(cmd.type).toBe("close_window");
+  expect(cmd.type).toBe("window_op");
+  expect(cmd.payload["op"]).toBe("close");
   expect(cmd.payload["window_id"]).toBe("main");
 });
 

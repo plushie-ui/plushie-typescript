@@ -194,7 +194,8 @@ test("app_behaviour_window_command_set_mode", () => {
 
 test("app_behaviour_window_close_command", () => {
   const cmd = Command.closeWindow("main");
-  expect(cmd.type).toBe("close_window");
+  expect(cmd.type).toBe("window_op");
+  expect(cmd.payload["op"]).toBe("close");
   expect(cmd.payload["window_id"]).toBe("main");
 });
 

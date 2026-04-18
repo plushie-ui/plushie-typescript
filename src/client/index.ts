@@ -31,6 +31,8 @@ export type { DecodeLinesResult, DecodePacketsResult } from "./framing.js";
 export { decodeLines, decodePackets, encodeLine, encodePacket } from "./framing.js";
 export type {
   DecodedResponse,
+  DiagnosticLevel,
+  DiagnosticMessage,
   HelloInfo,
   ScopedId,
   WireMessage,

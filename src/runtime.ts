@@ -512,6 +512,9 @@ export class Runtime<M> {
       case "event":
         this.handleEvent(decoded.data);
         break;
+      case "diagnostic":
+        this.handleDiagnosticMessage(decoded.data);
+        break;
       case "effect_response":
         this.handleEffectResponse(decoded);
         break;
@@ -529,6 +532,22 @@ export class Runtime<M> {
         this.handleInteractResponse(decoded);
         break;
       default:
+        break;
+    }
+  }
+
+  private handleDiagnosticMessage(diag: import("./client/protocol.js").DiagnosticMessage): void {
+    const kind = typeof diag.diagnostic["kind"] === "string" ? diag.diagnostic["kind"] : "unknown";
+    const prefix = `[plushie diagnostic: ${kind}]`;
+    switch (diag.level) {
+      case "error":
+        console.error(prefix, diag.diagnostic);
+        break;
+      case "warn":
+        console.warn(prefix, diag.diagnostic);
+        break;
+      default:
+        console.info(prefix, diag.diagnostic);
         break;
     }
   }

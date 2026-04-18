@@ -168,7 +168,7 @@ export function snapToEnd(widgetId: string): Command {
 
 /** Close a window by ID. */
 export function closeWindow(windowId: string): Command {
-  return cmd("close_window", { window_id: windowId });
+  return cmd("window_op", { op: "close", window_id: windowId });
 }
 
 /** Resize a window. */
@@ -528,9 +528,14 @@ export function advanceFrame(timestamp: number): Command {
   return cmd("advance_frame", { timestamp });
 }
 
-/** Load a font at runtime from binary data. */
-export function loadFont(data: Uint8Array): Command {
-  return cmd("widget_op", { op: "load_font", data });
+/**
+ * Load a font at runtime from binary data.
+ *
+ * `family` is the name the app will use to reference the font in
+ * `default_font` and widget font props.
+ */
+export function loadFont(family: string, data: Uint8Array): Command {
+  return cmd("widget_op", { op: "load_font", family, data });
 }
 
 /** Query which widget currently has focus. */

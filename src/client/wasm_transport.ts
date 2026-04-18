@@ -15,6 +15,7 @@
  * @module
  */
 
+import { PROTOCOL_VERSION } from "./protocol.js";
 import type { Transport, WireFormat } from "./transport.js";
 
 /** The WASM PlushieApp constructor interface (from wasm-bindgen output). */
@@ -51,7 +52,7 @@ export class WasmTransport implements Transport {
     const settingsJson = JSON.stringify({
       type: "settings",
       session: "",
-      settings: { protocol_version: 1, ...settings },
+      settings: { protocol_version: PROTOCOL_VERSION, ...settings },
     });
 
     try {

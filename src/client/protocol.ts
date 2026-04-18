@@ -404,10 +404,28 @@ function normalizeBase64(v: unknown): Uint8Array | null {
   return null;
 }
 
+/** Severity level for a renderer-emitted diagnostic. */
+export type DiagnosticLevel = "info" | "warn" | "error";
+
+/**
+ * Structured diagnostic emitted by the renderer as a top-level
+ * `diagnostic` wire message (separate from `event` envelopes).
+ *
+ * The `diagnostic` field carries the typed payload (`kind` plus
+ * variant-specific fields). Diagnostics are also mirrored to the
+ * renderer's log channel so existing log consumers keep seeing them.
+ */
+export interface DiagnosticMessage {
+  readonly session: string;
+  readonly level: DiagnosticLevel;
+  readonly diagnostic: Readonly<Record<string, unknown>>;
+}
+
 /** Parsed response types for request/response correlation. */
 export type DecodedResponse =
   | { type: "hello"; data: HelloInfo }
   | { type: "event"; data: Event }
+  | { type: "diagnostic"; data: DiagnosticMessage }
   | { type: "effect_response"; id: string; status: string; result: unknown; error: string | null }
   | { type: "query_response"; id: string; target: string; data: unknown }
   | { type: "op_query_response"; kind: string; tag: string; data: unknown }
@@ -444,6 +462,9 @@ export function decodeMessage(raw: WireMessage): DecodedResponse | null {
 
     case "event":
       return { type: "event", data: decodeEvent(raw) };
+
+    case "diagnostic":
+      return { type: "diagnostic", data: decodeDiagnostic(raw) };
 
     case "effect_response":
       return {
@@ -542,6 +563,20 @@ function decodeHello(raw: WireMessage): HelloInfo {
     extensions: Array.isArray(raw["extensions"]) ? (raw["extensions"] as string[]) : [],
     widgets: Array.isArray(raw["widgets"]) ? (raw["widgets"] as string[]) : [],
     widget_sets: Array.isArray(raw["widget_sets"]) ? (raw["widget_sets"] as string[]) : [],
+  };
+}
+
+// -- Diagnostic -----------------------------------------------------------
+
+function decodeDiagnostic(raw: WireMessage): DiagnosticMessage {
+  const levelRaw = str(raw, "level", "info");
+  const level: DiagnosticLevel =
+    levelRaw === "warn" || levelRaw === "error" || levelRaw === "info" ? levelRaw : "info";
+  const payload = obj(raw, "diagnostic") ?? {};
+  return {
+    session: str(raw, "session"),
+    level,
+    diagnostic: payload as Readonly<Record<string, unknown>>,
   };
 }
 

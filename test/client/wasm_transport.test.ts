@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { PROTOCOL_VERSION } from "../../src/client/protocol.js";
 import { WasmTransport } from "../../src/client/wasm_transport.js";
 
 describe("WasmTransport", () => {
@@ -55,7 +56,7 @@ describe("WasmTransport", () => {
     const parsed = JSON.parse(receivedSettings) as Record<string, unknown>;
     expect(parsed).toHaveProperty("type", "settings");
     const inner = parsed["settings"] as Record<string, unknown>;
-    expect(inner).toHaveProperty("protocol_version", 1);
+    expect(inner).toHaveProperty("protocol_version", PROTOCOL_VERSION);
     expect(inner).toHaveProperty("theme", "dark");
   });
 
