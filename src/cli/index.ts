@@ -23,6 +23,7 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import {
+  chmodSync,
   copyFileSync,
   createWriteStream,
   existsSync,
@@ -33,7 +34,7 @@ import {
 } from "node:fs";
 import { get as httpsGet } from "node:https";
 import { createRequire } from "node:module";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import {
   RELEASE_BASE_URL as BASE_URL,
   downloadBinary as downloadBinaryAPI,
@@ -395,7 +396,6 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
         for (const name of [WASM_JS_FILE, WASM_BG_FILE]) {
           const src = join(pkgDir, name);
           if (existsSync(src)) {
-            const { copyFileSync } = require("node:fs") as typeof import("node:fs");
             copyFileSync(src, join(destDir, name));
           } else {
             console.error(`  Warning: expected ${src} not found in wasm-pack output`);
@@ -602,7 +602,6 @@ function basenameOf(p: string): string {
  * which Cargo understands on every platform.
  */
 function relativePath(from: string, to: string): string {
-  const { relative } = require("node:path") as typeof import("node:path");
   return relative(from, to).split("\\").join("/");
 }
 
@@ -634,7 +633,6 @@ function installBuiltBinary(
   const dest = join(destDir, destName);
   copyFileSync(src, dest);
   if (process.platform !== "win32") {
-    const { chmodSync } = require("node:fs") as typeof import("node:fs");
     chmodSync(dest, 0o755);
   }
   return dest;
