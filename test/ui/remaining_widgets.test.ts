@@ -604,7 +604,9 @@ describe("Table", () => {
     const cols = [{ key: "name", label: "Name" }];
     const rows = [{ name: "Alice" }];
     const node = Table({ id: "tbl", columns: cols, rows });
-    expect(node.children[0]!.id).toBe("tbl/row/0");
+    // Row IDs are local to the table scope. The normalizer prefixes
+    // them with the table ID, so we do not embed `/` here.
+    expect(node.children[0]!.id).toBe("row_0");
   });
 
   test("encodes sortBy as sort_by and sortOrder as sort_order", () => {

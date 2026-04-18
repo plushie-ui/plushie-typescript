@@ -109,13 +109,16 @@ export function Table(props: TableProps): UINode {
   if (Array.isArray(clean.rows) && clean.rows.length > 0 && Array.isArray(clean.columns)) {
     const colKeys = clean.columns.map((c) => String(c.key));
     const rowChildren = clean.rows.map((row, rowIdx) => {
+      // Row and cell IDs are local to the table scope. The normalizer
+      // prefixes them with the table's scoped ID automatically, so we
+      // must not embed `/` here (it is reserved for scope paths).
       const rowId =
         (row as Record<string, unknown>)["id"] != null
           ? String((row as Record<string, unknown>)["id"])
-          : `${id}/row/${String(rowIdx)}`;
+          : `row_${String(rowIdx)}`;
       const cells = colKeys.map((key) => {
         const value = String((row as Record<string, unknown>)[key] ?? "");
-        return tableCell(key, key, [text(`${rowId}/${key}/text`, value)]);
+        return tableCell(key, key, [text(value)]);
       });
       return tableRow(rowId, cells);
     });
