@@ -368,12 +368,6 @@ function str(msg: WireMessage, key: string, fallback = ""): string {
   return typeof v === "string" ? v : fallback;
 }
 
-function requiredStr(msg: WireMessage, key: string, context: string): string {
-  const v = msg[key];
-  if (typeof v === "string") return v;
-  throw new Error(`${context} must include string field "${key}"`);
-}
-
 // Helper to safely read a number field.
 function num(msg: WireMessage, key: string, fallback = 0): number {
   const v = msg[key];
@@ -731,7 +725,7 @@ function decodeWidgetEvent(
     kind: "widget",
     type: family as WidgetEvent["type"],
     id,
-    windowId: requiredStr(raw, "window_id", `widget event "${family}"`),
+    windowId: optionalWindowId(raw),
     scope,
     value: coerceWidgetValue(raw["value"]),
     data: data as WidgetEvent["data"],

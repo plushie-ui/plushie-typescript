@@ -652,7 +652,11 @@ export class Runtime<M> {
     // Widget events: check handler map first
     if (event.kind === "widget") {
       const widgetEvent = event as WidgetEvent;
-      const handler = this.lookupHandler(widgetEvent.windowId, widgetEvent.id, widgetEvent.type);
+      const handler = this.lookupHandler(
+        widgetEvent.windowId ?? "",
+        widgetEvent.id,
+        widgetEvent.type,
+      );
       if (handler) {
         this.runUpdate(event, handler);
         return;
@@ -755,9 +759,23 @@ export class Runtime<M> {
     widgetId: string,
     eventType: string,
   ): Handler<unknown> | null {
-    const typeMap = this.state.handlerMap.get(this.handlerKey(windowId, widgetId));
-    if (!typeMap) return null;
-    return typeMap.get(eventType) ?? null;
+    if (windowId !== "") {
+      const typeMap = this.state.handlerMap.get(this.handlerKey(windowId, widgetId));
+      if (typeMap) return typeMap.get(eventType) ?? null;
+      return null;
+    }
+    // The renderer does not include window_id on widget events, so
+    // scan every window for the first registered handler matching
+    // widgetId + eventType. Handler keys are "${windowId}\u0000${widgetId}";
+    // suffix-match on "\u0000${widgetId}".
+    const suffix = `\u0000${widgetId}`;
+    for (const [key, typeMap] of this.state.handlerMap) {
+      if (key.endsWith(suffix)) {
+        const handler = typeMap.get(eventType);
+        if (handler) return handler;
+      }
+    }
+    return null;
   }
 
   // =======================================================================
@@ -1507,7 +1525,11 @@ export class Runtime<M> {
       // Check inline handler first
       if ("id" in event && "type" in event) {
         const widgetEvent = event as WidgetEvent;
-        const handler = this.lookupHandler(widgetEvent.windowId, widgetEvent.id, widgetEvent.type);
+        const handler = this.lookupHandler(
+          widgetEvent.windowId ?? "",
+          widgetEvent.id,
+          widgetEvent.type,
+        );
         if (handler) {
           const result = handler(this.state.model, widgetEvent) as UpdateResult<M>;
           const [newModel, commands] = this.unwrapResult(result);

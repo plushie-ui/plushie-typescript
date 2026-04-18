@@ -132,7 +132,7 @@ export interface WidgetEvent extends EventBase {
     // `| string` would collapse the entire union to `string`.
     | (string & {});
   readonly id: string;
-  readonly windowId: string;
+  readonly windowId: string | null;
   readonly scope: readonly string[];
   readonly value: string | number | boolean | null;
   readonly data: Readonly<Record<string, unknown>> | null;
