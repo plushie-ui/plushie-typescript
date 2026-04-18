@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Breaking changes
+
+- Environment variable `PLUSHIE_SOURCE_PATH` renamed to
+  `PLUSHIE_RUST_SOURCE_PATH`, matching plushie-rust.
+- Constant `BINARY_VERSION` renamed to `PLUSHIE_RUST_VERSION` in
+  `src/client/binary.ts`. This is the precise plushie-rust release
+  pin; see `docs/versioning.md`.
+- `NativeWidgetConfig.rustConstructor` removed. Each native widget
+  crate now declares its own `[package.metadata.plushie.widget]`
+  table (`type_name`, `constructor`) in `Cargo.toml`, matching
+  plushie-rust conventions.
+- Deleted `src/native-widget-build.ts` and the `NativeWidgetBuildConfig`
+  export. Cargo workspace generation, patch forwarding, collision
+  checks, and constructor validation now live in the `cargo-plushie`
+  build tool.
+
+### Changed
+
+- `npx plushie build` shells out to `cargo plushie build` instead of
+  generating its own Cargo workspace. Two install paths are
+  supported: `cargo install cargo-plushie --version <pin>` or
+  pointing `PLUSHIE_RUST_SOURCE_PATH` at a plushie-rust checkout.
+- Custom renderer binaries land in `node_modules/.plushie/bin/`
+  using the platform naming convention, unifying resolution for
+  stock downloads and custom builds.
+
+### Added
+
+- `src/cli/cargo-plushie.ts` with `resolveCargoPlushie()` for
+  locating the build tool.
+- `docs/versioning.md` documenting the two-axis policy and the
+  exact-match `PLUSHIE_RUST_VERSION` rule.
+
 ## [0.5.0] - 2026-03-23
 
 Initial release of the plushie TypeScript SDK. Targets
