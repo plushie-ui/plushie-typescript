@@ -621,14 +621,24 @@ export function decodeEvent(raw: WireMessage): Event {
   const data = obj(raw, "data");
   const _session = str(raw, "session");
 
-  // Session lifecycle events (not app-level events)
-  if (family === "session_error" || family === "session_closed") {
+  // Session lifecycle events (multiplexed mode)
+  if (family === "session_error") {
+    const session = str(raw, "session");
+    const errorText = data && typeof data["error"] === "string" ? (data["error"] as string) : "";
     return {
-      kind: "system",
-      type: family,
-      tag: "",
-      value: data ?? null,
-    } as SystemEvent;
+      kind: "session_error",
+      session,
+      error: errorText,
+    };
+  }
+  if (family === "session_closed") {
+    const session = str(raw, "session");
+    const reason = data && typeof data["reason"] === "string" ? (data["reason"] as string) : "";
+    return {
+      kind: "session_closed",
+      session,
+      reason,
+    };
   }
 
   // Widget events: all widget-scoped events (standard, pointer, pane, etc.)

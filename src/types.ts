@@ -78,7 +78,9 @@ export type EventKind =
   | "system"
   | "timer"
   | "async"
-  | "stream";
+  | "stream"
+  | "session_error"
+  | "session_closed";
 
 /** Base fields shared by all events. */
 interface EventBase {
@@ -429,6 +431,33 @@ export interface StreamEvent extends EventBase {
   readonly value: unknown;
 }
 
+/**
+ * A multiplexed session encountered an error. Emitted by the
+ * renderer when a session thread panics, hits a session-scoped cap,
+ * or otherwise fails.
+ *
+ * Only delivered when the renderer is run with `--max-sessions > 1`.
+ */
+export interface SessionErrorEvent extends EventBase {
+  readonly kind: "session_error";
+  /** The session ID that errored. */
+  readonly session: string;
+  /** Error description from the renderer. */
+  readonly error: string;
+}
+
+/**
+ * A multiplexed session was closed by the renderer. Emitted after a
+ * Reset completes and the session thread exits.
+ */
+export interface SessionClosedEvent extends EventBase {
+  readonly kind: "session_closed";
+  /** The session ID that was closed. */
+  readonly session: string;
+  /** Close reason from the renderer. */
+  readonly reason: string;
+}
+
 /** Union of all event types. */
 export type Event =
   | WidgetEvent
@@ -441,7 +470,9 @@ export type Event =
   | SystemEvent
   | TimerEvent
   | AsyncEvent
-  | StreamEvent;
+  | StreamEvent
+  | SessionErrorEvent
+  | SessionClosedEvent;
 
 /** Reason the renderer exited. */
 export type RendererExitType = "crash" | "connection_lost" | "shutdown" | "heartbeat_timeout";

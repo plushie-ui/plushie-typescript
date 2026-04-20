@@ -910,6 +910,38 @@ describe("decodeEvent", () => {
     expect(event.kind).toBe("key");
   });
 
+  // -- Session lifecycle --
+
+  test("session_error decodes to typed SessionErrorEvent", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "s1",
+      family: "session_error",
+      id: "",
+      data: { error: "session thread panicked: boom", code: "session_panic" },
+    });
+    expect(event.kind).toBe("session_error");
+    if (event.kind === "session_error") {
+      expect(event.session).toBe("s1");
+      expect(event.error).toBe("session thread panicked: boom");
+    }
+  });
+
+  test("session_closed decodes to typed SessionClosedEvent", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "s1",
+      family: "session_closed",
+      id: "",
+      data: { reason: "reset" },
+    });
+    expect(event.kind).toBe("session_closed");
+    if (event.kind === "session_closed") {
+      expect(event.session).toBe("s1");
+      expect(event.reason).toBe("reset");
+    }
+  });
+
   // -- Strict decode --
 
   test("unrecognized family throws", () => {

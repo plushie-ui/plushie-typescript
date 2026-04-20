@@ -44,6 +44,8 @@ import type {
   PointerData,
   ResizeData,
   ScrolledData,
+  SessionClosedEvent,
+  SessionErrorEvent,
   StreamEvent,
   SystemEvent,
   TimerEvent,
@@ -357,6 +359,22 @@ export function isAsync(event: Event, tag?: string): event is AsyncEvent {
 /** Narrows to a stream chunk event, optionally matching a stream tag. */
 export function isStream(event: Event, tag?: string): event is StreamEvent {
   return event.kind === "stream" && (tag === undefined || event.tag === tag);
+}
+
+/**
+ * Narrows to a multiplexed session_error event. Optionally matches a
+ * specific session ID.
+ */
+export function isSessionError(event: Event, session?: string): event is SessionErrorEvent {
+  return event.kind === "session_error" && (session === undefined || event.session === session);
+}
+
+/**
+ * Narrows to a multiplexed session_closed event. Optionally matches a
+ * specific session ID.
+ */
+export function isSessionClosed(event: Event, session?: string): event is SessionClosedEvent {
+  return event.kind === "session_closed" && (session === undefined || event.session === session);
 }
 
 /**
