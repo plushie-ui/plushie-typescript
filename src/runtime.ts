@@ -86,8 +86,15 @@ import {
 /** A factory function that creates new Transport instances. */
 export type TransportFactory = () => Transport;
 
-/** Diagnostic event captured from the renderer. */
-export interface Diagnostic {
+/**
+ * Widget prop validation event captured from the renderer.
+ *
+ * Surfaced as a widget event with `type: "diagnostic"` carrying the
+ * canvas a11y / prop validation payload. Distinct from the top-level
+ * structured {@link Diagnostic} delivered through the diagnostic
+ * channel.
+ */
+export interface PropValidationDiagnostic {
   readonly kind: "widget";
   readonly type: "diagnostic";
   readonly id: string;
@@ -127,7 +134,7 @@ interface RuntimeState<M> {
     }
   >;
   widgetHandlerRegistry: Map<string, RegistryEntry>;
-  diagnostics: Diagnostic[];
+  diagnostics: PropValidationDiagnostic[];
   consecutiveErrors: number;
   restartCount: number;
   coalescePending: boolean;
@@ -238,7 +245,7 @@ export class Runtime<M> {
    * Returns and clears accumulated prop validation diagnostics.
    * The renderer emits diagnostic events when validate_props is enabled.
    */
-  getDiagnostics(): Diagnostic[] {
+  getDiagnostics(): PropValidationDiagnostic[] {
     const result = this.state.diagnostics;
     this.state.diagnostics = [];
     return result;
@@ -620,7 +627,7 @@ export class Runtime<M> {
 
     // Capture diagnostic events before dispatching
     if (event.kind === "widget" && (event as WidgetEvent).type === "diagnostic") {
-      this.state.diagnostics.push(event as Diagnostic);
+      this.state.diagnostics.push(event as PropValidationDiagnostic);
     }
 
     // Notify any pending awaitAsync watchers

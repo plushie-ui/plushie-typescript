@@ -280,7 +280,7 @@ export class TestSession<M> {
   /**
    * Returns and clears accumulated prop validation diagnostics.
    */
-  getDiagnostics(): import("../runtime.js").Diagnostic[] {
+  getDiagnostics(): import("../runtime.js").PropValidationDiagnostic[] {
     return this.runtime.getDiagnostics();
   }
 

@@ -417,6 +417,127 @@ function normalizeBase64(v: unknown): Uint8Array | null {
 export type DiagnosticLevel = "info" | "warn" | "error";
 
 /**
+ * Typed diagnostic payload emitted by the renderer. The shape mirrors
+ * the renderer's `Diagnostic` enum: each variant uses a distinct
+ * `kind` string and carries the structured fields the emitter knew at
+ * the time. Apps narrow on `kind` to access variant-specific fields
+ * without manual map lookups.
+ */
+export type Diagnostic =
+  | {
+      readonly kind: "duplicate_id";
+      readonly id: string;
+      readonly window_id: string | null;
+    }
+  | { readonly kind: "empty_id"; readonly type_name: string }
+  | { readonly kind: "multiple_top_level_windows"; readonly window_ids: readonly string[] }
+  | {
+      readonly kind: "unknown_window";
+      readonly window_id: string;
+      readonly subscription_tag: string;
+    }
+  | { readonly kind: "unrecognized_widget_placeholder"; readonly id: string }
+  | { readonly kind: "tree_depth_exceeded"; readonly id: string; readonly max_depth: number }
+  | { readonly kind: "too_many_duplicates"; readonly limit: number }
+  | {
+      readonly kind: "widget_id_invalid";
+      readonly reason: string;
+      readonly type_name: string;
+      readonly id: string;
+      readonly detail: string;
+    }
+  | {
+      readonly kind: "missing_accessible_name";
+      readonly type_name: string;
+      readonly id: string;
+    }
+  | {
+      readonly kind: "a11y_ref_unresolved";
+      readonly id: string;
+      readonly key: string;
+      readonly value: string;
+      readonly is_member: boolean;
+    }
+  | {
+      readonly kind: "prop_range_exceeded";
+      readonly id: string;
+      readonly type_name: string;
+      readonly prop: string;
+      readonly raw: number;
+      readonly clamped: number;
+      readonly non_finite: boolean;
+    }
+  | {
+      readonly kind: "prop_type_mismatch";
+      readonly id: string;
+      readonly type_name: string;
+      readonly prop: string;
+      readonly value_debug: string;
+      readonly expected_debug: string;
+    }
+  | {
+      readonly kind: "prop_unknown";
+      readonly id: string;
+      readonly type_name: string;
+      readonly prop: string;
+      readonly known_debug: string;
+    }
+  | {
+      readonly kind: "content_length_exceeded";
+      readonly id: string;
+      readonly field: string;
+      readonly actual: number;
+      readonly cap: number;
+      readonly truncated: number;
+    }
+  | { readonly kind: "font_cache_cap_exceeded"; readonly max: number }
+  | {
+      readonly kind: "font_cap_exceeded";
+      readonly max: number;
+      readonly requested: number;
+      readonly granted: number;
+      readonly dropped: number;
+    }
+  | { readonly kind: "font_family_not_found"; readonly family: string }
+  | { readonly kind: "invalid_settings"; readonly detail: string }
+  | { readonly kind: "required_widgets_missing"; readonly missing: readonly string[] }
+  | {
+      readonly kind: "widget_panic";
+      readonly id: string;
+      readonly type_name: string;
+      readonly label: string;
+    }
+  | {
+      readonly kind: "svg_parse_error";
+      readonly id: string;
+      readonly source: string;
+      readonly detail: string;
+    }
+  | {
+      readonly kind: "svg_decode_timeout";
+      readonly id: string;
+      readonly source: string;
+      readonly deadline_debug: string;
+    }
+  | { readonly kind: "dash_cache_cap_exceeded"; readonly max: number }
+  | { readonly kind: "emitter_coalesce_cap_exceeded"; readonly cap: number }
+  | {
+      readonly kind: "widget_id_type_collision";
+      readonly id: string;
+      readonly existing_type: string;
+      readonly incoming_type: string;
+    }
+  | {
+      readonly kind: "view_panicked";
+      readonly consecutive: number;
+      readonly message: string;
+    }
+  | { readonly kind: "unknown_message_type"; readonly msg_type: string };
+
+/** Discriminator string for any {@link Diagnostic} variant. */
+export type DiagnosticKind = Diagnostic["kind"];
+
+/**
  * Structured diagnostic emitted by the renderer as a top-level
  * `diagnostic` wire message (separate from `event` envelopes).
  *
@@ -427,7 +548,7 @@ export type DiagnosticLevel = "info" | "warn" | "error";
 export interface DiagnosticMessage {
   readonly session: string;
   readonly level: DiagnosticLevel;
-  readonly diagnostic: Readonly<Record<string, unknown>>;
+  readonly diagnostic: Diagnostic;
 }
 
 /** Parsed response types for request/response correlation. */
@@ -584,15 +705,55 @@ function decodeHello(raw: WireMessage): HelloInfo {
 
 // -- Diagnostic -----------------------------------------------------------
 
+const DIAGNOSTIC_KINDS: ReadonlySet<DiagnosticKind> = new Set<DiagnosticKind>([
+  "duplicate_id",
+  "empty_id",
+  "multiple_top_level_windows",
+  "unknown_window",
+  "unrecognized_widget_placeholder",
+  "tree_depth_exceeded",
+  "too_many_duplicates",
+  "widget_id_invalid",
+  "missing_accessible_name",
+  "a11y_ref_unresolved",
+  "prop_range_exceeded",
+  "prop_type_mismatch",
+  "prop_unknown",
+  "content_length_exceeded",
+  "font_cache_cap_exceeded",
+  "font_cap_exceeded",
+  "font_family_not_found",
+  "invalid_settings",
+  "required_widgets_missing",
+  "widget_panic",
+  "svg_parse_error",
+  "svg_decode_timeout",
+  "dash_cache_cap_exceeded",
+  "emitter_coalesce_cap_exceeded",
+  "widget_id_type_collision",
+  "view_panicked",
+  "unknown_message_type",
+]);
+
 function decodeDiagnostic(raw: WireMessage): DiagnosticMessage {
   const levelRaw = str(raw, "level", "info");
   const level: DiagnosticLevel =
     levelRaw === "warn" || levelRaw === "error" || levelRaw === "info" ? levelRaw : "info";
   const payload = obj(raw, "diagnostic") ?? {};
+  const kind = typeof payload["kind"] === "string" ? (payload["kind"] as string) : "";
+  if (!DIAGNOSTIC_KINDS.has(kind as DiagnosticKind)) {
+    throw new Error(
+      `Unknown diagnostic kind "${kind}". ` +
+        "The renderer emitted a diagnostic this SDK version does not recognize. " +
+        "Ensure the SDK and renderer versions are compatible.",
+    );
+  }
+  // The renderer's Diagnostic enum serializes with `kind` plus
+  // variant-specific fields, matching the Diagnostic union shape.
   return {
     session: str(raw, "session"),
     level,
-    diagnostic: payload as Readonly<Record<string, unknown>>,
+    diagnostic: payload as unknown as Diagnostic,
   };
 }
 

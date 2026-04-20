@@ -196,8 +196,14 @@ export { Route };
 // Query pipeline.
 import * as Data from "./data.js";
 
+export type {
+  Diagnostic,
+  DiagnosticKind,
+  DiagnosticLevel,
+  DiagnosticMessage,
+} from "./client/protocol.js";
 export type { QueryOptions, QueryResult, SortSpec } from "./data.js";
-export type { Diagnostic, TransportFactory } from "./runtime.js";
+export type { PropValidationDiagnostic, TransportFactory } from "./runtime.js";
 export { Runtime } from "./runtime.js";
 export { Data };
 

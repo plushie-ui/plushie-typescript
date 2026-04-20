@@ -421,6 +421,41 @@ describe("decodeMessage", () => {
       'Unknown top-level message type "unknown_thing"',
     );
   });
+
+  test("decodes diagnostic into typed Diagnostic union", () => {
+    const result = decodeMessage({
+      type: "diagnostic",
+      session: "s1",
+      level: "warn",
+      diagnostic: {
+        kind: "duplicate_id",
+        id: "main#form/email",
+        window_id: "main",
+      },
+    });
+    expect(result?.type).toBe("diagnostic");
+    if (result?.type === "diagnostic") {
+      expect(result.data.session).toBe("s1");
+      expect(result.data.level).toBe("warn");
+      const diag = result.data.diagnostic;
+      expect(diag.kind).toBe("duplicate_id");
+      if (diag.kind === "duplicate_id") {
+        expect(diag.id).toBe("main#form/email");
+        expect(diag.window_id).toBe("main");
+      }
+    }
+  });
+
+  test("rejects diagnostics with unknown kind", () => {
+    expect(() =>
+      decodeMessage({
+        type: "diagnostic",
+        session: "s1",
+        level: "warn",
+        diagnostic: { kind: "totally_made_up", id: "x" },
+      }),
+    ).toThrow(/Unknown diagnostic kind "totally_made_up"/);
+  });
 });
 
 // =========================================================================
