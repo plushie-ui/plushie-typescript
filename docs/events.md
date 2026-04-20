@@ -137,7 +137,7 @@ user releases the slider.
 ```typescript
 <Slider id="volume" value={state.volume} range={[0, 100]}
   onSlide={(s, e) => ({ ...s, volume: e.value as number })}
-  onSlideRelease={(s) => [s, Command.async(async () => savePreference('volume', s.volume), 'saved')]} />
+  onSlideRelease={(s) => [s, Command.task(async () => savePreference('volume', s.volume), 'saved')]} />
 
 // In update():
 if (isSlide(event, 'volume')) {
@@ -820,7 +820,7 @@ update(state, event) {
 
 ## Async events (command results)
 
-Delivered when a `Command.async()` completes.
+Delivered when a `Command.task()` completes.
 
 <!-- test: events_async_result_ok_guard, events_async_result_error_guard -- keep this code block in sync with the test -->
 ```typescript
@@ -829,14 +829,14 @@ Delivered when a `Command.async()` completes.
 // { kind: "async", tag: "dataLoaded", result: { ok: false, error: errorInfo } }
 ```
 
-Where `tag` is the string you passed to `Command.async()`.
+Where `tag` is the string you passed to `Command.task()`.
 
 ```typescript
 function update(state: Model, event: Event): UpdateResult<Model> {
   if (isClick(event, 'fetch')) {
     return [
       { ...state, loading: true },
-      Command.async(async () => {
+      Command.task(async () => {
         const res = await fetch('/api/data')
         return res.json()
       }, 'dataLoaded'),

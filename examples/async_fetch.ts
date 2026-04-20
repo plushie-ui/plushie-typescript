@@ -1,7 +1,7 @@
 // Async command example: a button that triggers background work.
 //
 // Demonstrates:
-// - Command.async() for off-thread work
+// - Command.task() for off-thread work
 // - isAsync() for narrowing async result events
 // - Loading state management
 // - Extracting view helpers for reuse
@@ -49,7 +49,7 @@ export default app<Model>({
 
   update(state, event: Event) {
     if (isClick(event, "fetch")) {
-      const cmd = Command.async(async () => {
+      const cmd = Command.task(async () => {
         // Simulate a slow network call
         await new Promise((resolve) => setTimeout(resolve, 500));
         return `Fetched at ${new Date().toLocaleTimeString()}`;

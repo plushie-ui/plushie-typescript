@@ -23,8 +23,8 @@ describe("Command", () => {
 
   test("async() stores function and tag", () => {
     const fn = async () => 42;
-    const cmd = Command.async(fn, "result");
-    expect(cmd.type).toBe("async");
+    const cmd = Command.task(fn, "result");
+    expect(cmd.type).toBe("task");
     expect(cmd.payload["tag"]).toBe("result");
     expect(cmd.payload["fn"]).toBe(fn);
   });
@@ -262,8 +262,8 @@ describe("Command", () => {
 
   test("done() wraps value with mapper", () => {
     const mapper = (v: unknown) => ({ result: v });
-    const cmd = Command.done(42, mapper);
-    expect(cmd.type).toBe("done");
+    const cmd = Command.dispatch(42, mapper);
+    expect(cmd.type).toBe("dispatch");
     expect(cmd.payload["value"]).toBe(42);
     expect(cmd.payload["mapper"]).toBe(mapper);
   });

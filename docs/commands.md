@@ -22,7 +22,7 @@ const handleSimple = (s: Model) => s
 // With a command: return a tuple:
 const handleSave = (s: Model): [Model, Command] => [
   s,
-  Command.async(async () => saveToServer(s.data), 'saveResult'),
+  Command.task(async () => saveToServer(s.data), 'saveResult'),
 ]
 ```
 
@@ -47,7 +47,7 @@ Run a function asynchronously. The result is delivered as an
 
 <!-- test: commands_async_construct -- keep this code block in sync with the test -->
 ```typescript
-Command.async(async (signal: AbortSignal) => {
+Command.task(async (signal: AbortSignal) => {
   const res = await fetch(url, { signal })
   return res.json()
 }, 'fetchResult')
@@ -60,7 +60,7 @@ If the function throws, the error is delivered as
 ```typescript
 function update(state: Model, event: Event): UpdateResult<Model> {
   if (isClick(event, 'fetch')) {
-    const cmd = Command.async(async (signal) => {
+    const cmd = Command.task(async (signal) => {
       const res = await fetch('https://api.example.com/data', { signal })
       return res.json()
     }, 'dataFetched')
@@ -148,18 +148,18 @@ if (isClick(event, 'cancelImport')) {
 
 #### Done (lift a value)
 
-`Command.done()` wraps an already-resolved value as a command. The
+`Command.dispatch()` wraps an already-resolved value as a command. The
 runtime immediately dispatches `mapper(value)` through `update()`
 without spawning a task. Useful for lifting a pure value into the
 command pipeline.
 
 ```typescript
-Command.done(value, mapper)
+Command.dispatch(value, mapper)
 ```
 
 ```typescript
 if (isClick(event, 'reset')) {
-  return [state, Command.done(defaults, (v) => ({ type: 'configLoaded', config: v }))]
+  return [state, Command.dispatch(defaults, (v) => ({ type: 'configLoaded', config: v }))]
 }
 ```
 
@@ -244,7 +244,7 @@ Command.minimizeWindow('main', false)                      // Restore from minim
 Command.setWindowMode('main', 'fullscreen')                // 'fullscreen', 'windowed', etc.
 Command.toggleMaximize('main')                             // Toggle maximize state
 Command.toggleDecorations('main')                          // Toggle title bar/borders
-Command.gainFocus('main')                                  // Bring window to front
+Command.focusWindow('main')                                  // Bring window to front
 Command.setWindowLevel('main', 'always_on_top')            // 'normal', 'always_on_top', etc.
 Command.dragWindow('main')                                 // Initiate OS window drag
 Command.dragResizeWindow('main', 'south_east')             // Initiate OS resize from edge
@@ -394,7 +394,7 @@ Example:
 
 ```typescript
 if (isClick(event, 'loadPreview')) {
-  const cmd = Command.async(async () => {
+  const cmd = Command.task(async () => {
     const res = await fetch('/preview.png')
     return new Uint8Array(await res.arrayBuffer())
   }, 'previewLoaded')
@@ -508,7 +508,7 @@ end.
 if (isClick(event, 'deploy')) {
   return [
     { ...state, status: 'validating' },
-    Command.async(async () => validateConfig(state.config), 'validated'),
+    Command.task(async () => validateConfig(state.config), 'validated'),
   ]
 }
 
@@ -516,7 +516,7 @@ if (isClick(event, 'deploy')) {
 if (isAsync(event, 'validated') && event.result.ok) {
   return [
     { ...state, status: 'building' },
-    Command.async(async () => buildRelease(state.config), 'built'),
+    Command.task(async () => buildRelease(state.config), 'built'),
   ]
 }
 
@@ -525,7 +525,7 @@ if (isAsync(event, 'built') && event.result.ok) {
   const artifact = event.result.value
   return [
     { ...state, status: 'deploying' },
-    Command.async(async () => pushArtifact(artifact), 'deployed'),
+    Command.task(async () => pushArtifact(artifact), 'deployed'),
   ]
 }
 
@@ -801,7 +801,7 @@ app({
     if (isClick(event, 'startPolling')) return { ...state, polling: true }
     if (isClick(event, 'stopPolling')) return { ...state, polling: false }
     if (isTimer(event, 'poll')) {
-      return [state, Command.async(async () => fetchData(), 'dataReceived')]
+      return [state, Command.task(async () => fetchData(), 'dataReceived')]
     }
     return state
   },

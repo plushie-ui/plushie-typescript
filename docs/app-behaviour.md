@@ -32,7 +32,7 @@ init: { todos: [], input: '', filter: 'all' }
 // With a command:
 init: [
   { todos: [], loading: true },
-  Command.async(async () => loadTodosFromDisk(), 'todosLoaded'),
+  Command.task(async () => loadTodosFromDisk(), 'todosLoaded'),
 ]
 ```
 
@@ -232,7 +232,7 @@ The runtime wraps handler, update, and view calls in try/catch:
 
 - **Handler/update throws**: error logged, previous model kept, render skipped
 - **View throws**: error logged, previous tree stays rendered, handlers still run
-- **Promise returned from handler**: detected and logged with `Command.async()` guidance
+- **Promise returned from handler**: detected and logged with `Command.task()` guidance
 
 Errors don't crash the app. The counter keeps counting. See the
 [crash-test](https://github.com/plushie-ui/plushie-demos/tree/main/typescript/crash-test)

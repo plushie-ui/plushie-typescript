@@ -451,7 +451,7 @@ for debugging visual issues, demos, and onboarding.
 
 The mock backend executes `async`, `stream`, and `done` commands
 synchronously. When `update()` returns a command like
-`Command.async(async () => fetchData(), 'dataLoaded')`, the backend
+`Command.task(async () => fetchData(), 'dataLoaded')`, the backend
 immediately calls the function, gets the result, and dispatches the
 `AsyncEvent` through `update()`, all within the same call.
 

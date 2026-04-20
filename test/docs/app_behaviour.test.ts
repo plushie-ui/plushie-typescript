@@ -15,12 +15,12 @@ test("app_behaviour_init_bare_model", () => {
 
 test("app_behaviour_init_with_command", () => {
   const model = { todos: [], loading: true };
-  const cmd = Command.async(async () => "loaded", "todosLoaded");
+  const cmd = Command.task(async () => "loaded", "todosLoaded");
   const init: [typeof model, typeof cmd] = [model, cmd];
 
   expect(init[0].loading).toBe(true);
   expect(init[0].todos).toEqual([]);
-  expect(init[1].type).toBe("async");
+  expect(init[1].type).toBe("task");
   expect(init[1].payload["tag"]).toBe("todosLoaded");
 });
 

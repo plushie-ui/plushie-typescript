@@ -103,7 +103,7 @@ npx plushie run examples/shortcuts.ts
 **File:** `async_fetch.ts`
 
 Button that triggers simulated background work. Demonstrates
-`Command.async()` for running async functions off the main update
+`Command.task()` for running async functions off the main update
 loop, `AbortSignal` for cancellation, and how async results are
 delivered as `AsyncEvent` with `{ ok, value/error }` discrimination.
 

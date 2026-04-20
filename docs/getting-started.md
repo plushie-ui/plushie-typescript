@@ -181,7 +181,7 @@ crash. Fix the code and the next event works normally.
 
 If you accidentally return a Promise from a handler, the runtime
 detects it and logs a clear error explaining how to use
-`Command.async()` instead.
+`Command.task()` instead.
 
 ## Dev mode
 

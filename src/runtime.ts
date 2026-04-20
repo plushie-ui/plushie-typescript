@@ -797,11 +797,11 @@ export class Runtime<M> {
       if (result != null && typeof result === "object" && "then" in result) {
         console.error(
           `Handler returned a Promise. Handlers must be synchronous.\n` +
-            `Use Command.async() for async work:\n\n` +
+            `Use Command.task() for async work:\n\n` +
             `  import { Command } from 'plushie'\n\n` +
             `  const fetchData = (state) => [\n` +
             `    { ...state, loading: true },\n` +
-            `    Command.async(async () => fetch(url), 'result'),\n` +
+            `    Command.task(async () => fetch(url), 'result'),\n` +
             `  ]\n`,
         );
         return;
@@ -1189,7 +1189,7 @@ export class Runtime<M> {
         this.stop();
         break;
 
-      case "async":
+      case "task":
         this.executeAsync(cmd);
         break;
 

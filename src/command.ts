@@ -16,7 +16,7 @@
  *
  * function update(model: Model, event: Event): [Model, Command] {
  *   if (isClick(event, "save")) {
- *     return [model, Cmd.async(saveToServer, "save-result")]
+ *     return [model, Cmd.task(saveToServer, "save-result")]
  *   }
  *   if (isClick(event, "quit")) {
  *     return [model, Cmd.exit()]
@@ -74,11 +74,9 @@ export function exit(): Command {
  * already running, it is cancelled and replaced. Use unique tags if you
  * need concurrent tasks.
  */
-function async_(fn: (signal: AbortSignal) => Promise<unknown>, tag: string): Command {
-  return cmd("async", { fn, tag });
+export function task(fn: (signal: AbortSignal) => Promise<unknown>, tag: string): Command {
+  return cmd("task", { fn, tag });
 }
-
-export { async_ as async };
 
 /**
  * Run an async generator as a stream. Each yielded value is delivered
@@ -252,7 +250,7 @@ export function toggleDecorations(windowId: string): Command {
 }
 
 /** Give focus to a window. */
-export function gainFocus(windowId: string): Command {
+export function focusWindow(windowId: string): Command {
   return cmd("window_op", { op: "gain_focus", window_id: windowId });
 }
 
@@ -515,7 +513,7 @@ export function widgetCommand(id: string, family: string, value?: unknown): Comm
 }
 
 /** Send a batch of widget commands (processed in one cycle). */
-export function widgetCommands(
+export function widgetBatch(
   commands: Array<{ id: string; family: string; value?: unknown }>,
 ): Command {
   return cmd("commands", { commands });
@@ -553,6 +551,6 @@ export function treeHash(tag: string): Command {
  * The runtime immediately dispatches mapper(value) through update
  * without spawning a task.
  */
-export function done(value: unknown, mapper: (v: unknown) => unknown): Command {
-  return cmd("done", { value, mapper });
+export function dispatch(value: unknown, mapper: (v: unknown) => unknown): Command {
+  return cmd("dispatch", { value, mapper });
 }

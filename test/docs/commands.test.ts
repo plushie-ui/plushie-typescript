@@ -12,10 +12,10 @@ test("commands_none", () => {
 // -- command.async --
 
 test("commands_async_construct", () => {
-  const cmd = Command.async(async (_signal) => {
+  const cmd = Command.task(async (_signal) => {
     return { data: "ok" };
   }, "fetchResult");
-  expect(cmd.type).toBe("async");
+  expect(cmd.type).toBe("task");
   expect(cmd.payload["tag"]).toBe("fetchResult");
 });
 
@@ -42,8 +42,8 @@ test("commands_cancel_construct", () => {
 
 test("commands_done_construct", () => {
   const defaults = { theme: "dark" };
-  const cmd = Command.done(defaults, (v) => ({ type: "configLoaded", config: v }));
-  expect(cmd.type).toBe("done");
+  const cmd = Command.dispatch(defaults, (v) => ({ type: "configLoaded", config: v }));
+  expect(cmd.type).toBe("dispatch");
   expect(cmd.payload["value"]).toBe(defaults);
 });
 
@@ -173,7 +173,7 @@ test("commands_widget_commands_construct", () => {
     { id: "term-1", family: "write", value: { data: "line1" } },
     { id: "log-1", family: "append", value: { line: "entry" } },
   ];
-  const cmd = Command.widgetCommands(cmds);
+  const cmd = Command.widgetBatch(cmds);
   expect(cmd.type).toBe("commands");
 });
 

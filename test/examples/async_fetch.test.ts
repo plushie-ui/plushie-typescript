@@ -33,7 +33,7 @@ describe("async_fetch example", () => {
     ];
     expect(model["status"]).toBe("loading");
     expect(cmd[COMMAND]).toBe(true);
-    expect(cmd["type"]).toBe("async");
+    expect(cmd["type"]).toBe("task");
   });
 
   test("successful async result transitions to done", () => {
