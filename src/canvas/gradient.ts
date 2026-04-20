@@ -27,3 +27,24 @@ export function linearGradient(
     stops,
   };
 }
+
+/**
+ * Builds a linear gradient from an angle in degrees and a list of color stops.
+ *
+ * Angle convention (shared with every other plushie SDK):
+ * 0 = east, 90 = south, 180 = west, 270 = north. The start and end
+ * points are computed so the gradient axis passes through the unit
+ * square centered at (0.5, 0.5).
+ */
+export function linearGradientFromAngle(
+  angleDegrees: number,
+  stops: readonly (readonly [number, string])[],
+): LinearGradient {
+  const radians = (angleDegrees * Math.PI) / 180;
+  const dx = Math.cos(radians);
+  const dy = Math.sin(radians);
+  const halfLen = Math.abs(dx) / 2 + Math.abs(dy) / 2;
+  const start: readonly [number, number] = [0.5 - dx * halfLen, 0.5 - dy * halfLen];
+  const end: readonly [number, number] = [0.5 + dx * halfLen, 0.5 + dy * halfLen];
+  return linearGradient(start, end, stops);
+}

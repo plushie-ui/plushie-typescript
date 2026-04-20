@@ -14,7 +14,7 @@
  */
 
 export type { LinearGradient } from "./gradient.js";
-export { linearGradient } from "./gradient.js";
+export { linearGradient, linearGradientFromAngle } from "./gradient.js";
 export type {
   DragBounds,
   HitRect,
