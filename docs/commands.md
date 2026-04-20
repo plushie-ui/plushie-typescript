@@ -382,9 +382,9 @@ In-memory images can be created, updated, and deleted at runtime. The
 
 ```typescript
 Command.createImage('preview', pngBytes)                     // From PNG/JPEG Uint8Array
-Command.createImage('preview', 64, 64, rgbaPixels)           // From raw RGBA Uint8Array
+Command.createImageRgba('preview', 64, 64, rgbaPixels)       // From raw RGBA Uint8Array
 Command.updateImage('preview', newPngBytes)                   // Update with PNG/JPEG
-Command.updateImage('preview', 64, 64, newRgbaPixels)        // Update with raw RGBA
+Command.updateImageRgba('preview', 64, 64, newRgbaPixels)    // Update with raw RGBA
 Command.deleteImage('preview')                                // Remove in-memory image
 Command.listImages('imgListResult')                           // List all handles (result via event)
 Command.clearImages()                                         // Clear all in-memory images

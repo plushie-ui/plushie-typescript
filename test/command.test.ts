@@ -165,11 +165,22 @@ describe("Command", () => {
     expect(cmd.payload["data"]).toBe(data);
   });
 
-  test("createImage() with raw RGBA pixels", () => {
+  test("createImageRgba() with raw RGBA pixels", () => {
     const pixels = new Uint8Array(4 * 4 * 4);
-    const cmd = Command.createImage("icon", 4, 4, pixels);
+    const cmd = Command.createImageRgba("icon", 4, 4, pixels);
+    expect(cmd.type).toBe("image_op");
+    expect(cmd.payload["op"]).toBe("create_image");
+    expect(cmd.payload["handle"]).toBe("icon");
     expect(cmd.payload["width"]).toBe(4);
     expect(cmd.payload["height"]).toBe(4);
+    expect(cmd.payload["pixels"]).toBe(pixels);
+  });
+
+  test("updateImageRgba() with raw RGBA pixels", () => {
+    const pixels = new Uint8Array(1 * 1 * 4);
+    const cmd = Command.updateImageRgba("icon", 1, 1, pixels);
+    expect(cmd.type).toBe("image_op");
+    expect(cmd.payload["op"]).toBe("update_image");
     expect(cmd.payload["pixels"]).toBe(pixels);
   });
 

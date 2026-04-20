@@ -401,57 +401,45 @@ export function systemInfo(tag: string): Command {
 // -- Image operations -------------------------------------------------------
 
 /** Creates an in-memory image from encoded PNG/JPEG bytes. */
-export function createImage(handle: string, data: Uint8Array): Command;
+export function createImage(handle: string, data: Uint8Array): Command {
+  return cmd("image_op", { op: "create_image", handle, data });
+}
+
 /** Creates an in-memory image from raw RGBA pixel data. */
-export function createImage(
+export function createImageRgba(
   handle: string,
   width: number,
   height: number,
   pixels: Uint8Array,
-): Command;
-export function createImage(
-  handle: string,
-  dataOrWidth: Uint8Array | number,
-  height?: number,
-  pixels?: Uint8Array,
 ): Command {
-  if (typeof dataOrWidth === "number") {
-    return cmd("image_op", {
-      op: "create_image",
-      handle,
-      width: dataOrWidth,
-      height: height!,
-      pixels: pixels!,
-    });
-  }
-  return cmd("image_op", { op: "create_image", handle, data: dataOrWidth });
+  return cmd("image_op", {
+    op: "create_image",
+    handle,
+    width,
+    height,
+    pixels,
+  });
 }
 
 /** Updates an existing in-memory image with new encoded PNG/JPEG bytes. */
-export function updateImage(handle: string, data: Uint8Array): Command;
+export function updateImage(handle: string, data: Uint8Array): Command {
+  return cmd("image_op", { op: "update_image", handle, data });
+}
+
 /** Updates an existing in-memory image with new raw RGBA pixel data. */
-export function updateImage(
+export function updateImageRgba(
   handle: string,
   width: number,
   height: number,
   pixels: Uint8Array,
-): Command;
-export function updateImage(
-  handle: string,
-  dataOrWidth: Uint8Array | number,
-  height?: number,
-  pixels?: Uint8Array,
 ): Command {
-  if (typeof dataOrWidth === "number") {
-    return cmd("image_op", {
-      op: "update_image",
-      handle,
-      width: dataOrWidth,
-      height: height!,
-      pixels: pixels!,
-    });
-  }
-  return cmd("image_op", { op: "update_image", handle, data: dataOrWidth });
+  return cmd("image_op", {
+    op: "update_image",
+    handle,
+    width,
+    height,
+    pixels,
+  });
 }
 
 /** Deletes an in-memory image by handle name. */
