@@ -532,6 +532,11 @@ export type Diagnostic =
       readonly consecutive: number;
       readonly message: string;
     }
+  | {
+      readonly kind: "update_panicked";
+      readonly consecutive: number;
+      readonly message: string;
+    }
   | { readonly kind: "unknown_message_type"; readonly msg_type: string };
 
 /** Discriminator string for any {@link Diagnostic} variant. */
@@ -732,6 +737,7 @@ const DIAGNOSTIC_KINDS: ReadonlySet<DiagnosticKind> = new Set<DiagnosticKind>([
   "emitter_coalesce_cap_exceeded",
   "widget_id_type_collision",
   "view_panicked",
+  "update_panicked",
   "unknown_message_type",
 ]);
 

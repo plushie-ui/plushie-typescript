@@ -456,6 +456,29 @@ describe("decodeMessage", () => {
       }),
     ).toThrow(/Unknown diagnostic kind "totally_made_up"/);
   });
+
+  test("decodes update_panicked diagnostic", () => {
+    const result = decodeMessage({
+      type: "diagnostic",
+      session: "s1",
+      level: "error",
+      diagnostic: {
+        kind: "update_panicked",
+        consecutive: 2,
+        message: "nil dereference",
+      },
+    });
+    expect(result?.type).toBe("diagnostic");
+    if (result?.type === "diagnostic") {
+      expect(result.data.level).toBe("error");
+      const diag = result.data.diagnostic;
+      expect(diag.kind).toBe("update_panicked");
+      if (diag.kind === "update_panicked") {
+        expect(diag.consecutive).toBe(2);
+        expect(diag.message).toBe("nil dereference");
+      }
+    }
+  });
 });
 
 // =========================================================================
