@@ -14,7 +14,7 @@ export interface GridProps {
   /** Unique widget identifier. */
   id?: string;
   /** Number of columns in the grid. */
-  columns?: number;
+  numColumns?: number;
   /** Spacing between cells in pixels. */
   spacing?: number;
   /** Width of the grid. */
@@ -37,7 +37,7 @@ export function Grid(props: GridProps): UINode {
   const id = props.id ?? autoId("grid");
   const children = props.children ?? [];
   const p: Record<string, unknown> = {};
-  putIf(p, props.columns, "columns");
+  putIf(p, props.numColumns, "num_columns");
   putIf(p, props.spacing, "spacing");
   putIf(p, props.width, "width", encodeLength);
   putIf(p, props.height, "height", encodeLength);

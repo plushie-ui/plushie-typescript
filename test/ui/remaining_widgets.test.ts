@@ -482,10 +482,10 @@ describe("Stack", () => {
 // ---------------------------------------------------------------------------
 
 describe("Grid", () => {
-  test("creates grid with columns", () => {
-    const node = Grid({ columns: 3, children: [text("a")] });
+  test("creates grid with numColumns", () => {
+    const node = Grid({ numColumns: 3, children: [text("a")] });
     expect(node.type).toBe("grid");
-    expect(node.props["columns"]).toBe(3);
+    expect(node.props["num_columns"]).toBe(3);
     expect(node.children).toHaveLength(1);
   });
 
