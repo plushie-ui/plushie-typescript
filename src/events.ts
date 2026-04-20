@@ -39,6 +39,7 @@ import type {
   ImeEvent,
   KeyEvent,
   KeyPressData,
+  LinkClickData,
   ModifiersEvent,
   PointerData,
   ResizeData,
@@ -297,6 +298,21 @@ export function isScrolled(
   return (
     event.kind === "widget" &&
     (event as WidgetEvent).type === "scrolled" &&
+    (id === undefined || (event as WidgetEvent).id === id)
+  );
+}
+
+/**
+ * Narrows to a link_click event emitted by a link-capable widget
+ * (rich_text, markdown). Data is guaranteed to carry the clicked link.
+ */
+export function isLinkClicked(
+  event: Event,
+  id?: string,
+): event is WidgetEvent & { readonly type: "link_click"; readonly data: LinkClickData } {
+  return (
+    event.kind === "widget" &&
+    (event as WidgetEvent).type === "link_click" &&
     (id === undefined || (event as WidgetEvent).id === id)
   );
 }

@@ -98,6 +98,7 @@ export interface WidgetEvent extends EventBase {
     | "close"
     | "sort"
     | "key_binding"
+    | "link_click"
     // Pointer interaction events (press/release/move/scroll on any interactive surface)
     | "press"
     | "release"
@@ -218,6 +219,12 @@ export interface KeyPressData {
 export interface KeyReleaseData {
   readonly key: string;
   readonly modifiers: Readonly<Record<string, unknown>>;
+  readonly [key: string]: unknown;
+}
+
+/** Data for link_click events emitted by rich_text and markdown widgets. */
+export interface LinkClickData {
+  readonly link: string;
   readonly [key: string]: unknown;
 }
 

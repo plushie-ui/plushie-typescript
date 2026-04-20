@@ -674,6 +674,7 @@ const WIDGET_FAMILIES = new Set([
   "open",
   "close",
   "key_binding",
+  "link_click",
   "sort",
   // Unified pointer events
   "press",

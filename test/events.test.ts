@@ -1,6 +1,15 @@
 import { describe, expect, test } from "vitest";
 import type { AsyncEvent, TimerEvent, WidgetEvent } from "../src/index.js";
-import { isAsync, isBlurred, isClick, isFocused, isTimer, isToggle, target } from "../src/index.js";
+import {
+  isAsync,
+  isBlurred,
+  isClick,
+  isFocused,
+  isLinkClicked,
+  isTimer,
+  isToggle,
+  target,
+} from "../src/index.js";
 
 const click: WidgetEvent = {
   kind: "widget",
@@ -75,6 +84,25 @@ describe("event type guards", () => {
     expect(isFocused(focused, "name_input")).toBe(true);
     expect(isFocused(focused, "other")).toBe(false);
     expect(isFocused(click)).toBe(false);
+  });
+
+  test("isLinkClicked matches link_click events with link payload", () => {
+    const linkClicked: WidgetEvent = {
+      kind: "widget",
+      type: "link_click",
+      id: "article",
+      scope: [],
+      value: null,
+      data: { link: "https://example.com/article" },
+      windowId: "main",
+    };
+    expect(isLinkClicked(linkClicked)).toBe(true);
+    expect(isLinkClicked(linkClicked, "article")).toBe(true);
+    expect(isLinkClicked(linkClicked, "other")).toBe(false);
+    expect(isLinkClicked(click)).toBe(false);
+    if (isLinkClicked(linkClicked)) {
+      expect(linkClicked.data.link).toBe("https://example.com/article");
+    }
   });
 
   test("isBlurred matches blurred events", () => {
