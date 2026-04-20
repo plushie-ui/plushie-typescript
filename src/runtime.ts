@@ -474,12 +474,10 @@ export class Runtime<M> {
             return;
           }
 
-          const expectedExtensions = (this.config.expectedExtensions ?? []).map((ext) =>
+          const requiredWidgets = (this.config.requiredWidgets ?? []).map((ext) =>
             typeof ext === "string" ? ext : nativeWidgetConfigKey(ext),
           );
-          const missing = expectedExtensions.filter(
-            (ext) => !decoded.data.extensions.includes(ext),
-          );
+          const missing = requiredWidgets.filter((ext) => !decoded.data.extensions.includes(ext));
           if (missing.length > 0) {
             reject(
               new Error(
@@ -664,9 +662,7 @@ export class Runtime<M> {
     }
 
     // Fall through to update()
-    if (this.config.update) {
-      this.runUpdate(event);
-    }
+    this.runUpdate(event);
   }
 
   private handleStatusEvent(event: WidgetEvent): void {
@@ -784,14 +780,9 @@ export class Runtime<M> {
 
   private runUpdate(event: Event, handler?: Handler<unknown>): void {
     try {
-      let result: UpdateResult<M>;
-      if (handler) {
-        result = handler(this.state.model, event as WidgetEvent) as UpdateResult<M>;
-      } else if (this.config.update) {
-        result = this.config.update(this.state.model as never, event) as UpdateResult<M>;
-      } else {
-        return;
-      }
+      const result: UpdateResult<M> = handler
+        ? (handler(this.state.model, event as WidgetEvent) as UpdateResult<M>)
+        : (this.config.update(this.state.model as never, event) as UpdateResult<M>);
 
       // Detect accidental Promise return
       if (result != null && typeof result === "object" && "then" in result) {
@@ -1005,9 +996,7 @@ export class Runtime<M> {
     let appSubs: Subscription[];
     if (this.config.subscriptions) {
       try {
-        appSubs = this.config
-          .subscriptions(this.state.model as never)
-          .filter((s): s is Subscription => s !== false && s !== null && s !== undefined);
+        appSubs = this.config.subscriptions(this.state.model as never);
       } catch (error: unknown) {
         this.handleUpdateError(error);
         appSubs = [];
@@ -1301,9 +1290,7 @@ export class Runtime<M> {
             break;
           }
           queueMicrotask(() => {
-            if (this.config.update) {
-              this.runUpdate(mappedValue as Event);
-            }
+            this.runUpdate(mappedValue as Event);
           });
         }
         break;
@@ -1543,12 +1530,10 @@ export class Runtime<M> {
         }
       }
       // Fall through to update
-      if (this.config.update) {
-        const result = this.config.update(this.state.model as never, event) as UpdateResult<M>;
-        const [newModel, commands] = this.unwrapResult(result);
-        this.state.model = newModel;
-        this.executeCommands(commands);
-      }
+      const result = this.config.update(this.state.model as never, event) as UpdateResult<M>;
+      const [newModel, commands] = this.unwrapResult(result);
+      this.state.model = newModel;
+      this.executeCommands(commands);
     } catch (error) {
       this.handleUpdateError(error);
     }
@@ -1608,9 +1593,7 @@ export class Runtime<M> {
           message: error instanceof Error ? error.message : String(error),
         },
       };
-      if (this.config.update) {
-        this.runUpdate(desyncEvent);
-      }
+      this.runUpdate(desyncEvent);
     } finally {
       this.dispatchingDesync = false;
     }

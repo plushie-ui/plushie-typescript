@@ -67,11 +67,21 @@ export interface AppConfig<M> {
   /**
    * Fallback event handler for events without inline handlers
    * (subscription events, async results, unhandled widget events).
+   *
+   * Required. Static-display apps can return the model unchanged
+   * (`return [state];`).
    */
-  update?: (state: DeepReadonly<M>, event: Event) => UpdateResult<M>;
+  update: (state: DeepReadonly<M>, event: Event) => UpdateResult<M>;
 
-  /** Active subscriptions, re-evaluated after every state change. */
-  subscriptions?: (state: DeepReadonly<M>) => (Subscription | false | null | undefined)[];
+  /**
+   * Active subscriptions, re-evaluated after every state change.
+   *
+   * The return value is a strict `Subscription[]`. Callers that need
+   * conditional subscriptions should build the array explicitly
+   * (`condition ? [sub()] : []`) rather than relying on a falsy
+   * filter at this layer.
+   */
+  subscriptions?: (state: DeepReadonly<M>) => Subscription[];
 
   /** Renderer settings (sent once on startup). */
   settings?: AppSettings;
@@ -80,7 +90,7 @@ export interface AppConfig<M> {
   windowConfig?: (state: DeepReadonly<M>) => Record<string, unknown>;
 
   /** Native extensions this app expects the renderer to have loaded. */
-  expectedExtensions?: readonly (string | NativeWidgetConfig)[];
+  requiredWidgets?: readonly (string | NativeWidgetConfig)[];
 
   /** Called when the renderer process exits unexpectedly. */
   handleRendererExit?: (state: DeepReadonly<M>, reason: RendererExit) => M;

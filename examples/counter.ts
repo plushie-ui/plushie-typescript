@@ -24,6 +24,13 @@ export default app<Model>({
 
   init: { count: 0 },
 
+  // -- Update -----------------------------------------------------------------
+  //
+  // All state changes happen through inline handlers. The fallback
+  // update() simply returns the current model unchanged for events the
+  // app does not care about (focus, timers, etc.).
+  update: (s) => s as Model,
+
   // -- View -------------------------------------------------------------------
 
   view: (s) =>

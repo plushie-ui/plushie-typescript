@@ -25,7 +25,7 @@ export interface ConnectOptions {
   /** Connection timeout in milliseconds (defaults to 10000). */
   timeout?: number;
   /** Native extensions this session expects the renderer to have loaded. */
-  expectedExtensions?: readonly (string | NativeWidgetConfig)[];
+  requiredWidgets?: readonly (string | NativeWidgetConfig)[];
 }
 
 /** Pending request awaiting a response. */
@@ -70,7 +70,7 @@ export class Session {
   async connect(opts: ConnectOptions = {}): Promise<HelloInfo> {
     const timeout = opts.timeout ?? 10_000;
     const settings = opts.settings ?? {};
-    const expectedExtensions = (opts.expectedExtensions ?? []).map((ext) =>
+    const requiredWidgets = (opts.requiredWidgets ?? []).map((ext) =>
       typeof ext === "string" ? ext : nativeWidgetConfigKey(ext),
     );
 
@@ -103,7 +103,7 @@ export class Session {
             return;
           }
 
-          const missing = expectedExtensions.filter((ext) => !info.extensions.includes(ext));
+          const missing = requiredWidgets.filter((ext) => !info.extensions.includes(ext));
           if (missing.length > 0) {
             reject(
               new Error(
