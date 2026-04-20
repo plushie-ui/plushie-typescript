@@ -5,6 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
+import type { AnimationDescriptor } from "../build.js";
 import { applyA11yDefaults, autoId, leafNode, putIf } from "../build.js";
 import type { A11y, Color, ContentFit, Length } from "../types.js";
 import { encodeA11y, encodeColor, encodeLength } from "../types.js";
@@ -21,10 +22,17 @@ export interface SvgProps {
   height?: Length;
   /** How the SVG fits within its bounds ("contain", "cover", "fill", "none", "scale_down"). */
   contentFit?: ContentFit;
-  /** Rotation angle in radians. */
-  rotation?: number;
-  /** Opacity from 0.0 (transparent) to 1.0 (opaque). */
-  opacity?: number;
+  /**
+   * Rotation angle in radians. Accepts a numeric literal or an
+   * animation descriptor from `transition()` / `spring()` /
+   * `sequence()`.
+   */
+  rotation?: number | AnimationDescriptor;
+  /**
+   * Opacity from 0.0 (transparent) to 1.0 (opaque). Same type as
+   * `rotation`.
+   */
+  opacity?: number | AnimationDescriptor;
   /** Tint color applied to the SVG. */
   color?: Color;
   /** Accessible label announced by screen readers. */

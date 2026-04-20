@@ -5,6 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
+import type { AnimationDescriptor } from "../build.js";
 import { applyA11yDefaults, autoId, leafNode, putIf } from "../build.js";
 import type { A11y, Length, StyleMap } from "../types.js";
 import { encodeA11y, encodeLength, encodeStyleMap } from "../types.js";
@@ -13,8 +14,11 @@ import { encodeA11y, encodeLength, encodeStyleMap } from "../types.js";
 export interface ProgressBarProps {
   /** Unique widget identifier. */
   id?: string;
-  /** Current progress value. */
-  value: number;
+  /**
+   * Current progress value. Accepts a numeric literal or an animation
+   * descriptor from `transition()` / `spring()` / `sequence()`.
+   */
+  value: number | AnimationDescriptor;
   /** Min and max values as [min, max]. */
   range: [number, number];
   /** Width of the progress bar. */
@@ -48,7 +52,7 @@ export function ProgressBar(props: ProgressBarProps): UINode {
 
 export function progressBar(
   id: string,
-  value: number,
+  value: number | AnimationDescriptor,
   range: [number, number],
   opts?: Omit<ProgressBarProps, "id" | "value" | "range">,
 ): UINode {

@@ -5,6 +5,7 @@
  */
 
 import type { UINode } from "../../types.js";
+import type { AnimationDescriptor } from "../build.js";
 import { autoId, containerNode, putIf } from "../build.js";
 import type { A11y, Length } from "../types.js";
 import { encodeA11y, encodeLength } from "../types.js";
@@ -13,10 +14,17 @@ import { encodeA11y, encodeLength } from "../types.js";
 export interface PinProps {
   /** Unique widget identifier. */
   id?: string;
-  /** Absolute X position in pixels within the parent Stack. */
-  x?: number;
-  /** Absolute Y position in pixels within the parent Stack. */
-  y?: number;
+  /**
+   * Absolute X position in pixels within the parent Stack. Accepts a
+   * numeric literal or an animation descriptor from
+   * `transition()` / `spring()` / `sequence()`.
+   */
+  x?: number | AnimationDescriptor;
+  /**
+   * Absolute Y position in pixels within the parent Stack. Same type
+   * as `x`.
+   */
+  y?: number | AnimationDescriptor;
   /** Width of the pinned element. */
   width?: Length;
   /** Height of the pinned element. */
