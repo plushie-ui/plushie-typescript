@@ -14,7 +14,12 @@
  */
 
 import type { AppConfig, AppView } from "./app.js";
-import type { DecodedResponse, WireMessage, WirePatchOp } from "./client/protocol.js";
+import type {
+  DecodedResponse,
+  DiagnosticMessage,
+  WireMessage,
+  WirePatchOp,
+} from "./client/protocol.js";
 import {
   decodeMessage,
   encodeAdvanceFrame,
@@ -146,7 +151,27 @@ interface RuntimeState<M> {
   devOverlay: DevOverlay | null;
   devOverlayTimer: ReturnType<typeof setTimeout> | null;
   consecutiveViewErrors: number;
+  /**
+   * Current `Command.dispatch` chain depth. Fresh entry points
+   * (renderer events, async completions, timer ticks) reset this to
+   * zero; each dispatch follow-up bumps it by one. Past
+   * {@link DISPATCH_DEPTH_LIMIT} the runtime drops the follow-up and
+   * surfaces a typed `DispatchLoopExceeded` diagnostic.
+   */
+  dispatchDepth: number;
 }
+
+/**
+ * Maximum synchronous `Command.dispatch` chain depth before the
+ * runtime guard fires.
+ *
+ * `Command.dispatch` schedules a follow-up via `queueMicrotask`; a
+ * pathological `update` that keeps returning another dispatch would
+ * pump the microtask queue indefinitely and starve the event loop.
+ * Past this cap, the runtime drops the command and surfaces a typed
+ * `DispatchLoopExceeded` diagnostic so the loop is visible.
+ */
+export const DISPATCH_DEPTH_LIMIT = 100;
 
 // =========================================================================
 // Runtime
@@ -218,6 +243,7 @@ export class Runtime<M> {
       devOverlay: null,
       devOverlayTimer: null,
       consecutiveViewErrors: 0,
+      dispatchDepth: 0,
     };
   }
 
@@ -816,7 +842,11 @@ export class Runtime<M> {
   // Update cycle
   // =======================================================================
 
-  private runUpdate(event: Event, handler?: Handler<unknown>): void {
+  private runUpdate(event: Event, handler?: Handler<unknown>, depth = 0): void {
+    // Set the dispatch chain position for this update so the
+    // `case "done"` handler in executeCommand sees the correct
+    // counter before deciding whether to schedule the follow-up.
+    this.state.dispatchDepth = depth;
     try {
       const result: UpdateResult<M> = handler
         ? (handler(this.state.model, event as WidgetEvent) as UpdateResult<M>)
@@ -1269,10 +1299,34 @@ export class Runtime<M> {
         );
         break;
 
+      case "dispatch":
       case "done": {
         const value = cmd.payload["value"];
         const mapper = cmd.payload["mapper"] as ((v: unknown) => unknown) | undefined;
         if (mapper) {
+          const nextDepth = this.state.dispatchDepth + 1;
+          if (nextDepth > DISPATCH_DEPTH_LIMIT) {
+            // Drop the dispatched command and surface the typed
+            // diagnostic so a pathological update loop is visible
+            // rather than pumping the microtask queue indefinitely.
+            const diag: DiagnosticMessage = {
+              session: this.sessionId,
+              level: "error",
+              diagnostic: {
+                kind: "dispatch_loop_exceeded",
+                depth: nextDepth,
+                limit: DISPATCH_DEPTH_LIMIT,
+              },
+            };
+            console.error(
+              `plushie runtime: dispatch_loop_exceeded: command chain ` +
+                `reached depth ${String(nextDepth)} ` +
+                `(limit ${String(DISPATCH_DEPTH_LIMIT)}); ` +
+                `dropping command to break the loop`,
+            );
+            this.handleDiagnosticMessage(diag);
+            break;
+          }
           let mappedValue: unknown;
           try {
             mappedValue = mapper(value);
@@ -1281,7 +1335,7 @@ export class Runtime<M> {
             break;
           }
           queueMicrotask(() => {
-            this.runUpdate(mappedValue as Event);
+            this.runUpdate(mappedValue as Event, undefined, nextDepth);
           });
         }
         break;
