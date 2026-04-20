@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { decodeLines, decodePackets, encodeLine, encodePacket } from "../../src/client/framing.js";
+import {
+  BufferOverflowError,
+  decodeLines,
+  decodePackets,
+  encodeLine,
+  encodePacket,
+  MAX_MESSAGE_SIZE,
+} from "../../src/client/framing.js";
 
 // -- MessagePack framing --------------------------------------------------
 
@@ -26,15 +33,22 @@ describe("encodePacket", () => {
     expect(framed.byteLength).toBe(260);
   });
 
-  test("rejects payloads exceeding 64 MiB", () => {
-    // We can't allocate 64 MiB in a test, so test the boundary logic
-    // by checking a payload just at the limit passes type-level checks.
-    // The actual allocation would be tested in integration.
-    expect(() => {
-      // Create a mock that reports a huge byteLength
-      const huge = { byteLength: 64 * 1024 * 1024 + 1 } as Uint8Array;
+  test("rejects payloads exceeding 64 MiB with typed BufferOverflowError", () => {
+    // We can't allocate 64 MiB in every test env, so use a mock that
+    // reports a huge byteLength. The check should fire on the size
+    // field before any byte access.
+    const huge = { byteLength: MAX_MESSAGE_SIZE + 1 } as Uint8Array;
+
+    let caught: unknown;
+    try {
       encodePacket(huge);
-    }).toThrow(RangeError);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BufferOverflowError);
+    const err = caught as BufferOverflowError;
+    expect(err.size).toBe(MAX_MESSAGE_SIZE + 1);
+    expect(err.limit).toBe(MAX_MESSAGE_SIZE);
   });
 });
 
@@ -132,6 +146,27 @@ describe("decodePackets", () => {
     }
     expect(remaining.byteLength).toBe(0);
   });
+
+  test("rejects oversized length prefix with typed BufferOverflowError", () => {
+    // Craft a 4-byte header declaring MAX_MESSAGE_SIZE + 1 bytes.
+    // The check fires on the prefix before payload bytes are consumed,
+    // so no payload allocation is needed.
+    const oversizedLen = MAX_MESSAGE_SIZE + 1;
+    const header = new Uint8Array(4);
+    const view = new DataView(header.buffer);
+    view.setUint32(0, oversizedLen, false);
+
+    let caught: unknown;
+    try {
+      decodePackets(header);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BufferOverflowError);
+    const err = caught as BufferOverflowError;
+    expect(err.size).toBe(oversizedLen);
+    expect(err.limit).toBe(MAX_MESSAGE_SIZE);
+  });
 });
 
 // -- JSON framing ---------------------------------------------------------
@@ -189,5 +224,38 @@ describe("decodeLines", () => {
     const { lines, remaining } = decodeLines(buffer);
     expect(lines).toEqual(messages);
     expect(remaining).toBe("");
+  });
+
+  test("rejects oversized complete line with typed BufferOverflowError", () => {
+    const oversizedLine = "x".repeat(MAX_MESSAGE_SIZE + 1) + "\n";
+
+    let caught: unknown;
+    try {
+      decodeLines(oversizedLine);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BufferOverflowError);
+    const err = caught as BufferOverflowError;
+    expect(err.size).toBe(MAX_MESSAGE_SIZE + 1);
+    expect(err.limit).toBe(MAX_MESSAGE_SIZE);
+  });
+
+  test("rejects oversized partial tail with typed BufferOverflowError", () => {
+    // Partial tail (no trailing newline) that has already grown past
+    // the cap. An unterminated line must not silently grow the
+    // caller's buffer without bound.
+    const oversizedTail = "x".repeat(MAX_MESSAGE_SIZE + 1);
+
+    let caught: unknown;
+    try {
+      decodeLines(oversizedTail);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BufferOverflowError);
+    const err = caught as BufferOverflowError;
+    expect(err.size).toBe(MAX_MESSAGE_SIZE + 1);
+    expect(err.limit).toBe(MAX_MESSAGE_SIZE);
   });
 });
