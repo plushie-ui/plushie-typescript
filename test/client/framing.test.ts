@@ -276,4 +276,37 @@ describe("decodeLines", () => {
     expect(err.size).toBe(MAX_MESSAGE_SIZE + 1);
     expect(err.limit).toBe(MAX_MESSAGE_SIZE);
   });
+
+  test("rejects CJK text whose UTF-8 bytes exceed the cap even though code units are under", () => {
+    // Each CJK code unit (U+4E00..U+9FFF) encodes to 3 UTF-8 bytes.
+    // A string of (MAX / 3 + 1) CJK characters has UTF-16 length well
+    // under the cap, but UTF-8 byte length above it. The previous
+    // string-length check missed this; the current UTF-8-aware check
+    // must flag it.
+    const charCount = Math.floor(MAX_MESSAGE_SIZE / 3) + 1;
+    const cjkLine = "\u4e2d".repeat(charCount) + "\n";
+    expect(cjkLine.length).toBeLessThan(MAX_MESSAGE_SIZE);
+
+    let caught: unknown;
+    try {
+      decodeLines(cjkLine);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BufferOverflowError);
+    const err = caught as BufferOverflowError;
+    expect(err.limit).toBe(MAX_MESSAGE_SIZE);
+    expect(err.size).toBeGreaterThan(MAX_MESSAGE_SIZE);
+  });
+
+  test("ASCII line at cap boundary is accepted", () => {
+    // Exactly MAX_MESSAGE_SIZE ASCII bytes should not trip the check;
+    // the cap is inclusive. Preserves the pre-UTF-8-aware behaviour
+    // for ASCII payloads.
+    const line = "x".repeat(MAX_MESSAGE_SIZE) + "\n";
+    const { lines, remaining } = decodeLines(line);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toBe("x".repeat(MAX_MESSAGE_SIZE));
+    expect(remaining).toBe("");
+  });
 });

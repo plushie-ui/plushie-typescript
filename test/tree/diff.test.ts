@@ -300,4 +300,45 @@ describe("diff", () => {
     expect(ops).toHaveLength(1);
     expect(ops[0]!.op).toBe("update_props");
   });
+
+  test("reordered id-keyed list with same content produces no diff", () => {
+    // Same id set, same content, different order. Matches the
+    // Elixir / Ruby / Gleam contract: id-keyed comparison is set-
+    // based, not positional. Lets hosts resort canvas shape lists
+    // without forcing a redundant prop update.
+    const old = w("c", "canvas", {
+      shapes: [
+        { id: "s1", type: "rect", x: 0 },
+        { id: "s2", type: "circle", r: 10 },
+      ],
+    });
+    const now = w("c", "canvas", {
+      shapes: [
+        { id: "s2", type: "circle", r: 10 },
+        { id: "s1", type: "rect", x: 0 },
+      ],
+    });
+    expect(diff(old, now)).toEqual([]);
+  });
+
+  test("id-keyed list with different id sets produces update_props", () => {
+    // Same length, but one list carries an id the other doesn't.
+    // The helper must refuse equality so the diff still surfaces a
+    // real structural change.
+    const old = w("c", "canvas", {
+      shapes: [
+        { id: "s1", type: "rect" },
+        { id: "s2", type: "circle" },
+      ],
+    });
+    const now = w("c", "canvas", {
+      shapes: [
+        { id: "s1", type: "rect" },
+        { id: "s3", type: "circle" },
+      ],
+    });
+    const ops = diff(old, now);
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.op).toBe("update_props");
+  });
 });

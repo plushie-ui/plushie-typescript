@@ -145,6 +145,18 @@ export function decodePackets(buffer: Uint8Array): DecodePacketsResult {
 const UTF8_ENCODER = new TextEncoder();
 
 /**
+ * Return the UTF-8 byte length of a string.
+ *
+ * `String.length` is the UTF-16 code-unit count, not the UTF-8
+ * byte count. Any code path that compares string size against
+ * the wire-byte cap must use this helper so BMP and CJK text
+ * (1 code unit expands to 3 UTF-8 bytes) isn't under-counted.
+ */
+export function utf8ByteLength(s: string): number {
+  return UTF8_ENCODER.encode(s).byteLength;
+}
+
+/**
  * Encode a string payload with a trailing newline (JSONL mode).
  *
  * @param data - The JSON string to frame.
@@ -162,7 +174,7 @@ export function encodeLine(data: string): string {
   // the raw-byte limit the renderer enforces on its side of the
   // pipe. The +1 accounts for the trailing newline the caller is
   // about to transmit.
-  const size = UTF8_ENCODER.encode(data).byteLength + 1;
+  const size = utf8ByteLength(data) + 1;
   if (size > MAX_MESSAGE_SIZE) {
     throw new BufferOverflowError(size, MAX_MESSAGE_SIZE);
   }
@@ -186,6 +198,13 @@ export interface DecodeLinesResult {
  * lines. The last segment (which may be empty if the buffer ends
  * with a newline) is returned as the remaining partial line.
  *
+ * The size cap is measured in UTF-8 bytes, matching the other
+ * SDKs and the renderer's wire-byte limit. `String.length` is
+ * UTF-16 code units, which understates the byte count for BMP
+ * and CJK text (1 code unit can expand to 3 UTF-8 bytes) and
+ * overstates it for characters in the astral plane (surrogate
+ * pairs count as 2 units but encode to 4 bytes).
+ *
  * @param buffer - Accumulated string data from the transport.
  * @returns Complete lines and the leftover partial line.
  *
@@ -202,19 +221,32 @@ export function decodeLines(buffer: string): DecodeLinesResult {
     // No newline found; entire buffer is a partial line. Guard the
     // tail so an unterminated line can't grow the caller's buffer
     // unboundedly across successive feeds.
-    if (buffer.length > MAX_MESSAGE_SIZE) {
-      throw new BufferOverflowError(buffer.length, MAX_MESSAGE_SIZE);
-    }
+    assertUtf8WithinCap(buffer);
     return { lines: [], remaining: buffer };
   }
   const remaining = parts.pop()!;
   for (const line of parts) {
-    if (line.length > MAX_MESSAGE_SIZE) {
-      throw new BufferOverflowError(line.length, MAX_MESSAGE_SIZE);
-    }
+    assertUtf8WithinCap(line);
   }
-  if (remaining.length > MAX_MESSAGE_SIZE) {
-    throw new BufferOverflowError(remaining.length, MAX_MESSAGE_SIZE);
-  }
+  assertUtf8WithinCap(remaining);
   return { lines: parts, remaining };
+}
+
+/**
+ * Throw `BufferOverflowError` if the UTF-8 byte length of `s`
+ * exceeds the per-message cap. Ignores the common small-string
+ * case where the code-unit count alone stays well under cap;
+ * otherwise measures the real byte count since CJK / emoji can
+ * expand 1 UTF-16 code unit into 3 or 4 UTF-8 bytes.
+ */
+function assertUtf8WithinCap(s: string): void {
+  // Fast path: even at the worst case of 4 UTF-8 bytes per code
+  // unit, a string of this length can't exceed the cap. Avoids
+  // allocating a byte array for every normal-sized line.
+  if (s.length * 4 <= MAX_MESSAGE_SIZE) return;
+
+  const size = utf8ByteLength(s);
+  if (size > MAX_MESSAGE_SIZE) {
+    throw new BufferOverflowError(size, MAX_MESSAGE_SIZE);
+  }
 }

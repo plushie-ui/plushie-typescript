@@ -13,7 +13,13 @@ import { type ChildProcess, spawn } from "node:child_process";
 import process from "node:process";
 import { decode, encode } from "@msgpack/msgpack";
 import { buildRendererEnv } from "./env.js";
-import { decodeLines, decodePackets, encodeLine, encodePacket } from "./framing.js";
+import {
+  BufferOverflowError,
+  decodeLines,
+  decodePackets,
+  encodeLine,
+  encodePacket,
+} from "./framing.js";
 
 /** Wire format: MessagePack (binary, length-prefixed) or JSON (text, newline-delimited). */
 export type WireFormat = "msgpack" | "json";
@@ -57,8 +63,6 @@ export interface SpawnTransportOptions {
  * environment whitelisting, and process lifecycle.
  */
 export class SpawnTransport implements Transport {
-  private static readonly MAX_JSON_BUFFER = 64 * 1024 * 1024;
-
   readonly format: WireFormat;
   private child: ChildProcess | null = null;
   private messageHandler: ((msg: Record<string, unknown>) => void) | null = null;
@@ -136,13 +140,24 @@ export class SpawnTransport implements Transport {
 
   private handleJsonData(data: Buffer): void {
     this.jsonBuffer += data.toString("utf-8");
-    if (this.jsonBuffer.length > SpawnTransport.MAX_JSON_BUFFER) {
-      console.error("[plushie] JSON buffer exceeded 64 MiB, dropping data");
-      this.jsonBuffer = "";
-      return;
+    let lines: string[];
+    try {
+      const decoded = decodeLines(this.jsonBuffer);
+      lines = decoded.lines;
+      this.jsonBuffer = decoded.remaining;
+    } catch (err) {
+      if (err instanceof BufferOverflowError) {
+        // A complete line or unterminated tail exceeded the 64 MiB cap.
+        // Clear the buffer and drop the data; the renderer is expected
+        // to stay within the protocol cap, so this is a defensive log.
+        console.error(
+          `[plushie] JSON buffer exceeded ${err.limit} bytes (${err.size}), dropping data`,
+        );
+        this.jsonBuffer = "";
+        return;
+      }
+      throw err;
     }
-    const { lines, remaining } = decodeLines(this.jsonBuffer);
-    this.jsonBuffer = remaining;
 
     for (const line of lines) {
       if (line === "") continue;
@@ -210,8 +225,6 @@ export interface StdioTransportOptions {
  * streams instead of a child process.
  */
 export class StdioTransport implements Transport {
-  private static readonly MAX_JSON_BUFFER = 64 * 1024 * 1024;
-
   readonly format: WireFormat;
   private messageHandler: ((msg: Record<string, unknown>) => void) | null = null;
   private closeHandler: ((reason: string) => void) | null = null;
@@ -266,13 +279,21 @@ export class StdioTransport implements Transport {
 
   private handleJsonData(data: Buffer): void {
     this.jsonBuffer += data.toString("utf-8");
-    if (this.jsonBuffer.length > StdioTransport.MAX_JSON_BUFFER) {
-      console.error("[plushie] JSON buffer exceeded 64 MiB, dropping data");
-      this.jsonBuffer = "";
-      return;
+    let lines: string[];
+    try {
+      const decoded = decodeLines(this.jsonBuffer);
+      lines = decoded.lines;
+      this.jsonBuffer = decoded.remaining;
+    } catch (err) {
+      if (err instanceof BufferOverflowError) {
+        console.error(
+          `[plushie] JSON buffer exceeded ${err.limit} bytes (${err.size}), dropping data`,
+        );
+        this.jsonBuffer = "";
+        return;
+      }
+      throw err;
     }
-    const { lines, remaining } = decodeLines(this.jsonBuffer);
-    this.jsonBuffer = remaining;
 
     for (const line of lines) {
       if (line === "") continue;
