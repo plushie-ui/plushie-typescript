@@ -39,7 +39,6 @@ import {
   encodeUnsubscribe,
   encodeWidgetOp,
   encodeWindowOp,
-  helloWidgetCapabilities,
   PROTOCOL_VERSION,
 } from "./client/protocol.js";
 import type { Transport } from "./client/transport.js";
@@ -493,6 +492,15 @@ export class Runtime<M> {
     if (s.defaultEventRate !== undefined) result["default_event_rate"] = s.defaultEventRate;
     if (s.nativeWidgetConfig !== undefined) result["extension_config"] = s.nativeWidgetConfig;
     if (s.validateProps !== undefined) result["validate_props"] = s.validateProps;
+    // Surface required_widgets to the renderer's widget registry. The
+    // renderer validates against its registered widgets and emits a
+    // `required_widgets_missing` diagnostic on mismatch. The SDK does
+    // not pre-check against `hello.extensions` because the renderer is
+    // the source of truth.
+    const required = (this.config.requiredWidgets ?? []).map((ext) =>
+      typeof ext === "string" ? ext : nativeWidgetConfigKey(ext),
+    );
+    if (required.length > 0) result["required_widgets"] = required;
     return result;
   }
 
@@ -537,21 +545,9 @@ export class Runtime<M> {
               return;
             }
 
-            const requiredWidgets = (this.config.requiredWidgets ?? []).map((ext) =>
-              typeof ext === "string" ? ext : nativeWidgetConfigKey(ext),
-            );
-            const capabilities = helloWidgetCapabilities(decoded.data);
-            const missing = requiredWidgets.filter((widget) => !capabilities.includes(widget));
-            if (missing.length > 0) {
-              finishReject(
-                new Error(
-                  `Renderer is missing required widgets or capabilities ${JSON.stringify(missing)}. ` +
-                    `Renderer reported ${JSON.stringify(capabilities)}.`,
-                ),
-              );
-              return;
-            }
-
+            // Missing required widgets surface as a
+            // `required_widgets_missing` diagnostic emitted by the
+            // renderer; the SDK does not pre-check here.
             finishResolve();
           }
         } catch (error) {

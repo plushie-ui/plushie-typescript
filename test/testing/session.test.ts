@@ -114,6 +114,8 @@ class ResetPoolDouble {
     this.unregisterResolvers.get(sessionId)?.();
   }
 
+  private breakNext = false;
+
   routeProcessHello(protocol = PROTOCOL_VERSION): void {
     const msg = {
       type: "hello",
@@ -137,6 +139,11 @@ class ResetPoolDouble {
     }
   }
 
+  /** Deliver a protocol-mismatched hello to the next registered session. */
+  breakNextHello(): void {
+    this.breakNext = true;
+  }
+
   sendToSession(sessionId: string, msg: Record<string, unknown>): void {
     const wireMsg: Record<string, unknown> = { ...msg, session: sessionId };
     this.sent.push({ sessionId, msg: wireMsg });
@@ -158,7 +165,14 @@ class ResetPoolDouble {
     const hello = this.processHello;
     if (hello) {
       queueMicrotask(() => {
-        if (this.handlers.get(sessionId) === handler) {
+        if (this.handlers.get(sessionId) !== handler) return;
+        if (this.breakNext) {
+          this.breakNext = false;
+          handler({
+            ...hello,
+            protocol_version: (hello["protocol_version"] as number) + 100,
+          });
+        } else {
           handler(hello);
         }
       });
@@ -473,29 +487,24 @@ describe("TestSession reset", () => {
 
   test("unregisters the fresh session when startup fails", async () => {
     const { session, pool } = await createResetSession();
-    const mutableConfig = resetAppConfig as unknown as { requiredWidgets?: readonly string[] };
-    mutableConfig.requiredWidgets = ["missing_widget"];
+    pool.breakNextHello();
 
-    try {
-      const reset = session.reset();
-      pool.closeSession("pool_1");
-      await vi.waitFor(() => {
-        expect(pool.sequence).toContain("unregister pool_2");
-      });
-      pool.closeSession("pool_2");
-      await expect(reset).rejects.toThrow("missing required widgets");
+    const reset = session.reset();
+    pool.closeSession("pool_1");
+    await vi.waitFor(() => {
+      expect(pool.sequence).toContain("unregister pool_2");
+    });
+    pool.closeSession("pool_2");
+    await expect(reset).rejects.toThrow(/Protocol mismatch/);
 
-      expect(pool.sequence).toEqual([
-        "unregister pool_1",
-        "closed pool_1",
-        "register pool_2",
-        "unregister pool_2",
-        "closed pool_2",
-      ]);
-      expect(pool.unregistered).toEqual(["pool_1", "pool_2"]);
-    } finally {
-      delete mutableConfig.requiredWidgets;
-    }
+    expect(pool.sequence).toEqual([
+      "unregister pool_1",
+      "closed pool_1",
+      "register pool_2",
+      "unregister pool_2",
+      "closed pool_2",
+    ]);
+    expect(pool.unregistered).toEqual(["pool_1", "pool_2"]);
   });
 });
 

@@ -13,7 +13,7 @@
 import { type NativeWidgetConfig, nativeWidgetConfigKey } from "../native-widget.js";
 import { PLUSHIE_RUST_VERSION } from "./binary.js";
 import type { DecodedResponse, HelloInfo, WireMessage } from "./protocol.js";
-import { decodeMessage, helloWidgetCapabilities, PROTOCOL_VERSION } from "./protocol.js";
+import { decodeMessage, PROTOCOL_VERSION } from "./protocol.js";
 import type { Transport } from "./transport.js";
 
 /**
@@ -121,17 +121,10 @@ export class Session {
             return;
           }
 
-          const capabilities = helloWidgetCapabilities(info);
-          const missing = requiredWidgets.filter((widget) => !capabilities.includes(widget));
-          if (missing.length > 0) {
-            reject(
-              new Error(
-                `Renderer is missing required widgets or capabilities ${JSON.stringify(missing)}. ` +
-                  `Renderer reported ${JSON.stringify(capabilities)}.`,
-              ),
-            );
-            return;
-          }
+          // Missing required widgets surface as a
+          // `required_widgets_missing` diagnostic from the renderer;
+          // the SDK does not pre-check against `hello.extensions`
+          // because the renderer's registry is the source of truth.
 
           this.hello = info;
 
@@ -154,10 +147,19 @@ export class Session {
         }
       };
 
-      // Send settings
+      // Send settings. Forward `required_widgets` so the renderer
+      // can validate against its widget registry and emit a
+      // `required_widgets_missing` diagnostic on mismatch.
+      const settingsPayload: Record<string, unknown> = {
+        protocol_version: PROTOCOL_VERSION,
+        ...settings,
+      };
+      if (requiredWidgets.length > 0) {
+        settingsPayload["required_widgets"] = requiredWidgets;
+      }
       this.send({
         type: "settings",
-        settings: { protocol_version: PROTOCOL_VERSION, ...settings },
+        settings: settingsPayload,
       });
     });
   }
