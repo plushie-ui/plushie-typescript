@@ -241,11 +241,16 @@ describe("TextEditor", () => {
 // ---------------------------------------------------------------------------
 
 describe("RichText", () => {
-  test("creates rich_text with spans", () => {
-    const spans = [{ text: "bold", bold: true }];
-    const node = RichText({ id: "rt", spans });
+  test("creates rich_text with typed spans", () => {
+    const node = RichText({
+      id: "rt",
+      spans: [{ text: "Build " }, { text: "ok", color: "#22aa22", underline: true }],
+    });
     expect(node.type).toBe("rich_text");
-    expect(node.props["spans"]).toEqual(spans);
+    expect(node.props["spans"]).toEqual([
+      { text: "Build " },
+      { text: "ok", color: "#22aa22", underline: true },
+    ]);
   });
 
   test("function API with id, spans, opts", () => {
@@ -257,6 +262,27 @@ describe("RichText", () => {
   test("encodes lineHeight as line_height", () => {
     const node = RichText({ lineHeight: 1.5 });
     expect(node.props["line_height"]).toBe(1.5);
+  });
+
+  test("encodes typed Span fields with snake_case keys", () => {
+    const node = RichText({
+      spans: [
+        {
+          text: "x",
+          link: "https://example.com",
+          lineHeight: 1.2,
+          padding: { top: 1, right: 2, bottom: 3, left: 4 },
+          highlight: { background: "#ffff00" },
+        },
+      ],
+    });
+    const spans = node.props["spans"] as Record<string, unknown>[];
+    expect(spans[0]).toMatchObject({
+      text: "x",
+      link: "https://example.com",
+      line_height: 1.2,
+      highlight: { background: "#ffff00" },
+    });
   });
 });
 

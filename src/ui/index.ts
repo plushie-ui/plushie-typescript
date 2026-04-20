@@ -112,9 +112,9 @@ export type { RadioProps } from "./widgets/radio.js";
 export { Radio, radio } from "./widgets/radio.js";
 export type { ResponsiveProps } from "./widgets/responsive.js";
 export { Responsive, responsive } from "./widgets/responsive.js";
-export type { RichTextProps } from "./widgets/rich_text.js";
+export type { RichTextProps, Span, SpanHighlight } from "./widgets/rich_text.js";
 // Display widgets
-export { RichText, richText } from "./widgets/rich_text.js";
+export { encodeSpan, RichText, richText } from "./widgets/rich_text.js";
 export type { RowProps } from "./widgets/row.js";
 export { Row, row } from "./widgets/row.js";
 export type { RuleProps } from "./widgets/rule.js";
