@@ -178,6 +178,9 @@ export function clipboardWritePrimary(tag: string, text: string): Command {
 /**
  * Show an OS notification. Results arrive as EffectEvent with matching tag.
  *
+ * On macOS, notifications may require the app to be bundled (.app)
+ * or have notification entitlements to display.
+ *
  * The `timeout` option in `NotificationOptions` is the notification
  * display duration sent to the renderer, not the effect response
  * timeout (which uses the default 5s).
