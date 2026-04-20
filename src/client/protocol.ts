@@ -589,7 +589,7 @@ export type DecodedResponse =
   | { type: "reset_response"; id: string; status: string }
   | { type: "effect_stub_register_ack"; kind: string }
   | { type: "effect_stub_unregister_ack"; kind: string }
-  | { type: "session_error"; session: string; error: string }
+  | { type: "session_error"; session: string; code: string; error: string }
   | { type: "session_closed"; session: string; reason: string };
 
 /**
@@ -803,10 +803,12 @@ export function decodeEvent(raw: WireMessage): Event {
   // Session lifecycle events (multiplexed mode)
   if (family === "session_error") {
     const session = str(raw, "session");
+    const code = data && typeof data["code"] === "string" ? (data["code"] as string) : "";
     const errorText = data && typeof data["error"] === "string" ? (data["error"] as string) : "";
     return {
       kind: "session_error",
       session,
+      code,
       error: errorText,
     };
   }

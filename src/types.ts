@@ -442,7 +442,14 @@ export interface SessionErrorEvent extends EventBase {
   readonly kind: "session_error";
   /** The session ID that errored. */
   readonly session: string;
-  /** Error description from the renderer. */
+  /**
+   * Stable diagnostic code used for programmatic matching. One of:
+   * `session_panic`, `max_sessions_reached`, `session_channel_closed`,
+   * `writer_dead`, `font_cap_exceeded`, `renderer_panic`,
+   * `session_reset_in_progress`, `session_backpressure_overflow`.
+   */
+  readonly code: string;
+  /** Human-readable error description from the renderer. */
   readonly error: string;
 }
 

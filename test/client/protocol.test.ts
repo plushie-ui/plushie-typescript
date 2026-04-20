@@ -981,6 +981,7 @@ describe("decodeEvent", () => {
     expect(event.kind).toBe("session_error");
     if (event.kind === "session_error") {
       expect(event.session).toBe("s1");
+      expect(event.code).toBe("session_panic");
       expect(event.error).toBe("session thread panicked: boom");
     }
   });
