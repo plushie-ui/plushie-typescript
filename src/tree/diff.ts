@@ -132,12 +132,19 @@ function diffProps(
   const changes: Record<string, unknown> = {};
   let hasChanges = false;
 
-  // Check for changed and new props
+  // Check for changed and new props. For list props where every
+  // element has an `id` field (canvas shape lists, for example),
+  // rebuilt lists with identical content compare equal via the
+  // id-keyed check. That keeps the diff from emitting a spurious
+  // update_props when the view reconstructed the list without
+  // changing any shape.
   for (const key of Object.keys(newProps)) {
-    if (!treeValueEqual(oldProps[key], newProps[key])) {
-      changes[key] = newProps[key];
-      hasChanges = true;
-    }
+    const oldVal = oldProps[key];
+    const newVal = newProps[key];
+    if (treeValueEqual(oldVal, newVal)) continue;
+    if (idKeyedListsEqual(oldVal, newVal)) continue;
+    changes[key] = newVal;
+    hasChanges = true;
   }
 
   // Check for removed props (set to null on the wire)
@@ -150,6 +157,40 @@ function diffProps(
 
   if (!hasChanges) return [];
   return [{ op: "update_props", path, props: changes }];
+}
+
+/**
+ * Check whether two list prop values are semantically equal by id.
+ *
+ * Lists of dicts that every carry an `id` field compare by id:
+ * same length, same id set, each element's deep-equality by id.
+ * Falls back to `false` for any shape that doesn't fit so normal
+ * deep-equality wins for non-id-bearing lists.
+ */
+function idKeyedListsEqual(oldVal: unknown, newVal: unknown): boolean {
+  if (!Array.isArray(oldVal) || !Array.isArray(newVal)) return false;
+  if (oldVal.length !== newVal.length) return false;
+  if (oldVal.length === 0) return false;
+  for (const el of oldVal) {
+    if (!isIdObject(el)) return false;
+  }
+  for (const el of newVal) {
+    if (!isIdObject(el)) return false;
+  }
+
+  const oldById = new Map<unknown, Record<string, unknown>>();
+  for (const el of oldVal as Record<string, unknown>[]) {
+    oldById.set(el["id"], el);
+  }
+  for (const el of newVal as Record<string, unknown>[]) {
+    const cached = oldById.get(el["id"]);
+    if (!treeValueEqual(cached, el)) return false;
+  }
+  return true;
+}
+
+function isIdObject(val: unknown): val is Record<string, unknown> {
+  return typeof val === "object" && val !== null && !Array.isArray(val) && "id" in val;
 }
 
 /**

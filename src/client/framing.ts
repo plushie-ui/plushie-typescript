@@ -141,13 +141,31 @@ export function decodePackets(buffer: Uint8Array): DecodePacketsResult {
 
 // -- JSON framing (newline-delimited) -------------------------------------
 
+/** Shared encoder for byte-length calculations in JSONL framing. */
+const UTF8_ENCODER = new TextEncoder();
+
 /**
  * Encode a string payload with a trailing newline (JSONL mode).
  *
  * @param data - The JSON string to frame.
  * @returns The string with a trailing newline appended.
+ * @throws {BufferOverflowError} If the encoded frame exceeds the 64 MiB limit.
+ *
+ * @example
+ * ```ts
+ * encodeLine('{"a":1}')
+ * // => '{"a":1}\n'
+ * ```
  */
 export function encodeLine(data: string): string {
+  // Count UTF-8 bytes rather than string length so the cap matches
+  // the raw-byte limit the renderer enforces on its side of the
+  // pipe. The +1 accounts for the trailing newline the caller is
+  // about to transmit.
+  const size = UTF8_ENCODER.encode(data).byteLength + 1;
+  if (size > MAX_MESSAGE_SIZE) {
+    throw new BufferOverflowError(size, MAX_MESSAGE_SIZE);
+  }
   return data + "\n";
 }
 

@@ -179,6 +179,24 @@ describe("encodeLine", () => {
   test("handles empty string", () => {
     expect(encodeLine("")).toBe("\n");
   });
+
+  test("rejects oversized frames with typed BufferOverflowError", () => {
+    // A string of MAX_MESSAGE_SIZE ASCII characters is one byte per
+    // character in UTF-8. Encoding appends a trailing newline, so
+    // the framed size is one byte past the cap.
+    const oversized = "a".repeat(MAX_MESSAGE_SIZE);
+
+    let caught: unknown;
+    try {
+      encodeLine(oversized);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BufferOverflowError);
+    const err = caught as BufferOverflowError;
+    expect(err.size).toBe(MAX_MESSAGE_SIZE + 1);
+    expect(err.limit).toBe(MAX_MESSAGE_SIZE);
+  });
 });
 
 describe("decodeLines", () => {

@@ -256,4 +256,48 @@ describe("diff", () => {
     const removes = ops.filter((o) => o.op === "remove_child");
     expect(removes).toHaveLength(2);
   });
+
+  // -- ID-keyed list props (canvas shapes etc.) ---------------------------
+
+  test("identical id-keyed list prop produces no diff", () => {
+    const shapes = [
+      { id: "s1", type: "rect", x: 0 },
+      { id: "s2", type: "circle", r: 10 },
+    ];
+    const old = w("c", "canvas", { shapes: [...shapes] });
+    const now = w("c", "canvas", { shapes: [...shapes] });
+    expect(diff(old, now)).toEqual([]);
+  });
+
+  test("id-keyed list content change produces update_props", () => {
+    const old = w("c", "canvas", { shapes: [{ id: "s1", type: "rect", x: 0 }] });
+    const now = w("c", "canvas", { shapes: [{ id: "s1", type: "rect", x: 5 }] });
+    const ops = diff(old, now);
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.op).toBe("update_props");
+  });
+
+  test("added id-keyed element produces update_props", () => {
+    const old = w("c", "canvas", { shapes: [{ id: "s1", type: "rect" }] });
+    const now = w("c", "canvas", {
+      shapes: [
+        { id: "s1", type: "rect" },
+        { id: "s2", type: "circle" },
+      ],
+    });
+    const ops = diff(old, now);
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.op).toBe("update_props");
+  });
+
+  test("non-id-keyed list still uses deep-equality", () => {
+    const old = w("c", "canvas", { tags: ["a", "b", "c"] });
+    const same = w("c", "canvas", { tags: ["a", "b", "c"] });
+    expect(diff(old, same)).toEqual([]);
+
+    const different = w("c", "canvas", { tags: ["a", "b", "d"] });
+    const ops = diff(old, different);
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.op).toBe("update_props");
+  });
 });
