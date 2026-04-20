@@ -561,6 +561,15 @@ export type DiagnosticKind = Diagnostic["kind"];
  * renderer's log channel so existing log consumers keep seeing them.
  */
 export interface DiagnosticMessage {
+  /**
+   * Session the diagnostic is attributable to. An empty string
+   * for process-scoped diagnostics (font load failures, renderer
+   * startup or panic, writer-dead, anything that affects the
+   * whole renderer rather than a single session). Non-empty for
+   * session-scoped diagnostics (widget panics, view errors, tree
+   * validation warnings, anything produced inside a session's
+   * update or apply pipeline).
+   */
   readonly session: string;
   readonly level: DiagnosticLevel;
   readonly diagnostic: Diagnostic;
