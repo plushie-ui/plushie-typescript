@@ -153,7 +153,7 @@ export function clipboardReadHtml(tag: string): Command {
 export function clipboardWriteHtml(tag: string, html: string, altText?: string): Command {
   const opts: Record<string, unknown> = { html };
   if (altText !== undefined) {
-    opts["altText"] = altText;
+    opts["alt_text"] = altText;
   }
   return effectCmd(tag, "clipboard_write_html", opts, CLIPBOARD_TIMEOUT);
 }

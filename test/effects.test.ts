@@ -66,18 +66,19 @@ describe("Effect", () => {
     expect(cmd.payload["timeout"]).toBe(5_000);
   });
 
-  test("clipboardWriteHtml includes html and optional altText", () => {
+  test("clipboardWriteHtml emits html and alt_text on the wire", () => {
     const cmd = Effect.clipboardWriteHtml("html-write", "<b>hi</b>", "hi");
     const payload = cmd.payload["payload"] as Record<string, unknown>;
     expect(payload["html"]).toBe("<b>hi</b>");
-    expect(payload["altText"]).toBe("hi");
+    expect(payload["alt_text"]).toBe("hi");
+    expect(payload["altText"]).toBeUndefined();
   });
 
-  test("clipboardWriteHtml omits altText when not provided", () => {
+  test("clipboardWriteHtml omits alt_text when not provided", () => {
     const cmd = Effect.clipboardWriteHtml("html-write", "<b>hi</b>");
     const payload = cmd.payload["payload"] as Record<string, unknown>;
     expect(payload["html"]).toBe("<b>hi</b>");
-    expect(payload["altText"]).toBeUndefined();
+    expect(payload["alt_text"]).toBeUndefined();
   });
 
   test("clipboardClear creates the right kind", () => {
