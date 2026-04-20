@@ -170,6 +170,13 @@ export interface PointerData {
   readonly delta_x?: number;
   /** Scroll delta (vertical). Present on scroll events. */
   readonly delta_y?: number;
+  /** Whether the event was consumed by a widget before reaching the subscription layer. */
+  readonly captured?: boolean;
+  /**
+   * Present on touch release events when the release happened outside
+   * the widget's bounds. Absent for mouse / pen releases.
+   */
+  readonly lost?: boolean;
   readonly [key: string]: unknown;
 }
 

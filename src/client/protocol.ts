@@ -721,14 +721,29 @@ function decodeWidgetEvent(
 ): WidgetEvent {
   const wireId = str(raw, "id");
   const { id, scope } = splitScopedId(wireId);
+  // Structured pointer / scroll / resize / key payloads arrive in
+  // `value`. When `data` is empty, treat a value-shaped object as the
+  // data payload so PointerData / ScrolledData / DragData fields are
+  // reachable through `event.data`.
+  const rawValue = raw["value"];
+  const valueIsObject =
+    typeof rawValue === "object" && rawValue !== null && !Array.isArray(rawValue);
+  const payload = data ?? (valueIsObject ? (rawValue as Record<string, unknown>) : null);
+  // `captured` lives at the top level on the wire; surface it inside
+  // `data` so pointer / scroll / drag events can observe it without a
+  // second lookup.
+  let mergedData: Record<string, unknown> | null = payload ? { ...payload } : null;
+  if (raw["captured"] === true) {
+    mergedData = { ...(mergedData ?? {}), captured: true };
+  }
   return {
     kind: "widget",
     type: family as WidgetEvent["type"],
     id,
     windowId: optionalWindowId(raw),
     scope,
-    value: coerceWidgetValue(raw["value"]),
-    data: data as WidgetEvent["data"],
+    value: coerceWidgetValue(rawValue),
+    data: mergedData as WidgetEvent["data"],
   };
 }
 
