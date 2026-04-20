@@ -18,6 +18,8 @@ export { clearHandlers, drainHandlers, registerHandler } from "./handlers.js";
 export type {
   A11y,
   Alignment,
+  AlignX,
+  AlignY,
   Anchor,
   Border,
   BuiltinTheme,

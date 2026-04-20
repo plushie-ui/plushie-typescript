@@ -35,17 +35,31 @@ describe("encodePadding", () => {
     expect(encodePadding(16)).toBe(16);
   });
 
-  test("tuple passes through", () => {
-    expect(encodePadding([8, 16])).toEqual([8, 16]);
-    expect(encodePadding([4, 8, 12, 16])).toEqual([4, 8, 12, 16]);
+  test("2-tuple expands to named object", () => {
+    expect(encodePadding([8, 16])).toEqual({ top: 8, right: 16, bottom: 8, left: 16 });
   });
 
-  test("object encodes to [top, right, bottom, left]", () => {
-    expect(encodePadding({ top: 4, right: 8, bottom: 12, left: 16 })).toEqual([4, 8, 12, 16]);
+  test("4-tuple expands to named object", () => {
+    expect(encodePadding([4, 8, 12, 16])).toEqual({ top: 4, right: 8, bottom: 12, left: 16 });
+  });
+
+  test("named object passes through as object", () => {
+    expect(encodePadding({ top: 4, right: 8, bottom: 12, left: 16 })).toEqual({
+      top: 4,
+      right: 8,
+      bottom: 12,
+      left: 16,
+    });
   });
 
   test("object with missing fields defaults to 0", () => {
-    expect(encodePadding({ top: 10 })).toEqual([10, 0, 0, 0]);
+    expect(encodePadding({ top: 10 })).toEqual({ top: 10, right: 0, bottom: 0, left: 0 });
+  });
+
+  test("uniform four-sided padding collapses to number", () => {
+    expect(encodePadding({ top: 6, right: 6, bottom: 6, left: 6 })).toBe(6);
+    expect(encodePadding([8, 8])).toBe(8);
+    expect(encodePadding([4, 4, 4, 4])).toBe(4);
   });
 });
 
@@ -115,17 +129,15 @@ describe("encodeFont", () => {
 });
 
 describe("encodeAlignment", () => {
-  test("canonical values pass through", () => {
-    expect(encodeAlignment("start")).toBe("start");
+  test("horizontal axis values pass through", () => {
+    expect(encodeAlignment("left")).toBe("left");
     expect(encodeAlignment("center")).toBe("center");
-    expect(encodeAlignment("end")).toBe("end");
+    expect(encodeAlignment("right")).toBe("right");
   });
 
-  test("aliases normalize", () => {
-    expect(encodeAlignment("left")).toBe("start");
-    expect(encodeAlignment("right")).toBe("end");
-    expect(encodeAlignment("top")).toBe("start");
-    expect(encodeAlignment("bottom")).toBe("end");
+  test("vertical axis values pass through", () => {
+    expect(encodeAlignment("top")).toBe("top");
+    expect(encodeAlignment("bottom")).toBe("bottom");
   });
 });
 

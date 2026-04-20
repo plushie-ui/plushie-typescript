@@ -48,12 +48,45 @@ export type Padding =
   | [number, number, number, number]
   | { top?: number; right?: number; bottom?: number; left?: number };
 
-/** Encode Padding to its wire representation. */
+/** Encode Padding to its wire representation.
+ *
+ * The renderer accepts either a plain number (uniform on all sides) or
+ * a `{top, right, bottom, left}` object. Arrays are rejected by the
+ * renderer's padding decoder, so every shorthand form normalizes to
+ * one of those shapes before emission.
+ *
+ * As a convenience that matches the renderer's own `wire_encode`,
+ * uniform four-sided padding collapses to a single number.
+ */
 export function encodePadding(value: Padding): unknown {
   if (typeof value === "number") return value;
-  if (Array.isArray(value)) return value;
-  // Named fields: send as [top, right, bottom, left]
-  return [value.top ?? 0, value.right ?? 0, value.bottom ?? 0, value.left ?? 0];
+
+  let top: number;
+  let right: number;
+  let bottom: number;
+  let left: number;
+
+  if (Array.isArray(value)) {
+    if (value.length === 2) {
+      const [v, h] = value;
+      top = v;
+      right = h;
+      bottom = v;
+      left = h;
+    } else {
+      [top, right, bottom, left] = value;
+    }
+  } else {
+    top = value.top ?? 0;
+    right = value.right ?? 0;
+    bottom = value.bottom ?? 0;
+    left = value.left ?? 0;
+  }
+
+  if (top === right && right === bottom && bottom === left) {
+    return top;
+  }
+  return { top, right, bottom, left };
 }
 
 // =========================================================================
@@ -405,26 +438,30 @@ export function encodeFont(value: Font): unknown {
 // =========================================================================
 
 /**
- * Alignment values. `start`/`center`/`end` are the canonical forms.
- * `left`/`right` are aliases for horizontal alignment.
- * `top`/`bottom` are aliases for vertical alignment.
+ * Horizontal alignment within a container (maps directly to the
+ * renderer's `horizontal_alignment` enum).
  */
-export type Alignment = "start" | "center" | "end" | "left" | "right" | "top" | "bottom";
+export type AlignX = "left" | "center" | "right";
 
-/** Normalize alignment to renderer-expected values. */
+/**
+ * Vertical alignment within a container (maps directly to the
+ * renderer's `vertical_alignment` enum).
+ */
+export type AlignY = "top" | "center" | "bottom";
+
+/**
+ * Union over every accepted alignment value across the horizontal and
+ * vertical axes. Prefer {@link AlignX} or {@link AlignY} at widget
+ * boundaries; `Alignment` exists so shared helpers can accept either.
+ */
+export type Alignment = AlignX | AlignY;
+
+/**
+ * Pass-through encoder: the renderer accepts the literal strings
+ * directly on the `align_x` / `align_y` wire fields.
+ */
 export function encodeAlignment(value: Alignment): string {
-  switch (value) {
-    case "left":
-      return "start";
-    case "right":
-      return "end";
-    case "top":
-      return "start";
-    case "bottom":
-      return "end";
-    default:
-      return value;
-  }
+  return value;
 }
 
 // =========================================================================

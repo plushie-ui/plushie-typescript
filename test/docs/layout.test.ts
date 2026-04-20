@@ -59,15 +59,17 @@ test("layout_padding_uniform", () => {
 
 test("layout_padding_xy", () => {
   const tree = normalize(container("box", { padding: [8, 16] }, [text("x", "x")]));
-  expect(tree.props["padding"]).toEqual([8, 16]);
+  // Renderer accepts {top, right, bottom, left} objects or a uniform number.
+  // 2-tuple shorthand expands: [v, h] -> {top: v, right: h, bottom: v, left: h}.
+  expect(tree.props["padding"]).toEqual({ top: 8, right: 16, bottom: 8, left: 16 });
 });
 
 test("layout_padding_per_side", () => {
   const tree = normalize(
     container("box", { padding: { top: 0, right: 16, bottom: 8, left: 16 } }, [text("x", "x")]),
   );
-  // Named per-side padding encodes to [top, right, bottom, left] on the wire
-  expect(tree.props["padding"]).toEqual([0, 16, 8, 16]);
+  // Named per-side padding stays as an object on the wire.
+  expect(tree.props["padding"]).toEqual({ top: 0, right: 16, bottom: 8, left: 16 });
 });
 
 // -- Spacing --
