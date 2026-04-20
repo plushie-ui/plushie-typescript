@@ -43,8 +43,6 @@ export interface ScrollableProps {
   anchor?: Anchor;
   /** When true, automatically scrolls to the end when new content is added. */
   autoScroll?: boolean;
-  /** Style preset name. */
-  style?: string;
   /** Accessibility properties. */
   a11y?: A11y;
   /** Maximum events per second for this widget's coalescable events. */
@@ -74,7 +72,6 @@ export function Scrollable(props: ScrollableProps): UINode {
   putIf(p, clean.scrollerColor, "scroller_color", encodeColor);
   putIf(p, clean.anchor, "anchor");
   putIf(p, clean.autoScroll, "auto_scroll");
-  putIf(p, clean.style, "style");
   applyA11yDefaults(p, clean.a11y, { role: "scroll_view" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
   if (typeof props.onScroll === "boolean") putIf(p, props.onScroll, "on_scroll");
