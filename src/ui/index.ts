@@ -64,6 +64,7 @@ export {
   invalid,
   linearGradient,
   linearGradientFromAngle,
+  namedColors,
 } from "./types.js";
 
 // -- Widget re-exports (PascalCase JSX components + camelCase functions) --
