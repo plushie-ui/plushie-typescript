@@ -69,7 +69,7 @@ import type {
   UpdateResult,
   WidgetEvent,
 } from "./types.js";
-import { COMMAND } from "./types.js";
+import { COMMAND, decodeEffectResult } from "./types.js";
 import { handlersMeta } from "./ui/handlers.js";
 import {
   collectSubscriptions as collectWidgetSubscriptions,
@@ -107,7 +107,7 @@ interface RuntimeState<M> {
   windowProps: Map<string, Record<string, unknown>>;
   asyncTasks: Map<string, { controller: AbortController; nonce: number }>;
   pendingTimers: Map<string, { timer: ReturnType<typeof setTimeout>; nonce: number }>;
-  pendingEffects: Map<string, { tag: string; timer: ReturnType<typeof setTimeout> }>;
+  pendingEffects: Map<string, { tag: string; kind: string; timer: ReturnType<typeof setTimeout> }>;
   pendingStubAcks: Map<string, { resolve: () => void; reject: (err: Error) => void }>;
   pendingAwaitAsync: Map<string, { resolve: () => void; timer: ReturnType<typeof setTimeout> }>;
   pendingInteract: Map<
@@ -1445,12 +1445,10 @@ export class Runtime<M> {
       this.handleEvent({
         kind: "effect",
         tag,
-        status: "error",
-        result: null,
-        error: "timeout",
+        result: { kind: "timeout" },
       });
     }, timeout);
-    this.state.pendingEffects.set(id, { tag, timer });
+    this.state.pendingEffects.set(id, { tag, kind, timer });
   }
 
   private handleEffectResponse(response: DecodedResponse): void {
@@ -1463,13 +1461,19 @@ export class Runtime<M> {
     clearTimeout(pending.timer);
     this.state.pendingEffects.delete(id);
 
-    // Dispatch as event with the user's tag
+    // Decode the wire (status, result, error) triple into a typed
+    // variant based on the original effect kind.
+    const typedResult = decodeEffectResult(
+      pending.kind,
+      response.status,
+      response.result,
+      typeof response.error === "string" ? response.error : null,
+    );
+
     this.handleEvent({
       kind: "effect",
       tag: pending.tag,
-      status: response.status as "ok" | "cancelled" | "error",
-      result: response.result,
-      error: typeof response.error === "string" ? response.error : null,
+      result: typedResult,
     });
   }
 
@@ -1649,9 +1653,7 @@ export class Runtime<M> {
       this.dispatchEvent({
         kind: "effect",
         tag: pending.tag,
-        status: "error",
-        result: null,
-        error: "renderer_restarted",
+        result: { kind: "renderer_restarted" },
       } as EffectEvent);
     }
 

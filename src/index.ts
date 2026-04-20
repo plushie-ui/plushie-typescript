@@ -98,6 +98,7 @@ export type {
   DeepReadonly,
   DragData,
   EffectEvent,
+  EffectResult,
   Event,
   Handler,
   ImeEvent,
@@ -123,7 +124,7 @@ export type {
   WidgetEvent,
   WindowEvent,
 } from "./types.js";
-export { COMMAND } from "./types.js";
+export { COMMAND, decodeEffectResult } from "./types.js";
 export { Subscription };
 
 // Effect as a namespace-style object (singular, matches Command).

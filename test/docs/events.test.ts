@@ -348,24 +348,20 @@ test("events_effect_ok_guard", () => {
   const event: EffectEvent = {
     kind: "effect",
     tag: "import",
-    status: "ok",
-    result: { path: "/tmp/notes.txt" },
-    error: null,
+    result: { kind: "file_opened", path: "/tmp/notes.txt" },
   };
   expect(isEffect(event)).toBe(true);
-  expect(event.status).toBe("ok");
+  expect(event.result.kind).toBe("file_opened");
 });
 
 test("events_effect_cancelled_guard", () => {
   const event: EffectEvent = {
     kind: "effect",
     tag: "import",
-    status: "cancelled",
-    result: null,
-    error: null,
+    result: { kind: "cancelled" },
   };
   expect(isEffect(event)).toBe(true);
-  expect(event.status).toBe("cancelled");
+  expect(event.result.kind).toBe("cancelled");
 });
 
 // -- Pattern matching tips: prefix --

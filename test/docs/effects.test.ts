@@ -55,44 +55,41 @@ test("effects_ok_result_match", () => {
   const event: EffectEvent = {
     kind: "effect",
     tag: "import",
-    status: "ok",
-    result: { path: "/tmp/notes.txt" },
-    error: null,
+    result: { kind: "file_opened", path: "/tmp/notes.txt" },
   };
 
   expect(isEffect(event)).toBe(true);
   expect(isEffect(event, "import")).toBe(true);
   expect(isEffect(event, "other")).toBe(false);
-  expect(event.status).toBe("ok");
-  const result = event.result as Record<string, string>;
-  expect(result["path"]).toBe("/tmp/notes.txt");
+  expect(event.result.kind).toBe("file_opened");
+  if (event.result.kind === "file_opened") {
+    expect(event.result.path).toBe("/tmp/notes.txt");
+  }
 });
 
 test("effects_cancelled_result_match", () => {
   const event: EffectEvent = {
     kind: "effect",
     tag: "import",
-    status: "cancelled",
-    result: null,
-    error: null,
+    result: { kind: "cancelled" },
   };
 
   expect(isEffect(event)).toBe(true);
-  expect(event.status).toBe("cancelled");
+  expect(event.result.kind).toBe("cancelled");
 });
 
 test("effects_error_result_match", () => {
   const event: EffectEvent = {
     kind: "effect",
     tag: "import",
-    status: "error",
-    result: null,
-    error: "unsupported",
+    result: { kind: "error", message: "unsupported" },
   };
 
   expect(isEffect(event)).toBe(true);
-  expect(event.status).toBe("error");
-  expect(event.error).toBe("unsupported");
+  expect(event.result.kind).toBe("error");
+  if (event.result.kind === "error") {
+    expect(event.result.message).toBe("unsupported");
+  }
 });
 
 // -- Multiple effect kinds --

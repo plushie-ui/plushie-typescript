@@ -277,13 +277,103 @@ export interface WindowEvent extends EventBase {
   readonly data: Readonly<Record<string, unknown>> | null;
 }
 
+/**
+ * Typed outcome of a platform effect.
+ *
+ * Each variant corresponds to either a success case for a specific
+ * effect kind (FileOpened, ClipboardText, etc.) or a non-success case
+ * (Cancelled, Timeout, Error, Unsupported, RendererRestarted).
+ *
+ * Matches the Rust SDK's EffectResult enum. Host SDKs share the
+ * concept but use language-idiomatic shapes; TypeScript uses a
+ * discriminated union with `kind` as the discriminator.
+ */
+export type EffectResult =
+  | { readonly kind: "file_opened"; readonly path: string }
+  | { readonly kind: "files_opened"; readonly paths: readonly string[] }
+  | { readonly kind: "file_saved"; readonly path: string }
+  | { readonly kind: "directory_selected"; readonly path: string }
+  | { readonly kind: "directories_selected"; readonly paths: readonly string[] }
+  | { readonly kind: "clipboard_text"; readonly text: string }
+  | {
+      readonly kind: "clipboard_html";
+      readonly html: string;
+      readonly altText: string | null;
+    }
+  | { readonly kind: "clipboard_written" }
+  | { readonly kind: "clipboard_cleared" }
+  | { readonly kind: "notification_shown" }
+  | { readonly kind: "cancelled" }
+  | { readonly kind: "timeout" }
+  | { readonly kind: "error"; readonly message: string }
+  | { readonly kind: "unsupported" }
+  | { readonly kind: "renderer_restarted" };
+
 export interface EffectEvent extends EventBase {
   readonly kind: "effect";
   /** The tag provided when creating the effect command. */
   readonly tag: string;
-  readonly status: "ok" | "cancelled" | "error";
-  readonly result: unknown;
-  readonly error: string | null;
+  /** Typed outcome of the effect. */
+  readonly result: EffectResult;
+}
+
+/**
+ * Decode a renderer `effect_response` payload into a typed `EffectResult`.
+ *
+ * Called from the runtime after matching the wire id back to the
+ * original `(tag, effectKind)`. The effect kind string (e.g.
+ * `"file_open"`) drives the ok-path destructuring. Non-ok statuses
+ * map to their non-kind-specific variants.
+ */
+export function decodeEffectResult(
+  effectKind: string,
+  status: string,
+  result: unknown,
+  error: string | null,
+): EffectResult {
+  if (status === "cancelled") return { kind: "cancelled" };
+  if (status === "unsupported") return { kind: "unsupported" };
+  if (status === "error") return { kind: "error", message: error ?? "" };
+  if (status !== "ok") return { kind: "error", message: `unknown effect status: ${status}` };
+
+  const payload: Record<string, unknown> =
+    typeof result === "object" && result !== null ? (result as Record<string, unknown>) : {};
+
+  const asStr = (v: unknown): string => (typeof v === "string" ? v : "");
+  const asStrArr = (v: unknown): readonly string[] =>
+    Array.isArray(v) ? (v.filter((x) => typeof x === "string") as string[]) : [];
+
+  switch (effectKind) {
+    case "file_open":
+      return { kind: "file_opened", path: asStr(payload["path"]) };
+    case "file_open_multiple":
+      return { kind: "files_opened", paths: asStrArr(payload["paths"]) };
+    case "file_save":
+      return { kind: "file_saved", path: asStr(payload["path"]) };
+    case "directory_select":
+      return { kind: "directory_selected", path: asStr(payload["path"]) };
+    case "directory_select_multiple":
+      return { kind: "directories_selected", paths: asStrArr(payload["paths"]) };
+    case "clipboard_read":
+    case "clipboard_read_primary":
+      return { kind: "clipboard_text", text: asStr(payload["text"]) };
+    case "clipboard_read_html":
+      return {
+        kind: "clipboard_html",
+        html: asStr(payload["html"]),
+        altText: typeof payload["alt_text"] === "string" ? (payload["alt_text"] as string) : null,
+      };
+    case "clipboard_write":
+    case "clipboard_write_html":
+    case "clipboard_write_primary":
+      return { kind: "clipboard_written" };
+    case "clipboard_clear":
+      return { kind: "clipboard_cleared" };
+    case "notification":
+      return { kind: "notification_shown" };
+    default:
+      return { kind: "error", message: `unknown effect kind: ${effectKind}` };
+  }
 }
 
 export interface WidgetCommandErrorEvent extends EventBase {
