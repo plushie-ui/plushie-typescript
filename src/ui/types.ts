@@ -22,11 +22,23 @@
  */
 export type Length = number | "fill" | "shrink" | { fillPortion: number };
 
-/** Encode a Length to its wire representation. */
+/** Encode a Length to its wire representation.
+ *
+ * Throws when a numeric length is negative or when a `fillPortion` is
+ * less than 1.
+ */
 export function encodeLength(value: Length): unknown {
-  if (typeof value === "number") return value;
+  if (typeof value === "number") {
+    if (value < 0) {
+      throw new Error(`length must be non-negative, got ${value}`);
+    }
+    return value;
+  }
   if (value === "fill") return "fill";
   if (value === "shrink") return "shrink";
+  if (value.fillPortion < 1) {
+    throw new Error(`length fillPortion must be >= 1, got ${value.fillPortion}`);
+  }
   return { fill_portion: value.fillPortion };
 }
 
@@ -59,7 +71,12 @@ export type Padding =
  * uniform four-sided padding collapses to a single number.
  */
 export function encodePadding(value: Padding): unknown {
-  if (typeof value === "number") return value;
+  if (typeof value === "number") {
+    if (value < 0) {
+      throw new Error(`padding must be non-negative, got ${value}`);
+    }
+    return value;
+  }
 
   let top: number;
   let right: number;
@@ -83,6 +100,17 @@ export function encodePadding(value: Padding): unknown {
     left = value.left ?? 0;
   }
 
+  for (const [side, n] of [
+    ["top", top],
+    ["right", right],
+    ["bottom", bottom],
+    ["left", left],
+  ] as const) {
+    if (n < 0) {
+      throw new Error(`padding must be non-negative, got ${side}=${n}`);
+    }
+  }
+
   if (top === right && right === bottom && bottom === left) {
     return top;
   }
@@ -102,9 +130,20 @@ export function encodePadding(value: Padding): unknown {
  */
 export type Color = string | { r: number; g: number; b: number; a?: number };
 
-// Complete set of CSS named colors -> hex mapping.
-// Used by encodeColor to normalize named colors to canonical hex.
-const NAMED_COLORS: Record<string, string> = {
+/**
+ * Complete set of the 148 CSS Color Module Level 4 named colors plus
+ * `transparent`, mapped to canonical `#rrggbb` / `#rrggbbaa` hex.
+ *
+ * Used by `encodeColor` to normalize named colors and exported so
+ * callers can look up or enumerate the catalog:
+ *
+ * ```ts
+ * import { namedColors } from "plushie/ui/types";
+ *
+ * const hex = namedColors["cornflowerblue"]; // "#6495ed"
+ * ```
+ */
+export const namedColors: Readonly<Record<string, string>> = {
   aliceblue: "#f0f8ff",
   antiquewhite: "#faebd7",
   aqua: "#00ffff",
@@ -277,7 +316,7 @@ export function encodeColor(value: Color): string {
   }
 
   // Named color lookup (case-insensitive)
-  const named = NAMED_COLORS[value.toLowerCase()];
+  const named = namedColors[value.toLowerCase()];
   if (named !== undefined) return named;
 
   // Already hex; normalize short forms
@@ -485,21 +524,38 @@ export interface Border {
   radius?: number | CornerRadius;
 }
 
-/** Encode a Border to its wire representation. */
+/** Encode a Border to its wire representation.
+ *
+ * Throws when the width or any radius value is negative.
+ */
 export function encodeBorder(value: Border): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   if (value.color !== undefined) result["color"] = encodeColor(value.color);
-  if (value.width !== undefined) result["width"] = value.width;
+  if (value.width !== undefined) {
+    if (value.width < 0) {
+      throw new Error(`border width must be non-negative, got ${value.width}`);
+    }
+    result["width"] = value.width;
+  }
   if (value.radius !== undefined) {
     if (typeof value.radius === "number") {
+      if (value.radius < 0) {
+        throw new Error(`border radius must be non-negative, got ${value.radius}`);
+      }
       result["radius"] = value.radius;
     } else {
-      result["radius"] = {
+      const corners = {
         top_left: value.radius.topLeft ?? 0,
         top_right: value.radius.topRight ?? 0,
         bottom_right: value.radius.bottomRight ?? 0,
         bottom_left: value.radius.bottomLeft ?? 0,
       };
+      for (const [corner, n] of Object.entries(corners)) {
+        if (n < 0) {
+          throw new Error(`border radius must be non-negative, got ${corner}=${n}`);
+        }
+      }
+      result["radius"] = corners;
     }
   }
   return result;
