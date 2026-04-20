@@ -537,7 +537,17 @@ export type Diagnostic =
       readonly consecutive: number;
       readonly message: string;
     }
-  | { readonly kind: "unknown_message_type"; readonly msg_type: string };
+  | { readonly kind: "unknown_message_type"; readonly msg_type: string }
+  | {
+      readonly kind: "dispatch_loop_exceeded";
+      readonly depth: number;
+      readonly limit: number;
+    }
+  | {
+      readonly kind: "buffer_overflow";
+      readonly size: number;
+      readonly limit: number;
+    };
 
 /** Discriminator string for any {@link Diagnostic} variant. */
 export type DiagnosticKind = Diagnostic["kind"];
@@ -739,6 +749,8 @@ const DIAGNOSTIC_KINDS: ReadonlySet<DiagnosticKind> = new Set<DiagnosticKind>([
   "view_panicked",
   "update_panicked",
   "unknown_message_type",
+  "dispatch_loop_exceeded",
+  "buffer_overflow",
 ]);
 
 function decodeDiagnostic(raw: WireMessage): DiagnosticMessage {

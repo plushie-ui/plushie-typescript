@@ -16,6 +16,30 @@ import type { DecodedResponse, HelloInfo, WireMessage } from "./protocol.js";
 import { decodeMessage, helloWidgetCapabilities, PROTOCOL_VERSION } from "./protocol.js";
 import type { Transport } from "./transport.js";
 
+/**
+ * Raised when the renderer's advertised protocol version differs
+ * from the version the SDK was built against. Carries both versions
+ * so callers can respond structurally rather than parsing the error
+ * message.
+ */
+export class ProtocolVersionMismatchError extends Error {
+  /** Protocol version this SDK was built for. */
+  public readonly expected: number;
+  /** Protocol version the renderer advertised. */
+  public readonly got: number;
+
+  constructor(expected: number, got: number) {
+    super(
+      `protocol version mismatch: SDK expects ${String(expected)}, ` +
+        `renderer reports ${String(got)}. ` +
+        `Update the plushie binary or SDK to matching versions.`,
+    );
+    this.name = "ProtocolVersionMismatchError";
+    this.expected = expected;
+    this.got = got;
+  }
+}
+
 /** Options for connecting a session. */
 export interface ConnectOptions {
   /** Renderer settings to send on startup. */
@@ -93,13 +117,7 @@ export class Session {
 
           const info = response.data;
           if (info.protocol !== PROTOCOL_VERSION) {
-            reject(
-              new Error(
-                `Protocol version mismatch: renderer reports ${String(info.protocol)}, ` +
-                  `SDK expects ${String(PROTOCOL_VERSION)}. ` +
-                  `Update the plushie binary or SDK to matching versions.`,
-              ),
-            );
+            reject(new ProtocolVersionMismatchError(PROTOCOL_VERSION, info.protocol));
             return;
           }
 

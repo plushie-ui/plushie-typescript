@@ -26,7 +26,28 @@
 const HEADER_SIZE = 4;
 
 /** Maximum message size (64 MiB, matching renderer limit). */
-const MAX_MESSAGE_SIZE = 64 * 1024 * 1024;
+export const MAX_MESSAGE_SIZE = 64 * 1024 * 1024;
+
+/**
+ * Raised when a wire frame exceeds the protocol's per-message size
+ * cap (64 MiB). Carries the offending size and the configured cap so
+ * callers can surface the violation without string parsing. A frame
+ * past the cap is always a protocol violation; the transport closes
+ * rather than attempting to recover.
+ */
+export class BufferOverflowError extends RangeError {
+  /** Offending frame size in bytes. */
+  public readonly size: number;
+  /** Configured cap in bytes. */
+  public readonly limit: number;
+
+  constructor(size: number, limit: number) {
+    super(`wire frame of ${size} bytes exceeds ${limit} byte limit`);
+    this.name = "BufferOverflowError";
+    this.size = size;
+    this.limit = limit;
+  }
+}
 
 /**
  * Encode a binary payload with a 4-byte big-endian length prefix.
@@ -44,7 +65,7 @@ const MAX_MESSAGE_SIZE = 64 * 1024 * 1024;
 export function encodePacket(payload: Uint8Array): Uint8Array {
   const size = payload.byteLength;
   if (size > MAX_MESSAGE_SIZE) {
-    throw new RangeError(`Message size ${size} exceeds maximum ${MAX_MESSAGE_SIZE} bytes (64 MiB)`);
+    throw new BufferOverflowError(size, MAX_MESSAGE_SIZE);
   }
   const frame = new Uint8Array(HEADER_SIZE + size);
   const view = new DataView(frame.buffer, frame.byteOffset, frame.byteLength);
@@ -97,9 +118,11 @@ export function decodePackets(buffer: Uint8Array): DecodePacketsResult {
     const size = view.getUint32(0, false); // big-endian
 
     if (size > MAX_MESSAGE_SIZE) {
-      // Corrupt or malicious frame; skip to end to avoid infinite loop.
-      // Callers should treat this as a protocol error.
-      break;
+      // Oversize frame is a protocol violation: the renderer should
+      // never emit beyond the cap. Raise a typed error so callers can
+      // tear the transport down structurally instead of silently
+      // clearing the buffer (the prior behaviour).
+      throw new BufferOverflowError(size, MAX_MESSAGE_SIZE);
     }
 
     if (offset + HEADER_SIZE + size > buffer.byteLength) {
@@ -158,9 +181,22 @@ export interface DecodeLinesResult {
 export function decodeLines(buffer: string): DecodeLinesResult {
   const parts = buffer.split("\n");
   if (parts.length === 1) {
-    // No newline found; entire buffer is a partial line.
+    // No newline found; entire buffer is a partial line. Guard the
+    // tail so an unterminated line can't grow the caller's buffer
+    // unboundedly across successive feeds.
+    if (buffer.length > MAX_MESSAGE_SIZE) {
+      throw new BufferOverflowError(buffer.length, MAX_MESSAGE_SIZE);
+    }
     return { lines: [], remaining: buffer };
   }
   const remaining = parts.pop()!;
+  for (const line of parts) {
+    if (line.length > MAX_MESSAGE_SIZE) {
+      throw new BufferOverflowError(line.length, MAX_MESSAGE_SIZE);
+    }
+  }
+  if (remaining.length > MAX_MESSAGE_SIZE) {
+    throw new BufferOverflowError(remaining.length, MAX_MESSAGE_SIZE);
+  }
   return { lines: parts, remaining };
 }
