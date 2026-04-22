@@ -94,13 +94,27 @@ export class SessionPool {
 
   /** Stop the shared renderer process. */
   stop(): void {
-    if (this.child) {
-      this.child.stdin?.end();
-      this.child.kill();
+    const child = this.child;
+    if (child) {
       this.child = null;
+      this.sessions.clear();
+      this.started = false;
+
+      child.stdin?.end();
+
+      const exitTimeout = setTimeout(() => {
+        child.kill("SIGKILL");
+      }, 5000);
+
+      child.on("exit", () => {
+        clearTimeout(exitTimeout);
+      });
+
+      child.kill();
+    } else {
+      this.sessions.clear();
+      this.started = false;
     }
-    this.sessions.clear();
-    this.started = false;
   }
 
   /** Register a new session and return its ID. */
