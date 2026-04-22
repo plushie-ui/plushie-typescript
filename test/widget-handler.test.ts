@@ -146,7 +146,7 @@ describe("buildWidget", () => {
     };
     const entry = makeEntry(statelessDef, { label: "hi" }, {});
     const rendered = entry.view("card");
-    expect(rendered.type).toBe("text");
+    expect(rendered!.type).toBe("text");
     expect(entry.state).toEqual({});
   });
 
@@ -174,8 +174,8 @@ describe("makeEntry", () => {
     const def = counterDef();
     const entry = makeEntry(def, { max: 5 }, { count: 3 });
     const node = entry.view("my-counter");
-    expect(node.id).toBe("my-counter");
-    expect(node.props).toEqual({ max: 5, count: 3 });
+    expect(node!.id).toBe("my-counter");
+    expect(node!.props).toEqual({ max: 5, count: 3 });
   });
 
   test("handleEvent returns updated entry", () => {

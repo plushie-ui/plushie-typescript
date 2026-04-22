@@ -10,17 +10,17 @@
 // -- Types ----------------------------------------------------------------
 
 /** Options controlling the query pipeline stages. */
-export interface QueryOptions<T> {
+export interface QueryOptions<T extends Record<string, unknown>> {
   readonly filter?: (record: T) => boolean;
-  readonly search?: { fields: string[]; query: string };
-  readonly sort?: SortSpec | SortSpec[];
-  readonly group?: string;
+  readonly search?: { fields: ReadonlyArray<keyof T & string>; query: string };
+  readonly sort?: SortSpec<keyof T & string> | SortSpec<keyof T & string>[];
+  readonly group?: keyof T & string;
   readonly page?: number;
   readonly pageSize?: number;
 }
 
 /** Sort specification: field name and direction. */
-export type SortSpec = { direction: "asc" | "desc"; field: string };
+export type SortSpec<T = string> = { direction: "asc" | "desc"; field: T };
 
 /** Result of a query pipeline execution. */
 export interface QueryResult<T> {
@@ -92,10 +92,10 @@ export function query<T extends Record<string, unknown>>(
 
 // -- Sorting helpers ------------------------------------------------------
 
-function compareRecords(
-  a: Record<string, unknown>,
-  b: Record<string, unknown>,
-  specs: SortSpec[],
+function compareRecords<T extends Record<string, unknown>>(
+  a: T,
+  b: T,
+  specs: ReadonlyArray<SortSpec<keyof T & string>>,
 ): number {
   for (const spec of specs) {
     const va = a[spec.field];

@@ -24,6 +24,9 @@ import { withHandlersMeta } from "./ui/handlers.js";
  * - Plushie types: "color", "length", "padding", "alignment", "font", "style"
  * - Generic: "any"
  * - Compound: { list: <element-type> }
+ * - Future/unknown types from newer protocol versions are accepted via
+ *   `string & {}`, which preserves autocomplete for the known literals
+ *   while allowing extension.
  */
 export type NativeWidgetPropType =
   | "string"
@@ -36,7 +39,8 @@ export type NativeWidgetPropType =
   | "font"
   | "style"
   | "any"
-  | { readonly list: NativeWidgetPropType };
+  | { readonly list: NativeWidgetPropType }
+  | (string & {});
 
 /** Configuration for defining a native (Rust-backed) widget. */
 export interface NativeWidgetConfig {

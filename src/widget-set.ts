@@ -24,5 +24,11 @@ export type WidgetSet<T extends WidgetOverrides = WidgetOverrides> = Omit<
   T;
 
 export function createWidgetSet<T extends WidgetOverrides>(overrides: T): WidgetSet<T> {
-  return { ...(DefaultUI as unknown as WidgetBuilders), ...overrides } as WidgetSet<T>;
+  const defaults: WidgetBuilders = {};
+  for (const [key, value] of Object.entries(DefaultUI)) {
+    if (typeof value === "function") {
+      defaults[key] = value as WidgetBuilder;
+    }
+  }
+  return { ...defaults, ...overrides } as WidgetSet<T>;
 }

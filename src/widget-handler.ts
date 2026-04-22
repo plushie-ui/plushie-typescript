@@ -87,7 +87,7 @@ export type EventAction =
  */
 export interface WidgetDef<State, Props> {
   readonly init?: (() => State) | undefined;
-  readonly view: (id: string, props: Props, state: State) => UINode;
+  readonly view: (id: string, props: Props, state: State) => UINode | null;
   readonly handleEvent?:
     | ((event: Event, state: State) => readonly [EventAction, State])
     | undefined;
@@ -163,8 +163,8 @@ export function buildWidget<State, Props>(
  * state and pre-bound closures so the registry can be heterogeneous.
  */
 export interface RegistryEntry {
-  /** Produce the widget's UINode tree given its scoped ID. */
-  readonly view: (id: string) => UINode;
+  /** Produce the widget's UINode tree given its scoped ID. Null means "render nothing". */
+  readonly view: (id: string) => UINode | null;
   /** Handle an event. Returns the action and an updated entry. Null for render-only widgets. */
   readonly handleEvent: ((event: Event) => readonly [EventAction, RegistryEntry]) | null;
   /** Collect subscriptions for this widget instance. */
@@ -287,6 +287,26 @@ export function renderPlaceholder(
 
   // Render with the local (pre-scoped) ID
   const rendered = entry.view(localId);
+
+  // Widget returned null: produce an invisible placeholder so the
+  // registry still tracks the widget instance for future renders.
+  if (rendered === null) {
+    const widgetMeta = Object.freeze({
+      [META_KEY]: def,
+      [PROPS_KEY]: props,
+      [STATE_KEY]: entry.state,
+    });
+
+    const finalNode: UINode = Object.freeze({
+      id: scopedId,
+      type: "container",
+      props: Object.freeze({}),
+      children: Object.freeze([]) as readonly UINode[],
+      meta: widgetMeta,
+    });
+
+    return { key, node: finalNode, entry };
+  }
 
   // Attach metadata to the rendered node for registry derivation
   const widgetMeta = Object.freeze({
