@@ -39,17 +39,25 @@ export interface Element {
 /**
  * A test session wrapping a Runtime and a pooled renderer session.
  *
- * All interactions go through the real plushie binary in mock mode.
+ * All interactions go through the real plushie binary in the configured test mode.
  */
 export class TestSession<M> {
   private readonly runtime: Runtime<M>;
   private readonly pool: SessionPool;
   private readonly sessionId: string;
+  private readonly mode: "mock" | "headless";
   private requestCounter = 0;
 
-  constructor(config: AppConfig<M>, pool: SessionPool, sessionId: string, format: WireFormat) {
+  constructor(
+    config: AppConfig<M>,
+    pool: SessionPool,
+    sessionId: string,
+    format: WireFormat,
+    mode: "mock" | "headless",
+  ) {
     this.pool = pool;
     this.sessionId = sessionId;
+    this.mode = mode;
     const transport = new PooledTransport(pool, sessionId, format);
     this.runtime = new Runtime(config, transport, sessionId);
   }
@@ -335,31 +343,42 @@ export class TestSession<M> {
 
   /**
    * Assert that a tree hash matches a saved golden file.
-   * On first run, saves the hash. On subsequent runs, compares.
+   * Creates or updates the golden only when PLUSHIE_UPDATE_SNAPSHOTS=1.
    */
   async assertTreeHash(name: string): Promise<void> {
     const hash = await this.treeHash(name);
-    const goldenDir = path.resolve("test", "golden");
-    const goldenPath = path.join(goldenDir, "tree_hashes.json");
+    const goldenPath = path.resolve("test", "golden", `${name}.${this.mode}.sha256`);
+    const updateSnapshots = process.env["PLUSHIE_UPDATE_SNAPSHOTS"] === "1";
 
-    let hashes: Record<string, string> = {};
     if (fs.existsSync(goldenPath)) {
-      hashes = JSON.parse(fs.readFileSync(goldenPath, "utf-8")) as Record<string, string>;
-    }
-
-    if (name in hashes) {
-      if (hashes[name] !== hash) {
+      const expected = fs.readFileSync(goldenPath, "utf-8").trim();
+      if (expected !== hash) {
+        if (updateSnapshots) {
+          fs.mkdirSync(path.dirname(goldenPath), { recursive: true });
+          fs.writeFileSync(goldenPath, `${hash}\n`, "utf-8");
+          return;
+        }
         throw new Error(
           `assertTreeHash: hash mismatch for "${name}"\n` +
-            `  expected: ${hashes[name]}\n` +
-            `  actual:   ${hash}`,
+            `  expected: ${expected}\n` +
+            `  actual:   ${hash}\n` +
+            `  golden:   ${goldenPath}\n` +
+            "Set PLUSHIE_UPDATE_SNAPSHOTS=1 to update the golden.",
         );
       }
-    } else {
-      hashes[name] = hash;
-      fs.mkdirSync(goldenDir, { recursive: true });
-      fs.writeFileSync(goldenPath, JSON.stringify(hashes, null, 2) + "\n", "utf-8");
+      return;
     }
+
+    if (!updateSnapshots) {
+      throw new Error(
+        `assertTreeHash: missing golden for "${name}"\n` +
+          `  golden:   ${goldenPath}\n` +
+          "Set PLUSHIE_UPDATE_SNAPSHOTS=1 to create the golden.",
+      );
+    }
+
+    fs.mkdirSync(path.dirname(goldenPath), { recursive: true });
+    fs.writeFileSync(goldenPath, `${hash}\n`, "utf-8");
   }
 
   /**

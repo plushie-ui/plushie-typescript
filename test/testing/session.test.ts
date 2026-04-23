@@ -1,3 +1,6 @@
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { describe, expect, test, vi } from "vitest";
 import { TestSession } from "../../src/testing/session.js";
 
@@ -57,6 +60,34 @@ function createMessageSessionDouble(): {
     originalHandler,
     getCurrentHandler: () => currentHandler,
   };
+}
+
+function createTreeHashSessionDouble(
+  mode: "mock" | "headless",
+  hash: string,
+): TestSession<unknown> {
+  const session = Object.create(TestSession.prototype) as TestSession<unknown>;
+  const stubbed = session as unknown as {
+    treeHash: (name: string) => Promise<string>;
+    mode: "mock" | "headless";
+  };
+  stubbed.treeHash = vi.fn().mockResolvedValue(hash);
+  stubbed.mode = mode;
+  return session;
+}
+
+async function withTempGoldenDir(fn: (dir: string) => Promise<void>): Promise<void> {
+  const originalCwd = process.cwd();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "plushie-tree-hash-"));
+
+  try {
+    process.chdir(dir);
+    await fn(dir);
+  } finally {
+    process.chdir(originalCwd);
+    fs.rmSync(dir, { recursive: true, force: true });
+    vi.unstubAllEnvs();
+  }
 }
 
 describe("TestSession canvas helpers", () => {
@@ -144,5 +175,72 @@ describe("TestSession temporary interceptors", () => {
 
     await expect(pending).rejects.toThrow('Unknown top-level message type "unknown_thing"');
     expect(getCurrentHandler()).toBe(originalHandler);
+  });
+});
+
+describe("TestSession tree hash goldens", () => {
+  test("missing goldens fail loudly without snapshot opt-in", async () => {
+    await withTempGoldenDir(async () => {
+      const session = createTreeHashSessionDouble("mock", "mock-hash");
+
+      await expect(session.assertTreeHash("counter")).rejects.toThrow(
+        'assertTreeHash: missing golden for "counter"',
+      );
+
+      expect(fs.existsSync(path.join("test", "golden", "counter.mock.sha256"))).toBe(false);
+    });
+  });
+
+  test("mismatched goldens update when snapshot opt-in is enabled", async () => {
+    await withTempGoldenDir(async () => {
+      vi.stubEnv("PLUSHIE_UPDATE_SNAPSHOTS", "1");
+      const goldenPath = path.join("test", "golden", "counter.mock.sha256");
+      fs.mkdirSync(path.dirname(goldenPath), { recursive: true });
+      fs.writeFileSync(goldenPath, "old-hash\n", "utf-8");
+
+      const session = createTreeHashSessionDouble("mock", "new-hash");
+      await session.assertTreeHash("counter");
+
+      expect(fs.readFileSync(goldenPath, "utf-8")).toBe("new-hash\n");
+    });
+  });
+
+  test("mismatched goldens fail without snapshot opt-in and stay unchanged", async () => {
+    await withTempGoldenDir(async () => {
+      const goldenPath = path.join("test", "golden", "counter.mock.sha256");
+      fs.mkdirSync(path.dirname(goldenPath), { recursive: true });
+      fs.writeFileSync(goldenPath, "old-hash\n", "utf-8");
+
+      const session = createTreeHashSessionDouble("mock", "new-hash");
+
+      await expect(session.assertTreeHash("counter")).rejects.toThrow(
+        'assertTreeHash: hash mismatch for "counter"',
+      );
+      expect(fs.readFileSync(goldenPath, "utf-8")).toBe("old-hash\n");
+    });
+  });
+
+  test("mock and headless backends use separate tree hash goldens", async () => {
+    await withTempGoldenDir(async () => {
+      vi.stubEnv("PLUSHIE_UPDATE_SNAPSHOTS", "1");
+
+      const mockSession = createTreeHashSessionDouble("mock", "mock-hash");
+      const headlessSession = createTreeHashSessionDouble("headless", "headless-hash");
+
+      await mockSession.assertTreeHash("counter");
+      await headlessSession.assertTreeHash("counter");
+
+      expect(fs.readFileSync(path.join("test", "golden", "counter.mock.sha256"), "utf-8")).toBe(
+        "mock-hash\n",
+      );
+      expect(fs.readFileSync(path.join("test", "golden", "counter.headless.sha256"), "utf-8")).toBe(
+        "headless-hash\n",
+      );
+
+      vi.unstubAllEnvs();
+
+      await expect(mockSession.assertTreeHash("counter")).resolves.toBeUndefined();
+      await expect(headlessSession.assertTreeHash("counter")).resolves.toBeUndefined();
+    });
   });
 });

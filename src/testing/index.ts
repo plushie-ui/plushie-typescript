@@ -80,7 +80,7 @@ export function stopPool(): void {
 /**
  * Create a test session for a plushie app.
  *
- * The session is backed by the real plushie binary in mock mode.
+ * The session is backed by the real plushie binary in the configured test mode.
  * Call `session.stop()` when done (or use `testWith` for automatic lifecycle).
  *
  * @param appDef - The app definition created by `app()`.
@@ -94,7 +94,8 @@ export async function createSession<M>(
   const pool = getPool(opts);
   const sessionId = pool.register();
   const format = opts?.format ?? poolOptions.format ?? "msgpack";
-  const session = new TestSession(appDef.config, pool, sessionId, format);
+  const mode = pool.mode();
+  const session = new TestSession(appDef.config, pool, sessionId, format, mode);
   await session.start();
   return session;
 }

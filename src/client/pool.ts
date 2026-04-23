@@ -177,6 +177,11 @@ export class SessionPool {
     return session?.messageHandler ?? null;
   }
 
+  /** Get the renderer mode the pool is actually running. */
+  mode(): "mock" | "headless" {
+    return this.opts.mode;
+  }
+
   /** Register a close handler for a session. */
   onSessionClose(sessionId: string, handler: (reason: string) => void): void {
     const session = this.sessions.get(sessionId);
