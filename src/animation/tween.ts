@@ -89,6 +89,17 @@ function clamp(t: number): number {
   return t;
 }
 
+function validateDurationMs(durationMs: number): void {
+  if (
+    typeof durationMs !== "number" ||
+    !Number.isFinite(durationMs) ||
+    !Number.isInteger(durationMs) ||
+    durationMs <= 0
+  ) {
+    throw new Error(`animation: duration must be a positive integer, got ${String(durationMs)}`);
+  }
+}
+
 // -- Interpolation --------------------------------------------------------
 
 /** Lerp between from and to at progress t, with optional easing. t is clamped 0..1. */
@@ -112,6 +123,7 @@ export function createAnimation(
   durationMs: number,
   opts: { easing?: EasingFn } = {},
 ): Animation {
+  validateDurationMs(durationMs);
   return {
     from,
     to,
@@ -129,6 +141,7 @@ export function looping(
   durationMs: number,
   opts: { easing?: EasingFn } = {},
 ): Animation {
+  validateDurationMs(durationMs);
   return {
     from,
     to,

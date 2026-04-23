@@ -32,7 +32,7 @@ export const ANIMATION_DESCRIPTOR: unique symbol = Symbol.for("plushie.animation
 export interface TransitionOpts {
   /** Target value the prop animates toward. */
   readonly to: unknown;
-  /** Duration in milliseconds. */
+  /** Duration in positive integer milliseconds. */
   readonly duration: number;
   /** Easing curve name or cubic bezier. Defaults to "ease_in_out". */
   readonly easing?: Easing;
@@ -62,11 +62,24 @@ export interface TransitionDescriptor {
   readonly on_complete?: string;
 }
 
+/** Options for creating a looping transition. */
+export interface LoopOpts extends TransitionOpts {
+  /**
+   * @deprecated Use `autoReverse` instead.
+   */
+  readonly reverse?: boolean;
+}
+
 /** Create a timed transition descriptor. */
 export function transition(opts: TransitionOpts): TransitionDescriptor {
-  if (typeof opts.duration !== "number" || opts.duration < 0 || !Number.isFinite(opts.duration)) {
+  if (
+    typeof opts.duration !== "number" ||
+    !Number.isFinite(opts.duration) ||
+    !Number.isInteger(opts.duration) ||
+    opts.duration <= 0
+  ) {
     throw new Error(
-      `transition: duration must be a non-negative finite number, got ${String(opts.duration)}`,
+      `transition: duration must be a positive integer, got ${String(opts.duration)}`,
     );
   }
   const base = {
@@ -96,14 +109,18 @@ export function transition(opts: TransitionOpts): TransitionDescriptor {
  * // Finite: 3 cycles
  * loop({ to: 0.4, from: 1, duration: 800, repeat: 3 })
  *
- * // Spin forever (no reverse)
- * loop({ to: 360, from: 0, duration: 1000, reverse: false })
+ * // Spin forever (no auto-reverse)
+ * loop({ to: 360, from: 0, duration: 1000, autoReverse: false })
  * ```
  */
-export function loop(opts: TransitionOpts & { readonly reverse?: boolean }): TransitionDescriptor {
+export function loop(opts: LoopOpts): TransitionDescriptor {
+  if (opts.autoReverse !== undefined && opts.reverse !== undefined) {
+    throw new Error("loop: use autoReverse instead of mixing autoReverse and reverse");
+  }
+  const autoReverse = opts.autoReverse ?? opts.reverse ?? true;
   return transition({
     ...opts,
     repeat: opts.repeat ?? "forever",
-    autoReverse: opts.reverse !== false,
+    autoReverse,
   });
 }

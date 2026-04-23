@@ -12,6 +12,7 @@ import {
   easeOutQuad,
   interpolate,
   linear,
+  looping,
   springEase,
   startAnimation,
 } from "../src/index.js";
@@ -105,6 +106,42 @@ describe("animation lifecycle", () => {
     const anim = createAnimation(0, 100, 1000);
     expect(animationValue(anim)).toBe(0);
     expect(animationFinished(anim)).toBe(false);
+  });
+
+  test("create rejects zero duration", () => {
+    expect(() => createAnimation(0, 100, 0)).toThrow("duration must be a positive integer");
+  });
+
+  test("create rejects float duration", () => {
+    expect(() => createAnimation(0, 100, 100.5)).toThrow("duration must be a positive integer");
+  });
+
+  test("create rejects negative duration", () => {
+    expect(() => createAnimation(0, 100, -1)).toThrow("duration must be a positive integer");
+  });
+
+  test("create rejects non-finite duration", () => {
+    expect(() => createAnimation(0, 100, Number.POSITIVE_INFINITY)).toThrow(
+      "duration must be a positive integer",
+    );
+  });
+
+  test("looping rejects zero duration", () => {
+    expect(() => looping(0, 100, 0)).toThrow("duration must be a positive integer");
+  });
+
+  test("looping rejects negative duration", () => {
+    expect(() => looping(0, 100, -1)).toThrow("duration must be a positive integer");
+  });
+
+  test("looping rejects float duration", () => {
+    expect(() => looping(0, 100, 100.5)).toThrow("duration must be a positive integer");
+  });
+
+  test("looping rejects non-finite duration", () => {
+    expect(() => looping(0, 100, Number.POSITIVE_INFINITY)).toThrow(
+      "duration must be a positive integer",
+    );
   });
 
   test("start resets to from and records timestamp", () => {

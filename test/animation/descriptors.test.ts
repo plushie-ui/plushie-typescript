@@ -49,18 +49,30 @@ describe("transition", () => {
   });
 
   test("rejects negative duration", () => {
-    expect(() => transition({ to: 1, duration: -1 })).toThrow("duration must be a non-negative");
+    expect(() => transition({ to: 1, duration: -1 })).toThrow(
+      "duration must be a positive integer",
+    );
+  });
+
+  test("rejects zero duration", () => {
+    expect(() => transition({ to: 1, duration: 0 })).toThrow("duration must be a positive integer");
+  });
+
+  test("rejects float duration", () => {
+    expect(() => transition({ to: 1, duration: 100.5 })).toThrow(
+      "duration must be a positive integer",
+    );
   });
 
   test("rejects non-finite duration", () => {
     expect(() => transition({ to: 1, duration: Infinity })).toThrow(
-      "duration must be a non-negative",
+      "duration must be a positive integer",
     );
   });
 
   test("rejects non-number duration", () => {
     expect(() => transition({ to: 1, duration: "fast" as unknown as number })).toThrow(
-      "duration must be a non-negative",
+      "duration must be a positive integer",
     );
   });
 });
@@ -78,9 +90,20 @@ describe("loop", () => {
     expect(l.repeat).toBe(3);
   });
 
-  test("reverse: false disables auto-reverse", () => {
+  test("autoReverse: false disables auto-reverse", () => {
+    const l = loop({ to: 360, from: 0, duration: 1000, autoReverse: false });
+    expect(l.auto_reverse).toBe(false);
+  });
+
+  test("reverse remains a compatibility alias", () => {
     const l = loop({ to: 360, from: 0, duration: 1000, reverse: false });
     expect(l.auto_reverse).toBe(false);
+  });
+
+  test("autoReverse wins over reverse when both are provided", () => {
+    expect(() =>
+      loop({ to: 360, from: 0, duration: 1000, autoReverse: true, reverse: false }),
+    ).toThrow("use autoReverse instead of mixing autoReverse and reverse");
   });
 });
 
