@@ -34,6 +34,7 @@ import {
   encodeUnsubscribe,
   encodeWidgetOp,
   encodeWindowOp,
+  helloWidgetCapabilities,
   PROTOCOL_VERSION,
 } from "./client/protocol.js";
 import type { Transport } from "./client/transport.js";
@@ -477,12 +478,13 @@ export class Runtime<M> {
           const requiredWidgets = (this.config.requiredWidgets ?? []).map((ext) =>
             typeof ext === "string" ? ext : nativeWidgetConfigKey(ext),
           );
-          const missing = requiredWidgets.filter((ext) => !decoded.data.extensions.includes(ext));
+          const capabilities = helloWidgetCapabilities(decoded.data);
+          const missing = requiredWidgets.filter((widget) => !capabilities.includes(widget));
           if (missing.length > 0) {
             reject(
               new Error(
-                `Renderer is missing required extensions ${JSON.stringify(missing)}. ` +
-                  `Renderer reported ${JSON.stringify(decoded.data.extensions)}.`,
+                `Renderer is missing required widgets or capabilities ${JSON.stringify(missing)}. ` +
+                  `Renderer reported ${JSON.stringify(capabilities)}.`,
               ),
             );
             return;

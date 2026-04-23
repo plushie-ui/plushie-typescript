@@ -40,14 +40,23 @@ export type WirePatchOp =
 /** Information from the renderer's hello handshake. */
 export interface HelloInfo {
   readonly protocol: number;
+  readonly protocol_version: number;
   readonly version: string;
   readonly name: string;
   readonly mode: "windowed" | "headless" | "mock";
   readonly backend: string;
   readonly transport: string;
   readonly extensions: readonly string[];
+  readonly native_widgets: readonly string[];
   readonly widgets: readonly string[];
   readonly widget_sets: readonly string[];
+}
+
+/** Widget and capability names advertised by the renderer hello message. */
+export function helloWidgetCapabilities(
+  info: Pick<HelloInfo, "native_widgets" | "widgets" | "extensions">,
+): readonly string[] {
+  return [...new Set([...info.native_widgets, ...info.widgets, ...info.extensions])];
 }
 
 /** Query selector for find/interact messages. */
@@ -539,22 +548,24 @@ export function decodeMessage(raw: WireMessage): DecodedResponse | null {
 // -- Hello ----------------------------------------------------------------
 
 function decodeHello(raw: WireMessage): HelloInfo {
-  const protocol = raw["protocol"];
+  const protocolVersion = raw["protocol_version"] ?? raw["protocol"];
   const version = raw["version"];
   const name = raw["name"];
-  if (typeof protocol !== "number")
-    throw new Error("hello message must include numeric 'protocol' field");
+  if (typeof protocolVersion !== "number")
+    throw new Error("hello message must include numeric 'protocol_version' or 'protocol' field");
   if (typeof version !== "string")
     throw new Error("hello message must include string 'version' field");
   if (typeof name !== "string") throw new Error("hello message must include string 'name' field");
   return {
-    protocol,
+    protocol: protocolVersion,
+    protocol_version: protocolVersion,
     version,
     name,
     mode: str(raw, "mode", "windowed") as HelloInfo["mode"],
     backend: str(raw, "backend", "unknown"),
     transport: str(raw, "transport", "stdio"),
     extensions: Array.isArray(raw["extensions"]) ? (raw["extensions"] as string[]) : [],
+    native_widgets: Array.isArray(raw["native_widgets"]) ? (raw["native_widgets"] as string[]) : [],
     widgets: Array.isArray(raw["widgets"]) ? (raw["widgets"] as string[]) : [],
     widget_sets: Array.isArray(raw["widget_sets"]) ? (raw["widget_sets"] as string[]) : [],
   };

@@ -13,7 +13,7 @@
 import { type NativeWidgetConfig, nativeWidgetConfigKey } from "../native-widget.js";
 import { PLUSHIE_RUST_VERSION } from "./binary.js";
 import type { DecodedResponse, HelloInfo, WireMessage } from "./protocol.js";
-import { decodeMessage, PROTOCOL_VERSION } from "./protocol.js";
+import { decodeMessage, helloWidgetCapabilities, PROTOCOL_VERSION } from "./protocol.js";
 import type { Transport } from "./transport.js";
 
 /** Options for connecting a session. */
@@ -103,12 +103,13 @@ export class Session {
             return;
           }
 
-          const missing = requiredWidgets.filter((ext) => !info.extensions.includes(ext));
+          const capabilities = helloWidgetCapabilities(info);
+          const missing = requiredWidgets.filter((widget) => !capabilities.includes(widget));
           if (missing.length > 0) {
             reject(
               new Error(
-                `Renderer is missing required extensions ${JSON.stringify(missing)}. ` +
-                  `Renderer reported ${JSON.stringify(info.extensions)}.`,
+                `Renderer is missing required widgets or capabilities ${JSON.stringify(missing)}. ` +
+                  `Renderer reported ${JSON.stringify(capabilities)}.`,
               ),
             );
             return;

@@ -3,7 +3,7 @@
  *
  * The TypeScript SDK does a client-side pre-check during the hello
  * handshake: `requiredWidgets` names are compared against the
- * `extensions` array the renderer advertises in its hello reply.
+ * widget capabilities the renderer advertises in its hello reply.
  * Missing names cause `Runtime.start()` to reject with a descriptive
  * error. The wire Settings message itself does not carry the
  * requiredWidgets list; the SDK check is stricter than the
@@ -12,14 +12,13 @@
 
 import { describe, expect, test } from "vitest";
 import { PROTOCOL_VERSION } from "../src/client/protocol.js";
+import { Session } from "../src/client/session.js";
 import type { Transport, WireFormat } from "../src/client/transport.js";
 import { Runtime } from "../src/runtime.js";
 
-// ---------------------------------------------------------------------------
-// FakeTransport: captures sent messages and lets the test drive the
-// hello reply. Messages are shaped as plain objects (no msgpack/json
-// framing) because Runtime operates on decoded records.
-// ---------------------------------------------------------------------------
+// FakeTransport captures sent messages and lets the test drive the hello
+// reply. Messages are shaped as plain objects because Runtime operates on
+// decoded records.
 
 class FakeTransport implements Transport {
   readonly format: WireFormat = "msgpack";
@@ -51,15 +50,23 @@ class FakeTransport implements Transport {
   }
 }
 
-function hello(extensions: readonly string[]): Record<string, unknown> {
+interface HelloCapabilities {
+  readonly extensions?: readonly string[];
+  readonly nativeWidgets?: readonly string[];
+  readonly widgets?: readonly string[];
+}
+
+function hello(capabilities: HelloCapabilities = {}): Record<string, unknown> {
   return {
     type: "hello",
-    protocol: PROTOCOL_VERSION,
+    protocol_version: PROTOCOL_VERSION,
     mode: "mock",
     name: "plushie-renderer",
     version: "test",
-    extensions,
-    native_widgets: [],
+    extensions: capabilities.extensions ?? [],
+    native_widgets: capabilities.nativeWidgets ?? [],
+    widgets: capabilities.widgets ?? [],
+    widget_sets: [],
     session: "",
   };
 }
@@ -80,29 +87,49 @@ function appConfig(requiredWidgets?: readonly string[]) {
   return requiredWidgets === undefined ? base : { ...base, requiredWidgets };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 describe("requiredWidgets handshake pre-check", () => {
-  test("rejects when a required widget is missing from hello.extensions", async () => {
+  test("rejects when a required widget is missing from hello capabilities", async () => {
     const transport = new FakeTransport();
     const runtime = new Runtime(appConfig(["gauge", "custom_chart"]), transport);
 
     const started = runtime.start();
     // Renderer reports only one of the two required names.
-    transport.emit(hello(["gauge"]));
+    transport.emit(hello({ nativeWidgets: ["gauge"] }));
 
-    await expect(started).rejects.toThrow(/missing required extensions.*custom_chart/s);
+    await expect(started).rejects.toThrow(
+      /missing required widgets or capabilities.*custom_chart/s,
+    );
     runtime.stop();
   });
 
-  test("resolves when every required widget appears in hello.extensions", async () => {
+  test("resolves when every required widget appears in hello.native_widgets", async () => {
     const transport = new FakeTransport();
     const runtime = new Runtime(appConfig(["gauge"]), transport);
 
     const started = runtime.start();
-    transport.emit(hello(["gauge", "other_widget"]));
+    transport.emit(hello({ nativeWidgets: ["gauge", "other_widget"] }));
+
+    await expect(started).resolves.toBeUndefined();
+    runtime.stop();
+  });
+
+  test("resolves when every required widget appears in hello.widgets", async () => {
+    const transport = new FakeTransport();
+    const runtime = new Runtime(appConfig(["gauge"]), transport);
+
+    const started = runtime.start();
+    transport.emit(hello({ widgets: ["gauge", "button"] }));
+
+    await expect(started).resolves.toBeUndefined();
+    runtime.stop();
+  });
+
+  test("resolves when required widget appears in legacy hello.extensions", async () => {
+    const transport = new FakeTransport();
+    const runtime = new Runtime(appConfig(["gauge"]), transport);
+
+    const started = runtime.start();
+    transport.emit(hello({ extensions: ["gauge"] }));
 
     await expect(started).resolves.toBeUndefined();
     runtime.stop();
@@ -113,10 +140,47 @@ describe("requiredWidgets handshake pre-check", () => {
     const runtime = new Runtime(appConfig(), transport);
 
     const started = runtime.start();
-    transport.emit(hello([]));
+    transport.emit(hello());
 
     await expect(started).resolves.toBeUndefined();
     runtime.stop();
+  });
+});
+
+describe("Session requiredWidgets handshake pre-check", () => {
+  test("resolves when a required widget appears in hello.native_widgets", async () => {
+    const transport = new FakeTransport();
+    const session = new Session(transport);
+
+    const connected = session.connect({ requiredWidgets: ["gauge"], timeout: 100 });
+    transport.emit(hello({ nativeWidgets: ["gauge"] }));
+
+    await expect(connected).resolves.toMatchObject({ native_widgets: ["gauge"] });
+    session.close();
+  });
+
+  test("resolves when a required widget appears in hello.widgets", async () => {
+    const transport = new FakeTransport();
+    const session = new Session(transport);
+
+    const connected = session.connect({ requiredWidgets: ["gauge"], timeout: 100 });
+    transport.emit(hello({ widgets: ["gauge"] }));
+
+    await expect(connected).resolves.toMatchObject({ widgets: ["gauge"] });
+    session.close();
+  });
+
+  test("rejects when a required widget is missing from hello capabilities", async () => {
+    const transport = new FakeTransport();
+    const session = new Session(transport);
+
+    const connected = session.connect({ requiredWidgets: ["custom_chart"], timeout: 100 });
+    transport.emit(hello({ nativeWidgets: ["gauge"] }));
+
+    await expect(connected).rejects.toThrow(
+      /missing required widgets or capabilities.*custom_chart/s,
+    );
+    session.close();
   });
 });
 
@@ -130,7 +194,7 @@ describe("requiredWidgets and the outgoing Settings message", () => {
     const runtime = new Runtime(appConfig(["gauge"]), transport);
 
     const started = runtime.start();
-    transport.emit(hello(["gauge"]));
+    transport.emit(hello({ nativeWidgets: ["gauge"] }));
     await started;
 
     const settingsMsg = transport.sent.find((m) => m["type"] === "settings");

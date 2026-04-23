@@ -282,23 +282,61 @@ describe("other encoders", () => {
 // =========================================================================
 
 describe("decodeMessage", () => {
-  test("decodes hello", () => {
+  test("decodes protocol_version-only hello", () => {
     const result = decodeMessage({
       type: "hello",
       session: "",
-      protocol: 1,
+      protocol_version: 1,
       version: "0.4.0",
       name: "plushie",
       mode: "mock",
       backend: "none",
       transport: "stdio",
       extensions: ["charts"],
+      native_widgets: ["gauge"],
+      widgets: ["button"],
+      widget_sets: ["core"],
     });
     expect(result?.type).toBe("hello");
     if (result?.type === "hello") {
       expect(result.data.protocol).toBe(1);
+      expect(result.data.protocol_version).toBe(1);
       expect(result.data.mode).toBe("mock");
       expect(result.data.extensions).toEqual(["charts"]);
+      expect(result.data.native_widgets).toEqual(["gauge"]);
+      expect(result.data.widgets).toEqual(["button"]);
+      expect(result.data.widget_sets).toEqual(["core"]);
+    }
+  });
+
+  test("prefers protocol_version when both hello protocol fields exist", () => {
+    const result = decodeMessage({
+      type: "hello",
+      session: "",
+      protocol_version: 1,
+      protocol: 99,
+      version: "0.4.0",
+      name: "plushie",
+    });
+    expect(result?.type).toBe("hello");
+    if (result?.type === "hello") {
+      expect(result.data.protocol).toBe(1);
+      expect(result.data.protocol_version).toBe(1);
+    }
+  });
+
+  test("falls back to legacy protocol hello field", () => {
+    const result = decodeMessage({
+      type: "hello",
+      session: "",
+      protocol: 1,
+      version: "0.4.0",
+      name: "plushie",
+    });
+    expect(result?.type).toBe("hello");
+    if (result?.type === "hello") {
+      expect(result.data.protocol).toBe(1);
+      expect(result.data.protocol_version).toBe(1);
     }
   });
 
