@@ -23,7 +23,7 @@ import { Runtime } from "../src/runtime.js";
 class FakeTransport implements Transport {
   readonly format: WireFormat = "msgpack";
   readonly sent: Record<string, unknown>[] = [];
-  private messageHandlers: ((msg: Record<string, unknown>) => void)[] = [];
+  private messageHandler: ((msg: Record<string, unknown>) => void) | null = null;
   private closeHandlers: ((reason: string) => void)[] = [];
   closed = false;
 
@@ -32,7 +32,7 @@ class FakeTransport implements Transport {
   }
 
   onMessage(handler: (msg: Record<string, unknown>) => void): void {
-    this.messageHandlers.push(handler);
+    this.messageHandler = handler;
   }
 
   onClose(handler: (reason: string) => void): void {
@@ -46,7 +46,11 @@ class FakeTransport implements Transport {
 
   /** Simulate the renderer sending a message to the SDK. */
   emit(msg: Record<string, unknown>): void {
-    for (const h of this.messageHandlers) h(msg);
+    this.messageHandler?.(msg);
+  }
+
+  getMessageHandler(): ((msg: Record<string, unknown>) => void) | null {
+    return this.messageHandler;
   }
 }
 
@@ -143,6 +147,19 @@ describe("requiredWidgets handshake pre-check", () => {
     transport.emit(hello());
 
     await expect(started).resolves.toBeUndefined();
+    runtime.stop();
+  });
+
+  test("rejects cleanly on unknown top-level messages during hello handshake", async () => {
+    const transport = new FakeTransport();
+    const runtime = new Runtime(appConfig(), transport);
+
+    const started = runtime.start();
+    const handshakeHandler = transport.getMessageHandler();
+    transport.emit({ type: "unknown_thing", session: "" });
+
+    await expect(started).rejects.toThrow('Unknown top-level message type "unknown_thing"');
+    expect(transport.getMessageHandler()).not.toBe(handshakeHandler);
     runtime.stop();
   });
 });

@@ -189,26 +189,39 @@ export class TestSession<M> {
    */
   awaitAsync(tag: string, timeout = 5000): Promise<AsyncEvent> {
     return new Promise<AsyncEvent>((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const originalHandler = this.getMessageHandler();
+      let timer: ReturnType<typeof setTimeout>;
+      const cleanup = (): void => {
+        clearTimeout(timer);
+        this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}));
+      };
+      const fail = (error: unknown): void => {
+        cleanup();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      };
+
+      timer = setTimeout(() => {
+        cleanup();
         reject(new Error(`awaitAsync: timed out waiting for async event with tag "${tag}"`));
       }, timeout);
 
-      const originalHandler = this.getMessageHandler();
-
       this.pool.onSessionMessage(this.sessionId, (raw) => {
-        const decoded = decodeMessage(raw);
-        if (decoded?.type === "event") {
-          const event = decoded.data;
-          if (event.kind === "async" && event.tag === tag) {
-            clearTimeout(timer);
-            this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}));
-            // Still dispatch the event through the runtime
-            originalHandler?.(raw);
-            resolve(event as AsyncEvent);
-            return;
+        try {
+          const decoded = decodeMessage(raw);
+          if (decoded.type === "event") {
+            const event = decoded.data;
+            if (event.kind === "async" && event.tag === tag) {
+              cleanup();
+              // Still dispatch the event through the runtime
+              originalHandler?.(raw);
+              resolve(event as AsyncEvent);
+              return;
+            }
           }
+          originalHandler?.(raw);
+        } catch (error) {
+          fail(error);
         }
-        originalHandler?.(raw);
       });
     });
   }
@@ -251,16 +264,27 @@ export class TestSession<M> {
     const id = this.nextId();
     const msg = encodeTreeHash(this.sessionId, id, name);
 
-    return new Promise<string>((resolve) => {
+    return new Promise<string>((resolve, reject) => {
       const originalHandler = this.getMessageHandler();
+      const cleanup = (): void => {
+        this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}));
+      };
+      const fail = (error: unknown): void => {
+        cleanup();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      };
 
       this.pool.onSessionMessage(this.sessionId, (raw) => {
-        const decoded = decodeMessage(raw);
-        if (decoded?.type === "tree_hash_response" && decoded.id === id) {
-          this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}));
-          resolve(decoded.hash);
-        } else {
-          originalHandler?.(raw);
+        try {
+          const decoded = decodeMessage(raw);
+          if (decoded.type === "tree_hash_response" && decoded.id === id) {
+            cleanup();
+            resolve(decoded.hash);
+          } else {
+            originalHandler?.(raw);
+          }
+        } catch (error) {
+          fail(error);
         }
       });
 
@@ -276,21 +300,32 @@ export class TestSession<M> {
     const id = this.nextId();
     const msg = encodeScreenshot(this.sessionId, id, name, opts?.width, opts?.height);
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const originalHandler = this.getMessageHandler();
+      const cleanup = (): void => {
+        this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}));
+      };
+      const fail = (error: unknown): void => {
+        cleanup();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      };
 
       this.pool.onSessionMessage(this.sessionId, (raw) => {
-        const decoded = decodeMessage(raw);
-        if (decoded?.type === "screenshot_response" && decoded.id === id) {
-          this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}));
-          resolve({
-            hash: decoded.hash,
-            width: decoded.width,
-            height: decoded.height,
-            rgba: decoded.rgba,
-          });
-        } else {
-          originalHandler?.(raw);
+        try {
+          const decoded = decodeMessage(raw);
+          if (decoded.type === "screenshot_response" && decoded.id === id) {
+            cleanup();
+            resolve({
+              hash: decoded.hash,
+              width: decoded.width,
+              height: decoded.height,
+              rgba: decoded.rgba,
+            });
+          } else {
+            originalHandler?.(raw);
+          }
+        } catch (error) {
+          fail(error);
         }
       });
 
@@ -596,6 +631,10 @@ export class TestSession<M> {
         clearTimeout(timer);
         this.pool.onSessionMessage(this.sessionId, originalHandler ?? (() => {}));
       };
+      const fail = (error: unknown): void => {
+        cleanup();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      };
 
       const timer = setTimeout(() => {
         cleanup();
@@ -603,36 +642,35 @@ export class TestSession<M> {
       }, TestSession.INTERACT_TIMEOUT_MS);
 
       this.pool.onSessionMessage(this.sessionId, (raw) => {
-        const decoded = decodeMessage(raw);
-        if (!decoded) {
-          originalHandler?.(raw);
-          return;
-        }
-
-        if (decoded.type === "interact_response" && raw["id"] === id) {
-          if (Array.isArray(decoded.events)) {
-            for (const eventRaw of decoded.events) {
-              this.injectEvent(eventRaw);
+        try {
+          const decoded = decodeMessage(raw);
+          if (decoded.type === "interact_response" && raw["id"] === id) {
+            if (Array.isArray(decoded.events)) {
+              for (const eventRaw of decoded.events) {
+                this.injectEvent(eventRaw);
+              }
             }
-          }
-          cleanup();
-          resolve();
-        } else if (decoded.type === "interact_step" && raw["id"] === id) {
-          if (Array.isArray(decoded.events)) {
-            for (const eventRaw of decoded.events) {
-              this.injectEvent(eventRaw);
+            cleanup();
+            resolve();
+          } else if (decoded.type === "interact_step" && raw["id"] === id) {
+            if (Array.isArray(decoded.events)) {
+              for (const eventRaw of decoded.events) {
+                this.injectEvent(eventRaw);
+              }
             }
+            const tree = this.runtime.tree();
+            if (tree) {
+              this.pool.sendToSession(this.sessionId, {
+                type: "snapshot",
+                session: this.sessionId,
+                tree,
+              });
+            }
+          } else {
+            originalHandler?.(raw);
           }
-          const tree = this.runtime.tree();
-          if (tree) {
-            this.pool.sendToSession(this.sessionId, {
-              type: "snapshot",
-              session: this.sessionId,
-              tree,
-            });
-          }
-        } else {
-          originalHandler?.(raw);
+        } catch (error) {
+          fail(error);
         }
       });
 

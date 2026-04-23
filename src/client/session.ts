@@ -206,7 +206,6 @@ export class Session {
   /** Route an incoming message to pending requests or event handler. */
   private handleMessage(raw: Record<string, unknown>): void {
     const decoded = decodeMessage(raw);
-    if (decoded === null) return;
 
     // Check if this matches a pending request
     const id = (raw["id"] as string | undefined) ?? "";

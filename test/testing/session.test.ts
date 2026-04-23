@@ -16,6 +16,49 @@ function createSessionDouble(): {
   return { session, interact };
 }
 
+function createMessageSessionDouble(): {
+  session: TestSession<unknown>;
+  emit: (msg: Record<string, unknown>) => void;
+  originalHandler: ReturnType<typeof vi.fn>;
+  getCurrentHandler: () => ((msg: Record<string, unknown>) => void) | null;
+} {
+  const session = Object.create(TestSession.prototype) as TestSession<unknown>;
+  const originalHandler = vi.fn();
+  let currentHandler: ((msg: Record<string, unknown>) => void) | null = originalHandler;
+
+  const stubbed = session as unknown as {
+    pool: {
+      getSessionHandler: (sessionId: string) => ((msg: Record<string, unknown>) => void) | null;
+      onSessionMessage: (
+        sessionId: string,
+        handler: (msg: Record<string, unknown>) => void,
+      ) => void;
+      sendToSession: (sessionId: string, msg: Record<string, unknown>) => void;
+    };
+    runtime: { tree: () => null };
+    sessionId: string;
+    requestCounter: number;
+  };
+
+  stubbed.pool = {
+    getSessionHandler: (_sessionId) => currentHandler,
+    onSessionMessage: (_sessionId, handler) => {
+      currentHandler = handler;
+    },
+    sendToSession: (_sessionId, _msg) => {},
+  };
+  stubbed.runtime = { tree: () => null };
+  stubbed.sessionId = "test_session";
+  stubbed.requestCounter = 0;
+
+  return {
+    session,
+    emit: (msg) => currentHandler?.(msg),
+    originalHandler,
+    getCurrentHandler: () => currentHandler,
+  };
+}
+
 describe("TestSession canvas helpers", () => {
   test("send canonical canvas action names", async () => {
     const { session, interact } = createSessionDouble();
@@ -59,5 +102,47 @@ describe("TestSession canvas helpers", () => {
 
     expect(interact).toHaveBeenNthCalledWith(1, "press", {}, { key: "Enter" });
     expect(interact).toHaveBeenNthCalledWith(2, "release", {}, { key: "Enter" });
+  });
+});
+
+describe("TestSession temporary interceptors", () => {
+  test("awaitAsync restores the original handler and rejects on unknown top-level messages", async () => {
+    const { session, emit, originalHandler, getCurrentHandler } = createMessageSessionDouble();
+
+    const pending = session.awaitAsync("done", 1000);
+    emit({ type: "unknown_thing", session: "test_session" });
+
+    await expect(pending).rejects.toThrow('Unknown top-level message type "unknown_thing"');
+    expect(getCurrentHandler()).toBe(originalHandler);
+  });
+
+  test("treeHash restores the original handler and rejects on unknown top-level messages", async () => {
+    const { session, emit, originalHandler, getCurrentHandler } = createMessageSessionDouble();
+
+    const pending = session.treeHash("after_render");
+    emit({ type: "unknown_thing", session: "test_session" });
+
+    await expect(pending).rejects.toThrow('Unknown top-level message type "unknown_thing"');
+    expect(getCurrentHandler()).toBe(originalHandler);
+  });
+
+  test("screenshot restores the original handler and rejects on unknown top-level messages", async () => {
+    const { session, emit, originalHandler, getCurrentHandler } = createMessageSessionDouble();
+
+    const pending = session.screenshot("home");
+    emit({ type: "unknown_thing", session: "test_session" });
+
+    await expect(pending).rejects.toThrow('Unknown top-level message type "unknown_thing"');
+    expect(getCurrentHandler()).toBe(originalHandler);
+  });
+
+  test("interact restores the original handler and rejects on unknown top-level messages", async () => {
+    const { session, emit, originalHandler, getCurrentHandler } = createMessageSessionDouble();
+
+    const pending = session.click("save");
+    emit({ type: "unknown_thing", session: "test_session" });
+
+    await expect(pending).rejects.toThrow('Unknown top-level message type "unknown_thing"');
+    expect(getCurrentHandler()).toBe(originalHandler);
   });
 });

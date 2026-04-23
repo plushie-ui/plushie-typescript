@@ -416,8 +416,10 @@ describe("decodeMessage", () => {
     expect(result?.type).toBe("reset_response");
   });
 
-  test("returns null for unknown message type", () => {
-    expect(decodeMessage({ type: "unknown_thing" })).toBeNull();
+  test("throws for unknown message type", () => {
+    expect(() => decodeMessage({ type: "unknown_thing" })).toThrow(
+      'Unknown top-level message type "unknown_thing"',
+    );
   });
 });
 

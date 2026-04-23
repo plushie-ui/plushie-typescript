@@ -457,42 +457,60 @@ export class Runtime<M> {
 
   private awaitHello(): Promise<void> {
     return new Promise((resolve, reject) => {
+      let settled = false;
+      const restoreMessageHandler = (): void => {
+        this.transport.onMessage((msg) => this.handleRawMessage(msg));
+      };
+      const finishReject = (error: Error): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        restoreMessageHandler();
+        reject(error);
+      };
+      const finishResolve = (): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        restoreMessageHandler();
+        resolve();
+      };
       const timeout = setTimeout(() => {
-        reject(new Error("Renderer did not send hello within 10 seconds"));
+        finishReject(new Error("Renderer did not send hello within 10 seconds"));
       }, 10_000);
 
-      const _originalHandler = this.transport.onMessage.bind(this.transport);
       this.transport.onMessage((raw) => {
-        const decoded = decodeMessage(raw);
-        if (decoded?.type === "hello") {
-          clearTimeout(timeout);
-          if (decoded.data.protocol !== PROTOCOL_VERSION) {
-            reject(
-              new Error(
-                `Protocol mismatch: renderer=${String(decoded.data.protocol)}, SDK=${String(PROTOCOL_VERSION)}`,
-              ),
-            );
-            return;
-          }
+        try {
+          const decoded = decodeMessage(raw);
+          if (decoded.type === "hello") {
+            if (decoded.data.protocol !== PROTOCOL_VERSION) {
+              finishReject(
+                new Error(
+                  `Protocol mismatch: renderer=${String(decoded.data.protocol)}, SDK=${String(PROTOCOL_VERSION)}`,
+                ),
+              );
+              return;
+            }
 
-          const requiredWidgets = (this.config.requiredWidgets ?? []).map((ext) =>
-            typeof ext === "string" ? ext : nativeWidgetConfigKey(ext),
-          );
-          const capabilities = helloWidgetCapabilities(decoded.data);
-          const missing = requiredWidgets.filter((widget) => !capabilities.includes(widget));
-          if (missing.length > 0) {
-            reject(
-              new Error(
-                `Renderer is missing required widgets or capabilities ${JSON.stringify(missing)}. ` +
-                  `Renderer reported ${JSON.stringify(capabilities)}.`,
-              ),
+            const requiredWidgets = (this.config.requiredWidgets ?? []).map((ext) =>
+              typeof ext === "string" ? ext : nativeWidgetConfigKey(ext),
             );
-            return;
-          }
+            const capabilities = helloWidgetCapabilities(decoded.data);
+            const missing = requiredWidgets.filter((widget) => !capabilities.includes(widget));
+            if (missing.length > 0) {
+              finishReject(
+                new Error(
+                  `Renderer is missing required widgets or capabilities ${JSON.stringify(missing)}. ` +
+                    `Renderer reported ${JSON.stringify(capabilities)}.`,
+                ),
+              );
+              return;
+            }
 
-          // Restore normal message handler
-          this.transport.onMessage((msg) => this.handleRawMessage(msg));
-          resolve();
+            finishResolve();
+          }
+        } catch (error) {
+          finishReject(error instanceof Error ? error : new Error(String(error)));
         }
       });
     });
@@ -504,7 +522,6 @@ export class Runtime<M> {
 
   private handleRawMessage(raw: Record<string, unknown>): void {
     const decoded = decodeMessage(raw);
-    if (decoded === null) return;
 
     this.resetHeartbeat();
 

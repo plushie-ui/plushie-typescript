@@ -460,9 +460,10 @@ export type DecodedResponse =
  * Decode a raw wire message into a typed response.
  *
  * @param raw - Deserialized wire message (from msgpack or JSON).
- * @returns Typed decoded response, or null if the message type is unrecognized.
+ * @returns Typed decoded response.
+ * @throws {Error} If the top-level message type is unrecognized.
  */
-export function decodeMessage(raw: WireMessage): DecodedResponse | null {
+export function decodeMessage(raw: WireMessage): DecodedResponse {
   const type = str(raw, "type");
 
   switch (type) {
@@ -547,7 +548,11 @@ export function decodeMessage(raw: WireMessage): DecodedResponse | null {
       return { type: "effect_stub_unregister_ack", kind: str(raw, "kind") };
 
     default:
-      return null;
+      throw new Error(
+        `Unknown top-level message type "${type}". ` +
+          "The renderer sent a wire message this SDK version does not recognize. " +
+          "Ensure the SDK and renderer versions are compatible.",
+      );
   }
 }
 
