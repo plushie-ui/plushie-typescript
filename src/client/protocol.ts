@@ -70,6 +70,7 @@ export interface WireSelector {
 export interface ScopedId {
   readonly id: string;
   readonly scope: readonly string[];
+  readonly windowId?: string;
 }
 
 // =========================================================================
@@ -143,16 +144,21 @@ function stringifyPatchOps(ops: WirePatchOp[]): WireMessage[] {
  * splitScopedId("form/email")   // { id: "email", scope: ["form"] }
  * splitScopedId("a/b/c")        // { id: "c", scope: ["b", "a"] }
  * splitScopedId("simple")       // { id: "simple", scope: [] }
+ * splitScopedId("main#form/email") // { id: "email", scope: ["form"], windowId: "main" }
  * ```
  */
 export function splitScopedId(wireId: string): ScopedId {
-  const parts = wireId.split("/");
+  const hashIdx = wireId.indexOf("#");
+  const hasWindow = hashIdx > 0;
+  const windowId = hasWindow ? wireId.slice(0, hashIdx) : undefined;
+  const path = hasWindow ? wireId.slice(hashIdx + 1) : wireId;
+  const parts = path.split("/");
   if (parts.length === 1) {
-    return { id: wireId, scope: [] };
+    return windowId ? { id: path, scope: [], windowId } : { id: path, scope: [] };
   }
   const id = parts[parts.length - 1]!;
   const scope = parts.slice(0, -1).reverse();
-  return { id, scope };
+  return windowId ? { id, scope, windowId } : { id, scope };
 }
 
 // =========================================================================
@@ -732,7 +738,7 @@ function decodeWidgetEvent(
   data: WireMessage | null,
 ): WidgetEvent {
   const wireId = str(raw, "id");
-  const { id, scope } = splitScopedId(wireId);
+  const { id, scope, windowId } = splitScopedId(wireId);
   // Structured pointer / scroll / resize / key payloads arrive in
   // `value`. When `data` is empty, treat a value-shaped object as the
   // data payload so PointerData / ScrolledData / DragData fields are
@@ -752,7 +758,7 @@ function decodeWidgetEvent(
     kind: "widget",
     type: family as WidgetEvent["type"],
     id,
-    windowId: optionalWindowId(raw),
+    windowId: windowId ?? optionalWindowId(raw),
     scope,
     value: coerceWidgetValue(rawValue),
     data: mergedData as WidgetEvent["data"],

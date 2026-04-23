@@ -54,6 +54,21 @@ describe("splitScopedId", () => {
       scope: ["panel", "section", "root"],
     });
   });
+
+  test("extracts window from hash-prefixed scoped ID", () => {
+    expect(splitScopedId("main#form/email")).toEqual({
+      id: "email",
+      scope: ["form"],
+      windowId: "main",
+    });
+  });
+
+  test("treats empty window prefix as literal path text", () => {
+    expect(splitScopedId("#form/email")).toEqual({
+      id: "email",
+      scope: ["#form"],
+    });
+  });
 });
 
 // =========================================================================
@@ -426,6 +441,36 @@ describe("decodeEvent", () => {
       expect(event.type).toBe("click");
       expect(event.id).toBe("save");
       expect(event.scope).toEqual(["form"]);
+    }
+  });
+
+  test("decodes click event with window encoded in scoped ID", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "click",
+      id: "main#form/save",
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("click");
+      expect(event.id).toBe("save");
+      expect(event.scope).toEqual(["form"]);
+      expect(event.windowId).toBe("main");
+    }
+  });
+
+  test("prefers window encoded in scoped ID over separate window_id", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "click",
+      id: "main#form/save",
+      window_id: "fallback",
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.windowId).toBe("main");
     }
   });
 
