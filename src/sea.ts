@@ -12,6 +12,8 @@ import { chmodSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+type Chmod = (path: string, mode: number) => void;
+
 /**
  * Check if we're running inside a Node.js SEA bundle.
  *
@@ -32,7 +34,8 @@ export function isSEA(): boolean {
  *
  * The binary must have been included as an asset in the SEA
  * configuration under the given key. The extracted file is
- * written to `os.tmpdir()` and made executable.
+ * written to `os.tmpdir()` and made executable on platforms that use
+ * executable permission bits.
  *
  * @param assetKey - The key used in the SEA config's assets map. Defaults to `"plushie-binary"`.
  * @returns Absolute path to the extracted binary.
@@ -57,10 +60,29 @@ export function extractBinaryFromSEA(assetKey = "plushie-binary"): string {
     );
   }
 
-  const dest = join(tmpdir(), `plushie-sea-${process.pid}`);
+  const dest = extractedSEABinaryPath();
   writeFileSync(dest, Buffer.from(asset));
-  chmodSync(dest, 0o755);
+  makeExtractedBinaryExecutable(dest);
   return dest;
+}
+
+export function extractedSEABinaryPath(
+  opts: { platform?: NodeJS.Platform; pid?: number; tempDir?: string } = {},
+): string {
+  const platform = opts.platform ?? process.platform;
+  const pid = opts.pid ?? process.pid;
+  const dir = opts.tempDir ?? tmpdir();
+  const ext = platform === "win32" ? ".exe" : "";
+  return join(dir, `plushie-sea-${pid}${ext}`);
+}
+
+export function makeExtractedBinaryExecutable(
+  path: string,
+  platform: NodeJS.Platform = process.platform,
+  chmod: Chmod = chmodSync,
+): void {
+  if (platform === "win32") return;
+  chmod(path, 0o755);
 }
 
 /** SEA configuration file structure. */
