@@ -21,7 +21,7 @@
  * @module
  */
 
-import { spawn, spawnSync } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import {
   chmodSync,
   copyFileSync,
@@ -331,7 +331,26 @@ async function downloadWasm(force: boolean, wasmDir?: string): Promise<void> {
 // Build
 // =========================================================================
 
-function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConfig): void {
+function waitForChild(child: ChildProcess): Promise<number> {
+  return new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("exit", (code) => {
+      resolve(code ?? 1);
+    });
+  });
+}
+
+function recordBuildExitCode(code: number): void {
+  if (code !== 0 || process.exitCode === undefined) {
+    process.exitCode = code;
+  }
+}
+
+async function handleBuild(
+  flags: string[],
+  wasmDestDir?: string,
+  config?: ProjectConfig,
+): Promise<void> {
   // Resolve source path: env var > config > undefined (uses crates.io for extensions)
   const sourcePath = process.env["PLUSHIE_RUST_SOURCE_PATH"] ?? config?.source_path;
 
@@ -350,15 +369,6 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
 
   // Resolve WASM dest: CLI flag > config > default
   const resolvedWasmDir = wasmDestDir ?? config?.wasm_dir;
-
-  // Check for extension config (plushie.extensions.json)
-  const extConfigPath = resolve("plushie.extensions.json");
-  if (wantBin && existsSync(extConfigPath)) {
-    if (handleNativeWidgetBuild(extConfigPath, isRelease, sourcePath)) {
-      return; // Custom renderer build handled it
-    }
-    // No native widgets found; fall through to stock build
-  }
 
   if (wantWasm) {
     if (!sourcePath) {
@@ -387,27 +397,34 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
     }
     console.log(`Building WASM renderer in ${wasmDir}...`);
     const child = spawn("wasm-pack", buildArgs, { cwd: wasmDir, stdio: "inherit" });
-    child.on("exit", (code) => {
-      if (code === 0) {
-        // Install WASM output to the project's wasm directory
-        const pkgDir = resolve(wasmDir, "pkg");
-        const destDir = resolvedWasmDir ? resolve(resolvedWasmDir) : resolve(DEFAULT_WASM_DIR);
-        mkdirSync(destDir, { recursive: true });
-        for (const name of [WASM_JS_FILE, WASM_BG_FILE]) {
-          const src = join(pkgDir, name);
-          if (existsSync(src)) {
-            copyFileSync(src, join(destDir, name));
-          } else {
-            console.error(`  Warning: expected ${src} not found in wasm-pack output`);
-          }
+    const code = await waitForChild(child);
+    recordBuildExitCode(code);
+    if (code === 0) {
+      // Install WASM output to the project's wasm directory
+      const pkgDir = resolve(wasmDir, "pkg");
+      const destDir = resolvedWasmDir ? resolve(resolvedWasmDir) : resolve(DEFAULT_WASM_DIR);
+      mkdirSync(destDir, { recursive: true });
+      for (const name of [WASM_JS_FILE, WASM_BG_FILE]) {
+        const src = join(pkgDir, name);
+        if (existsSync(src)) {
+          copyFileSync(src, join(destDir, name));
+        } else {
+          console.error(`  Warning: expected ${src} not found in wasm-pack output`);
         }
-        console.log(`\nWASM files installed to ${destDir}`);
       }
-      process.exitCode = code ?? 1;
-    });
+      console.log(`\nWASM files installed to ${destDir}`);
+    }
   }
 
   if (wantBin) {
+    const extConfigPath = resolve("plushie.extensions.json");
+    if (
+      existsSync(extConfigPath) &&
+      (await handleNativeWidgetBuild(extConfigPath, isRelease, sourcePath))
+    ) {
+      return;
+    }
+
     // Check Rust toolchain version
     const minRust = [1, 92, 0] as const;
     const rustcResult = spawnSync("rustc", ["--version"], { stdio: "pipe" });
@@ -450,23 +467,22 @@ function handleBuild(flags: string[], wasmDestDir?: string, config?: ProjectConf
     if (isRelease) buildArgs.push("--release");
     console.log(`Building plushie binary in ${sourcePath}...`);
     const child = spawn("cargo", buildArgs, { cwd: sourcePath, stdio: "inherit" });
-    child.on("exit", (code) => {
-      if (code === 0) {
-        const profile = isRelease ? "release" : "debug";
-        const binPath = resolve(sourcePath, "target", profile, "plushie-renderer");
-        console.log(`\nBinary built at: ${binPath}`);
-      }
-      process.exitCode = code ?? 1;
-    });
+    const code = await waitForChild(child);
+    recordBuildExitCode(code);
+    if (code === 0) {
+      const profile = isRelease ? "release" : "debug";
+      const binPath = resolve(sourcePath, "target", profile, "plushie-renderer");
+      console.log(`\nBinary built at: ${binPath}`);
+    }
   }
 }
 
 /** Returns true if the native widget build was initiated, false if no native widgets found. */
-function handleNativeWidgetBuild(
+async function handleNativeWidgetBuild(
   configPath: string,
   release: boolean,
   sourcePath: string | undefined,
-): boolean {
+): Promise<boolean> {
   let parsed: {
     extensions?: Array<import("../native-widget.js").NativeWidgetConfig>;
     binaryName?: string;
@@ -530,19 +546,18 @@ function handleNativeWidgetBuild(
   console.log(`\nRunning cargo plushie build (${invocation.source})...`);
 
   const child = spawn(invocation.command, cargoPlushieArgs, { stdio: "inherit", env: childEnv });
-  child.on("exit", (code) => {
-    if (code !== 0) {
-      process.exitCode = code ?? 1;
-      return;
-    }
-    try {
-      const installedPath = installBuiltBinary(scratchDir, binaryName, release);
-      console.log(`\nCustom renderer installed at ${installedPath}`);
-    } catch (err) {
-      console.error(String(err instanceof Error ? err.message : err));
-      process.exitCode = 1;
-    }
-  });
+  const code = await waitForChild(child);
+  recordBuildExitCode(code);
+  if (code !== 0) {
+    return true;
+  }
+  try {
+    const installedPath = installBuiltBinary(scratchDir, binaryName, release);
+    console.log(`\nCustom renderer installed at ${installedPath}`);
+  } catch (err) {
+    console.error(String(err instanceof Error ? err.message : err));
+    process.exitCode = 1;
+  }
   return true;
 }
 
@@ -920,7 +935,7 @@ async function main(argv: string[]): Promise<void> {
       await handleDownload(flags, binFileOverride, wasmDirOverride, projectConfig);
       break;
     case "build":
-      handleBuild(flags, wasmDirOverride, projectConfig);
+      await handleBuild(flags, wasmDirOverride, projectConfig);
       break;
     case "connect":
       await handleConnect(positional, flags, binaryOverride);
@@ -1047,4 +1062,7 @@ async function main(argv: string[]): Promise<void> {
   }
 }
 
-void main(process.argv);
+void main(process.argv).catch((err) => {
+  console.error(String(err instanceof Error ? err.message : err));
+  process.exitCode = 1;
+});
