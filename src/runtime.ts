@@ -109,7 +109,15 @@ interface RuntimeState<M> {
   asyncTasks: Map<string, { controller: AbortController; nonce: number }>;
   pendingTimers: Map<string, { timer: ReturnType<typeof setTimeout>; nonce: number }>;
   pendingEffects: Map<string, { tag: string; kind: string; timer: ReturnType<typeof setTimeout> }>;
-  pendingStubAcks: Map<string, { resolve: () => void; reject: (err: Error) => void }>;
+  pendingStubAcks: Map<
+    string,
+    {
+      op: "register" | "unregister";
+      resolve: () => void;
+      reject: (err: Error) => void;
+    }
+  >;
+  activeEffectStubs: Set<string>;
   pendingAwaitAsync: Map<string, { resolve: () => void; timer: ReturnType<typeof setTimeout> }>;
   pendingInteract: Map<
     string,
@@ -188,6 +196,7 @@ export class Runtime<M> {
       pendingTimers: new Map(),
       pendingEffects: new Map(),
       pendingStubAcks: new Map(),
+      activeEffectStubs: new Set(),
       pendingAwaitAsync: new Map(),
       pendingInteract: new Map(),
       widgetHandlerRegistry: new Map(),
@@ -252,6 +261,7 @@ export class Runtime<M> {
       }, timeout);
 
       this.state.pendingStubAcks.set(kind, {
+        op: "register",
         resolve: () => {
           clearTimeout(timer);
           resolve();
@@ -282,6 +292,7 @@ export class Runtime<M> {
       }, timeout);
 
       this.state.pendingStubAcks.set(kind, {
+        op: "unregister",
         resolve: () => {
           clearTimeout(timer);
           resolve();
@@ -346,6 +357,8 @@ export class Runtime<M> {
 
   /** Re-initialize the app: reset model from init, re-render as snapshot. */
   reinit(): void {
+    this.resetEffectStubsForReinit();
+    this.state.consecutiveErrors = 0;
     const [model, commands] = this.unwrapResult(this.config.init);
     this.state.model = model;
     this.freezeModelIfDev();
@@ -1500,10 +1513,18 @@ export class Runtime<M> {
     )
       return;
     const pending = this.state.pendingStubAcks.get(response.kind);
-    if (pending) {
-      this.state.pendingStubAcks.delete(response.kind);
-      pending.resolve();
+    if (!pending) return;
+
+    const ackOp = response.type === "effect_stub_register_ack" ? "register" : "unregister";
+    if (pending.op !== ackOp) return;
+
+    this.state.pendingStubAcks.delete(response.kind);
+    if (ackOp === "register") {
+      this.state.activeEffectStubs.add(response.kind);
+    } else {
+      this.state.activeEffectStubs.delete(response.kind);
     }
+    pending.resolve();
   }
 
   private handleInteractStep(response: DecodedResponse): void {
@@ -1635,6 +1656,7 @@ export class Runtime<M> {
       pending.reject(new Error(`Effect stub "${kind}" failed: renderer closed (${reason})`));
     }
     this.state.pendingStubAcks.clear();
+    this.state.activeEffectStubs.clear();
 
     // Resolve pending awaitAsync calls. The async tasks run in Node.js (not the
     // renderer) and may still complete, but we clear the map so the resolve
@@ -1755,6 +1777,23 @@ export class Runtime<M> {
     if (this.heartbeatTimer !== null) {
       clearTimeout(this.heartbeatTimer);
       this.heartbeatTimer = null;
+    }
+  }
+
+  private resetEffectStubsForReinit(): void {
+    const kindsToClear = new Set<string>([
+      ...this.state.activeEffectStubs,
+      ...this.state.pendingStubAcks.keys(),
+    ]);
+
+    for (const [kind, pending] of this.state.pendingStubAcks) {
+      pending.reject(new Error(`Effect stub "${kind}" was cleared during reinit`));
+    }
+    this.state.pendingStubAcks.clear();
+    this.state.activeEffectStubs.clear();
+
+    for (const kind of kindsToClear) {
+      this.send(encodeUnregisterEffectStub(this.sessionId, kind));
     }
   }
 
