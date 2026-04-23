@@ -651,7 +651,7 @@ async function handleConnect(
   const appFile = positional[1];
   if (!addr) {
     console.error("Usage: plushie connect <address> [app]\n");
-    console.error("Address: Unix socket path or host:port");
+    console.error("Address: /path, :port, host:port, or [IPv6]:port");
     console.log(USAGE);
     process.exitCode = 1;
     return;

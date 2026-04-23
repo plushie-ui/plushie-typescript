@@ -13,12 +13,72 @@ import { decode, encode } from "@msgpack/msgpack";
 import { decodeLines, decodePackets, encodeLine, encodePacket } from "./framing.js";
 import type { Transport, WireFormat } from "./transport.js";
 
+type SocketTarget = { kind: "unix"; path: string } | { kind: "tcp"; host: string; port: number };
+
 /** Options for SocketTransport. */
 export interface SocketTransportOptions {
-  /** Unix socket path or TCP address in "host:port" format. */
+  /** Socket address: /path, :PORT, HOST:PORT, or [IPv6]:PORT. */
   address: string;
   /** Wire format. Defaults to "msgpack". */
   format?: WireFormat;
+}
+
+function parseSocketAddress(address: string): SocketTarget {
+  const localhostTcp = /^:(\d+)$/u.exec(address);
+  if (localhostTcp) {
+    return {
+      kind: "tcp",
+      host: "127.0.0.1",
+      port: Number.parseInt(localhostTcp[1]!, 10),
+    };
+  }
+
+  const ipv6Tcp = /^\[([^\]]+)\]:(\d+)$/u.exec(address);
+  if (ipv6Tcp) {
+    return {
+      kind: "tcp",
+      host: ipv6Tcp[1]!,
+      port: Number.parseInt(ipv6Tcp[2]!, 10),
+    };
+  }
+
+  if (address.startsWith("[")) {
+    throw new Error(
+      `Invalid socket address "${address}". ` +
+        "Use /path, :PORT, HOST:PORT, or [IPv6]:PORT. Bracketed addresses must include a numeric port.",
+    );
+  }
+
+  const hostTcp = /^([^:]+):(\d+)$/u.exec(address);
+  if (hostTcp) {
+    return {
+      kind: "tcp",
+      host: hostTcp[1]!,
+      port: Number.parseInt(hostTcp[2]!, 10),
+    };
+  }
+
+  const bareIpv6Tcp = /^[^/[\]]*:[^/[\]]*:\d+$/u.test(address);
+  if (bareIpv6Tcp) {
+    throw new Error(
+      `Invalid socket address "${address}". ` +
+        "Use /path, :PORT, HOST:PORT, or [IPv6]:PORT. Bare IPv6 addresses must use brackets.",
+    );
+  }
+
+  const windowsDrivePath = /^[A-Za-z]:[\\/]/u.test(address);
+  if (
+    !windowsDrivePath &&
+    address.indexOf(":") === address.lastIndexOf(":") &&
+    address.includes(":")
+  ) {
+    throw new Error(
+      `Invalid socket address "${address}". ` +
+        "Use /path, :PORT, HOST:PORT, or [IPv6]:PORT. TCP-style addresses must end with a numeric port.",
+    );
+  }
+
+  return { kind: "unix", path: address };
 }
 
 /**
@@ -44,23 +104,12 @@ export class SocketTransport implements Transport {
   }
 
   private connect(address: string): void {
-    // Determine if it's a TCP address (host:port) or Unix socket path.
-    // A bare ":port" means localhost. Paths with colons (e.g. /tmp/plushie.sock)
-    // are treated as Unix sockets; TCP requires at least one char before the colon.
-    const colonIdx = address.lastIndexOf(":");
-    const looksLikeTcp =
-      colonIdx > 0 && !address.startsWith("/") && /^\d+$/.test(address.slice(colonIdx + 1));
+    const target = parseSocketAddress(address);
 
-    if (looksLikeTcp) {
-      const host = address.slice(0, colonIdx);
-      const port = parseInt(address.slice(colonIdx + 1), 10);
-      this.socket = createConnection({ host, port });
-    } else if (address.startsWith(":")) {
-      // Shorthand ":4567" -> localhost TCP
-      const port = parseInt(address.slice(1), 10);
-      this.socket = createConnection({ host: "127.0.0.1", port });
+    if (target.kind === "tcp") {
+      this.socket = createConnection({ host: target.host, port: target.port });
     } else {
-      this.socket = createConnection({ path: address });
+      this.socket = createConnection({ path: target.path });
     }
 
     this.socket.on("data", (data: Buffer) => {
