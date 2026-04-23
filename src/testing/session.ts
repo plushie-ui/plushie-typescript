@@ -149,19 +149,19 @@ export class TestSession<M> {
   async canvasPress(selector: string, x: number, y: number, button?: string): Promise<void> {
     const payload: Record<string, unknown> = { x, y };
     if (button !== undefined) payload["button"] = button;
-    await this.interact("press", this.idSelector(selector), payload);
+    await this.interact("canvas_press", this.idSelector(selector), payload);
   }
 
   /** Release on a canvas at coordinates, optionally specifying a mouse button. */
   async canvasRelease(selector: string, x: number, y: number, button?: string): Promise<void> {
     const payload: Record<string, unknown> = { x, y };
     if (button !== undefined) payload["button"] = button;
-    await this.interact("release", this.idSelector(selector), payload);
+    await this.interact("canvas_release", this.idSelector(selector), payload);
   }
 
   /** Move on a canvas to coordinates. */
   async canvasMove(selector: string, x: number, y: number): Promise<void> {
-    await this.interact("move", this.idSelector(selector), { x, y });
+    await this.interact("canvas_move", this.idSelector(selector), { x, y });
   }
 
   /** Cycle focus within a pane grid. */
