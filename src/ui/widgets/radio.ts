@@ -78,11 +78,6 @@ export function Radio(props: RadioProps): UINode {
   return leafNodeWithMeta(id, "radio", p, meta);
 }
 
-export function radio(
-  id: string,
-  value: string,
-  selected: string | null,
-  opts?: Omit<RadioProps, "id" | "value" | "selected">,
-): UINode {
-  return Radio({ id, value, selected, ...opts });
+export function radio(id: string, value: string, opts?: Omit<RadioProps, "id" | "value">): UINode {
+  return Radio({ id, value, ...opts });
 }

@@ -81,14 +81,19 @@ describe("Radio", () => {
   });
 
   test("encodes textSize as text_size", () => {
-    const node = radio("opt-b", "b", null, { textSize: 14 });
+    const node = radio("opt-b", "b", { selected: null, textSize: 14 });
     expect(node.props["text_size"]).toBe(14);
     expect(node.props["textSize"]).toBeUndefined();
   });
 
+  test("reads selected from opts", () => {
+    const node = radio("opt-b", "b", { selected: "b" });
+    expect(node.props["selected"]).toBe("b");
+  });
+
   test("registers onSelect handler", () => {
     const handler = (s: unknown) => s;
-    radio("opt-c", "c", null, { onSelect: handler });
+    radio("opt-c", "c", { selected: null, onSelect: handler });
     const handlers = drainHandlers();
     expect(handlers).toHaveLength(1);
     expect(handlers[0]!.eventType).toBe("select");
