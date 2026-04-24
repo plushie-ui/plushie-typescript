@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { memo, resetMemoCounter } from "../../src/memo.js";
 import { diff } from "../../src/tree/diff.js";
-import type { NormalizeContext } from "../../src/tree/normalize.js";
+import type { MemoCacheEntry, NormalizeContext, WireNode } from "../../src/tree/normalize.js";
 import { isAutoId, normalize } from "../../src/tree/normalize.js";
 import type { Handler, UINode } from "../../src/types.js";
 import { Button } from "../../src/ui/index.js";
@@ -277,6 +277,42 @@ describe("normalize", () => {
     // Post-normalize still adds the default role.
     expect(wire.children[0]!.props["a11y"]).toEqual({ role: "radio_button" });
     expect(wire.children[1]!.props["a11y"]).toEqual({ role: "radio_button" });
+  });
+
+  test("does not mutate existing radio child props while inferring a11y", () => {
+    resetMemoCounter();
+    const cachedProps = Object.freeze({ group: "color", value: "red" });
+    const cachedRadio: WireNode = Object.freeze({
+      id: "r1",
+      type: "radio",
+      props: cachedProps,
+      children: Object.freeze([]) as readonly WireNode[],
+    });
+    const cachedMemo: MemoCacheEntry = {
+      deps: "stable",
+      tree: cachedRadio,
+      entries: new Map(),
+      handlers: new Map(),
+    };
+    const ctx: NormalizeContext = {
+      memoPrev: new Map([["auto:memo:1\u0000\u0000", cachedMemo]]),
+      memo: new Map(),
+    };
+    const parent = node("auto:root", "column", {}, [
+      memo("stable", () => {
+        throw new Error("memo body should not run on cache hit");
+      }),
+      node("r2", "radio", { group: "color", value: "blue" }),
+    ]);
+
+    const wire = normalize(parent, ctx);
+
+    expect(wire.children[0]!.props["a11y"]).toMatchObject({
+      position_in_set: 1,
+      size_of_set: 2,
+    });
+    expect(cachedRadio.props).toBe(cachedProps);
+    expect(cachedProps).toEqual({ group: "color", value: "red" });
   });
 });
 
@@ -616,6 +652,45 @@ describe("widget view cache", () => {
     expect(result1.children[0]?.props["content"]).toBe("v1");
     expect(result2.children[0]?.props["content"]).toBe("v1");
     expect(result3.children[0]?.props["content"]).toBe("v3");
+  });
+
+  test("cacheKey receives initialized state", () => {
+    const states: unknown[] = [];
+    const initialized = { ready: true };
+    const def: WidgetDef<{ readonly ready: boolean }, object> = {
+      init: () => initialized,
+      view: (id) => node(`${id}-text`, "text", { content: "ready" }),
+      cacheKey: (_props, state) => {
+        states.push(state);
+        return "stable";
+      },
+    };
+    const render = () => node("main", "window", {}, [buildWidget(def, "cached", {})]);
+    const cachedTree: WireNode = {
+      id: "cached",
+      type: "text",
+      props: { content: "cached" },
+      children: [],
+    };
+    const ctx: NormalizeContext = {
+      registry: new Map<string, RegistryEntry>(),
+      widgetViewPrev: new Map([
+        [
+          "main\u0000cached",
+          {
+            key: "stable",
+            tree: cachedTree,
+            entries: new Map(),
+            handlers: new Map(),
+          },
+        ],
+      ]),
+      widgetView: new Map(),
+    };
+
+    normalize(render(), ctx);
+
+    expect(states).toEqual([initialized]);
   });
 
   test("evicts oldest entries when the cache limit is reached", () => {

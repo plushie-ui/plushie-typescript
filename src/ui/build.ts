@@ -78,22 +78,22 @@ function validateAnimationMap(
 /**
  * Merge animation props onto a wire props record.
  * Extracts `animate` and `exit` from the source object and merges
- * their contents onto the props. Returns the same props record
- * (mutated in place for efficiency, since it's pre-freeze).
+ * their contents onto a new props record.
  */
 export function mergeAnimationProps(
   props: Record<string, unknown>,
   source: { animate?: Readonly<Record<string, unknown>>; exit?: Readonly<Record<string, unknown>> },
 ): Record<string, unknown> {
+  const merged = { ...props };
   if (source.animate) {
     for (const [key, value] of Object.entries(validateAnimationMap("animate", source.animate))) {
-      props[key] = value;
+      merged[key] = value;
     }
   }
   if (source.exit) {
-    props["exit"] = validateAnimationMap("exit", source.exit);
+    merged["exit"] = validateAnimationMap("exit", source.exit);
   }
-  return props;
+  return merged;
 }
 
 /**

@@ -259,17 +259,20 @@ describe("withAnimation", () => {
   });
 
   test("mergeAnimationProps validates descriptor values", () => {
-    const props: Record<string, unknown> = {};
+    const props: Record<string, unknown> = { padding: 8 };
     const fadeIn = transition({ to: 1, from: 0, duration: 200 });
     const fadeOut = transition({ to: 0, duration: 150 });
 
-    mergeAnimationProps(props, {
+    const merged = mergeAnimationProps(props, {
       animate: { opacity: fadeIn },
       exit: { opacity: fadeOut },
     });
 
-    expect(props["opacity"]).toBe(fadeIn);
-    expect(props["exit"]).toEqual({ opacity: fadeOut });
+    expect(merged).not.toBe(props);
+    expect(merged["padding"]).toBe(8);
+    expect(merged["opacity"]).toBe(fadeIn);
+    expect(merged["exit"]).toEqual({ opacity: fadeOut });
+    expect(props).toEqual({ padding: 8 });
     expect(() => mergeAnimationProps({}, { animate: { opacity: { to: 1 } } })).toThrow(
       "animate.opacity is not an animation descriptor",
     );

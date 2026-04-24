@@ -246,7 +246,14 @@ function normalizeNode(
 
       // Check widget view cache before normalizing (after recording entry so
       // the widget's own entry is in the delta snapshot)
-      const cached = tryWidgetViewCache(node, result.node, currentWindowId, scopedId, ctx);
+      const cached = tryWidgetViewCache(
+        node,
+        result.node,
+        result.entry,
+        currentWindowId,
+        scopedId,
+        ctx,
+      );
       if (cached) {
         return cached;
       }
@@ -276,6 +283,7 @@ function normalizeNode(
         entriesBefore,
         handlersBefore,
         normalized,
+        result.entry,
       );
 
       return normalized;
@@ -291,7 +299,7 @@ function normalizeNode(
   validateChildCount(id, type, node.children.length);
 
   // Normalize children recursively
-  const children = node.children.map((child) =>
+  let children = node.children.map((child) =>
     normalizeNode(child, childScope, currentWindowId, ctx, depth + 1),
   );
 
@@ -311,7 +319,7 @@ function normalizeNode(
   }
 
   // Infer position_in_set/size_of_set for radio widgets sharing a group
-  inferRadioA11y(children);
+  children = inferRadioA11y(children);
 
   // Resolve a11y ID references relative to the current scope
   const props = resolveA11yRefs(node.props, scope);
@@ -1012,6 +1020,7 @@ function getDefFromPlaceholder(node: UINode): WidgetDef<unknown, unknown> | null
 function tryWidgetViewCache(
   node: UINode,
   renderedNode: UINode,
+  entry: RegistryEntry,
   windowId: string | undefined,
   scopedId: string,
   ctx: NormalizeContext,
@@ -1023,9 +1032,7 @@ function tryWidgetViewCache(
   const prev = ctx.widgetViewPrev?.get(ck);
   if (!prev) return null;
 
-  const current = ctx.registry?.get(ck);
-  const currentProps = node.meta?.["__widget_handler_props__"];
-  const newKey = def.cacheKey(currentProps, current?.state);
+  const newKey = def.cacheKey(entry.props, entry.state);
   if (!treeValueEqual(prev.key, newKey)) return null;
 
   if (ctx.newEntries && ctx.widgetView) {
@@ -1053,14 +1060,13 @@ function storeWidgetViewCache(
   entriesBefore: Map<string, RegistryEntry>,
   handlersBefore: Map<string, Map<string, Handler<unknown>>>,
   normalized: WireNode,
+  entry: RegistryEntry,
 ): void {
   const def = getDefFromPlaceholder(node);
   if (!def || !def.cacheKey) return;
 
   const ck = widgetRegKey(windowId, scopedId);
-  const current = ctx.newEntries?.get(ck);
-  const currentProps = node.meta?.["__widget_handler_props__"];
-  const key = def.cacheKey(currentProps, current?.state);
+  const key = def.cacheKey(entry.props, entry.state);
 
   const deltaEntries = new Map<string, RegistryEntry>();
   if (ctx.newEntries) {
@@ -1092,8 +1098,8 @@ function storeWidgetViewCache(
  * Respects manual overrides: if `position_in_set` is already set, only
  * `size_of_set` is filled from the group total.
  */
-function inferRadioA11y(children: WireNode[]): void {
-  if (children.length < 2) return;
+function inferRadioA11y(children: WireNode[]): WireNode[] {
+  if (children.length < 2) return children;
 
   const groups = new Map<string, Array<{ idx: number; node: WireNode }>>();
   for (let i = 0; i < children.length; i++) {
@@ -1109,6 +1115,7 @@ function inferRadioA11y(children: WireNode[]): void {
     members.push({ idx: i, node: child });
   }
 
+  let updated: WireNode[] | null = null;
   for (const members of groups.values()) {
     const size = members.length;
     for (let pos = 0; pos < members.length; pos++) {
@@ -1121,10 +1128,17 @@ function inferRadioA11y(children: WireNode[]): void {
       const patched = { ...a11y };
       if (!hasPosition) patched["position_in_set"] = pos + 1;
       if (!hasSize) patched["size_of_set"] = size;
-      (children[idx] as { props: Record<string, unknown> }).props = {
-        ...node.props,
-        a11y: patched,
+      if (updated === null) {
+        updated = [...children];
+      }
+      updated[idx] = {
+        ...node,
+        props: {
+          ...node.props,
+          a11y: patched,
+        },
       };
     }
   }
+  return updated ?? children;
 }
