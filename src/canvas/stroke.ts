@@ -7,6 +7,8 @@
  * ```
  */
 
+import { coordinate, extent } from "./geometry.js";
+
 export interface Dash {
   readonly segments: readonly number[];
   readonly offset: number;
@@ -28,9 +30,14 @@ export interface StrokeOpts {
 
 /** Builds a stroke descriptor. */
 export function stroke(color: string, width: number, opts?: StrokeOpts): Stroke {
-  const result: Record<string, unknown> = { color, width };
+  const result: Record<string, unknown> = { color, width: extent(width) };
   if (opts?.cap !== undefined) result["cap"] = opts.cap;
   if (opts?.join !== undefined) result["join"] = opts.join;
-  if (opts?.dash !== undefined) result["dash"] = opts.dash;
+  if (opts?.dash !== undefined) {
+    result["dash"] = {
+      segments: opts.dash.segments.map((segment) => extent(segment)),
+      offset: coordinate(opts.dash.offset),
+    };
+  }
   return result as unknown as Stroke;
 }

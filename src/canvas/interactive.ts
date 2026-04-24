@@ -6,6 +6,7 @@
  * If the shape is a leaf, it is wrapped as the sole child of a new group.
  */
 
+import { coordinate, extent } from "./geometry.js";
 import type { CanvasShape, GroupShape } from "./shapes.js";
 
 export interface DragBounds {
@@ -103,6 +104,15 @@ function inferA11yDefaults(
   }
 }
 
+function normalizeHitRect(hitRect: HitRect): HitRect {
+  return {
+    x: coordinate(hitRect.x),
+    y: coordinate(hitRect.y),
+    w: extent(hitRect.w),
+    h: extent(hitRect.h),
+  };
+}
+
 function mergeInteractiveFields(
   target: Record<string, unknown>,
   opts: InteractiveOpts | undefined,
@@ -110,7 +120,9 @@ function mergeInteractiveFields(
   if (!opts) return;
   for (const key of INTERACTIVE_KEYS) {
     if (key === "a11y") continue;
-    if (opts[key] !== undefined) target[key] = opts[key];
+    if (key === "hit_rect") {
+      if (opts.hit_rect !== undefined) target[key] = normalizeHitRect(opts.hit_rect);
+    } else if (opts[key] !== undefined) target[key] = opts[key];
   }
   inferA11yDefaults(target, opts);
 }

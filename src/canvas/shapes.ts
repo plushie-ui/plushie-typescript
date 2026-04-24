@@ -8,10 +8,16 @@
  * keeping wire payloads compact.
  */
 
+import { angle, coordinate, extent } from "./geometry.js";
 import type { LinearGradient } from "./gradient.js";
-import type { PathCommand } from "./path.js";
+import { normalizePathCommand, type PathCommand } from "./path.js";
 import type { Stroke } from "./stroke.js";
-import type { ClipRect, TransformValue } from "./transform.js";
+import {
+  type ClipRect,
+  normalizeClipRect,
+  normalizeTransformValue,
+  type TransformValue,
+} from "./transform.js";
 
 // -- Shape types --------------------------------------------------------------
 
@@ -164,16 +170,27 @@ export interface GroupOpts {
 
 /** Build a rectangle shape. */
 export function rect(x: number, y: number, w: number, h: number, opts?: RectOpts): RectShape {
-  const shape: Record<string, unknown> = { type: "rect", x, y, w, h };
+  const shape: Record<string, unknown> = {
+    type: "rect",
+    x: coordinate(x),
+    y: coordinate(y),
+    w: extent(w),
+    h: extent(h),
+  };
   if (opts) applyFillStrokeOpacity(shape, opts);
-  if (opts?.radius !== undefined) shape["radius"] = opts.radius;
+  if (opts?.radius !== undefined) shape["radius"] = normalizeRadius(opts.radius);
   if (opts?.fill_rule !== undefined) shape["fill_rule"] = opts.fill_rule;
   return shape as unknown as RectShape;
 }
 
 /** Build a circle shape. */
 export function circle(x: number, y: number, r: number, opts?: CircleOpts): CircleShape {
-  const shape: Record<string, unknown> = { type: "circle", x, y, r };
+  const shape: Record<string, unknown> = {
+    type: "circle",
+    x: coordinate(x),
+    y: coordinate(y),
+    r: extent(r),
+  };
   if (opts) applyFillStrokeOpacity(shape, opts);
   if (opts?.fill_rule !== undefined) shape["fill_rule"] = opts.fill_rule;
   return shape as unknown as CircleShape;
@@ -181,7 +198,13 @@ export function circle(x: number, y: number, r: number, opts?: CircleOpts): Circ
 
 /** Build a line shape. */
 export function line(x1: number, y1: number, x2: number, y2: number, opts?: LineOpts): LineShape {
-  const shape: Record<string, unknown> = { type: "line", x1, y1, x2, y2 };
+  const shape: Record<string, unknown> = {
+    type: "line",
+    x1: coordinate(x1),
+    y1: coordinate(y1),
+    x2: coordinate(x2),
+    y2: coordinate(y2),
+  };
   if (opts?.stroke !== undefined) shape["stroke"] = opts.stroke;
   if (opts?.opacity !== undefined) shape["opacity"] = opts.opacity;
   return shape as unknown as LineShape;
@@ -194,9 +217,14 @@ export function canvasText(
   content: string,
   opts?: CanvasTextOpts,
 ): CanvasTextShape {
-  const shape: Record<string, unknown> = { type: "text", x, y, content };
+  const shape: Record<string, unknown> = {
+    type: "text",
+    x: coordinate(x),
+    y: coordinate(y),
+    content,
+  };
   if (opts?.fill !== undefined) shape["fill"] = opts.fill;
-  if (opts?.size !== undefined) shape["size"] = opts.size;
+  if (opts?.size !== undefined) shape["size"] = extent(opts.size);
   if (opts?.font !== undefined) shape["font"] = opts.font;
   if (opts?.align_x !== undefined) shape["align_x"] = opts.align_x;
   if (opts?.align_y !== undefined) shape["align_y"] = opts.align_y;
@@ -206,7 +234,10 @@ export function canvasText(
 
 /** Build an arbitrary path shape. */
 export function path(commands: readonly PathCommand[], opts?: PathOpts): PathShape {
-  const shape: Record<string, unknown> = { type: "path", commands };
+  const shape: Record<string, unknown> = {
+    type: "path",
+    commands: commands.map(normalizePathCommand),
+  };
   if (opts) applyFillStrokeOpacity(shape, opts);
   if (opts?.fill_rule !== undefined) shape["fill_rule"] = opts.fill_rule;
   return shape as unknown as PathShape;
@@ -221,8 +252,15 @@ export function canvasImage(
   h: number,
   opts?: CanvasImageOpts,
 ): CanvasImageShape {
-  const shape: Record<string, unknown> = { type: "image", source, x, y, w, h };
-  if (opts?.rotation !== undefined) shape["rotation"] = opts.rotation;
+  const shape: Record<string, unknown> = {
+    type: "image",
+    source,
+    x: coordinate(x),
+    y: coordinate(y),
+    w: extent(w),
+    h: extent(h),
+  };
+  if (opts?.rotation !== undefined) shape["rotation"] = angle(opts.rotation);
   if (opts?.opacity !== undefined) shape["opacity"] = opts.opacity;
   return shape as unknown as CanvasImageShape;
 }
@@ -235,7 +273,7 @@ export function canvasSvg(
   w: number,
   h: number,
 ): CanvasSvgShape {
-  return { type: "svg", source, x, y, w, h };
+  return { type: "svg", source, x: coordinate(x), y: coordinate(y), w: extent(w), h: extent(h) };
 }
 
 /** Group child shapes with optional transforms and clip. */
@@ -262,14 +300,18 @@ export function group(
 
   const transforms: Record<string, unknown>[] = [];
   if (opts?.x !== undefined || opts?.y !== undefined) {
-    transforms.push({ type: "translate", x: opts?.x ?? 0, y: opts?.y ?? 0 });
+    transforms.push({
+      type: "translate",
+      x: coordinate(opts?.x ?? 0),
+      y: coordinate(opts?.y ?? 0),
+    });
   }
   if (opts?.transforms) {
-    transforms.push(...opts.transforms);
+    transforms.push(...opts.transforms.map(normalizeTransformValue));
   }
   if (transforms.length > 0) shape["transforms"] = transforms;
 
-  if (opts?.clip !== undefined) shape["clip"] = opts.clip;
+  if (opts?.clip !== undefined) shape["clip"] = normalizeClipRect(opts.clip);
 
   return shape as unknown as GroupShape;
 }
@@ -283,4 +325,11 @@ function applyFillStrokeOpacity(
   if (opts.fill !== undefined) shape["fill"] = opts.fill;
   if (opts.stroke !== undefined) shape["stroke"] = opts.stroke;
   if (opts.opacity !== undefined) shape["opacity"] = opts.opacity;
+}
+
+function normalizeRadius(radius: number | readonly [number, number, number, number]) {
+  if (typeof radius === "number") {
+    return extent(radius);
+  }
+  return radius.map((corner) => extent(corner)) as [number, number, number, number];
 }

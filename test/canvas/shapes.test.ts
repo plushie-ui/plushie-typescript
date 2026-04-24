@@ -58,6 +58,19 @@ describe("rect", () => {
     const r = rect(0, 0, 10, 10, { fill: "#000", fill_rule: "even_odd" });
     expect(r.fill_rule).toBe("even_odd");
   });
+
+  test("normalizes geometry without rejecting valid negative positions", () => {
+    const r = rect(-10, Number.NaN, -20, Number.POSITIVE_INFINITY, {
+      radius: [4, -1, Number.NaN, Number.NEGATIVE_INFINITY],
+    });
+    expect(r).toMatchObject({
+      x: -10,
+      y: 0,
+      w: 0,
+      h: 0,
+      radius: [4, 0, 0, 0],
+    });
+  });
 });
 
 describe("circle", () => {
@@ -71,6 +84,15 @@ describe("circle", () => {
     expect(c.fill).toBe("#00ff00");
     expect(c.stroke).toEqual({ color: "#333", width: 1 });
   });
+
+  test("normalizes center and radius", () => {
+    expect(circle(Number.POSITIVE_INFINITY, -3, -8)).toEqual({
+      type: "circle",
+      x: 0,
+      y: -3,
+      r: 0,
+    });
+  });
 });
 
 describe("line", () => {
@@ -83,6 +105,15 @@ describe("line", () => {
     const l = line(0, 0, 50, 50, { stroke: stroke("#999", 3), opacity: 0.7 });
     expect(l.stroke).toEqual({ color: "#999", width: 3 });
     expect(l.opacity).toBe(0.7);
+  });
+
+  test("normalizes coordinates", () => {
+    expect(line(Number.NaN, -2, Number.NEGATIVE_INFINITY, 4)).toMatchObject({
+      x1: 0,
+      y1: -2,
+      x2: 0,
+      y2: 4,
+    });
   });
 });
 
@@ -120,6 +151,19 @@ describe("path", () => {
     expect(p.fill).toBe("#0088ff");
     expect(p.stroke).toEqual({ color: "#000", width: 2 });
   });
+
+  test("normalizes manually supplied commands", () => {
+    const p = path([
+      ["move_to", Number.NaN, -5],
+      ["arc", Number.POSITIVE_INFINITY, 2, -3, Number.NaN, 1],
+      ["rounded_rect", -1, Number.NEGATIVE_INFINITY, -10, Number.NaN, -4],
+    ]);
+    expect(p.commands).toEqual([
+      ["move_to", 0, -5],
+      ["arc", 0, 2, 0, 0, 1],
+      ["rounded_rect", -1, 0, 0, 0, 0],
+    ]);
+  });
 });
 
 describe("canvasImage", () => {
@@ -133,12 +177,39 @@ describe("canvasImage", () => {
     expect(img.rotation).toBe(Math.PI / 4);
     expect(img.opacity).toBe(0.8);
   });
+
+  test("normalizes geometry and rotation", () => {
+    expect(
+      canvasImage("icon.png", -1, Number.NaN, -32, Number.POSITIVE_INFINITY, {
+        rotation: Number.NaN,
+      }),
+    ).toEqual({
+      type: "image",
+      source: "icon.png",
+      x: -1,
+      y: 0,
+      w: 0,
+      h: 0,
+      rotation: 0,
+    });
+  });
 });
 
 describe("canvasSvg", () => {
   test("creates an SVG shape", () => {
     const s = canvasSvg("logo.svg", 0, 0, 100, 100);
     expect(s).toEqual({ type: "svg", source: "logo.svg", x: 0, y: 0, w: 100, h: 100 });
+  });
+
+  test("normalizes geometry", () => {
+    expect(canvasSvg("logo.svg", Number.NaN, -2, -100, Number.NEGATIVE_INFINITY)).toEqual({
+      type: "svg",
+      source: "logo.svg",
+      x: 0,
+      y: -2,
+      w: 0,
+      h: 0,
+    });
   });
 });
 
@@ -183,6 +254,26 @@ describe("group", () => {
   test("omits optional fields when not provided", () => {
     const g = group([]);
     expect(Object.keys(g)).toEqual(["type", "children"]);
+  });
+
+  test("normalizes x/y, transforms, and clip", () => {
+    const g = group([], {
+      x: Number.NaN,
+      y: -10,
+      transforms: [
+        { type: "translate", x: Number.POSITIVE_INFINITY, y: -2 },
+        { type: "rotate", angle: Number.NaN },
+        { type: "scale", x: Number.NaN, y: -3 },
+      ],
+      clip: { x: -5, y: Number.NEGATIVE_INFINITY, w: -10, h: Number.NaN },
+    });
+    expect(g.transforms).toEqual([
+      { type: "translate", x: 0, y: -10 },
+      { type: "translate", x: 0, y: -2 },
+      { type: "rotate", angle: 0 },
+      { type: "scale", x: 0, y: -3 },
+    ]);
+    expect(g.clip).toEqual({ x: -5, y: 0, w: 0, h: 0 });
   });
 });
 
@@ -230,6 +321,54 @@ describe("path commands", () => {
     expect(roundedRect(0, 0, 100, 50, 8)).toEqual(["rounded_rect", 0, 0, 100, 50, 8]);
   });
 
+  test("normalizes coordinates, angles, and radii", () => {
+    expect(moveTo(Number.NaN, -1)).toEqual(["move_to", 0, -1]);
+    expect(lineTo(Number.POSITIVE_INFINITY, -2)).toEqual(["line_to", 0, -2]);
+    expect(bezierTo(Number.NaN, 1, 2, Number.NEGATIVE_INFINITY, 3, 4)).toEqual([
+      "bezier_to",
+      0,
+      1,
+      2,
+      0,
+      3,
+      4,
+    ]);
+    expect(quadraticTo(Number.NaN, 1, 2, Number.POSITIVE_INFINITY)).toEqual([
+      "quadratic_to",
+      0,
+      1,
+      2,
+      0,
+    ]);
+    expect(arc(Number.NaN, -2, -3, Number.POSITIVE_INFINITY, 4)).toEqual(["arc", 0, -2, 0, 0, 4]);
+    expect(arcTo(Number.NaN, -1, 2, Number.POSITIVE_INFINITY, -5)).toEqual([
+      "arc_to",
+      0,
+      -1,
+      2,
+      0,
+      0,
+    ]);
+    expect(ellipse(Number.NaN, -1, -2, Number.POSITIVE_INFINITY, Number.NaN, 3, 4)).toEqual([
+      "ellipse",
+      0,
+      -1,
+      0,
+      0,
+      0,
+      3,
+      4,
+    ]);
+    expect(roundedRect(-1, Number.NEGATIVE_INFINITY, -2, Number.NaN, -3)).toEqual([
+      "rounded_rect",
+      -1,
+      0,
+      0,
+      0,
+      0,
+    ]);
+  });
+
   test("close", () => {
     expect(close()).toBe("close");
   });
@@ -261,6 +400,19 @@ describe("transform values", () => {
   test("clip rect", () => {
     expect(clip(10, 10, 100, 80)).toEqual({ x: 10, y: 10, w: 100, h: 80 });
   });
+
+  test("normalizes transform and clip values", () => {
+    expect(translate(Number.NaN, -3)).toEqual({ type: "translate", x: 0, y: -3 });
+    expect(rotate(Number.POSITIVE_INFINITY)).toEqual({ type: "rotate", angle: 0 });
+    expect(scale(Number.NaN, -2)).toEqual({ type: "scale", x: 0, y: -2 });
+    expect(scaleUniform(Number.NEGATIVE_INFINITY)).toEqual({ type: "scale", x: 0, y: 0 });
+    expect(clip(-5, Number.NaN, -10, Number.POSITIVE_INFINITY)).toEqual({
+      x: -5,
+      y: 0,
+      w: 0,
+      h: 0,
+    });
+  });
 });
 
 // -- Stroke -------------------------------------------------------------------
@@ -284,6 +436,18 @@ describe("stroke", () => {
   test("omits undefined optional fields", () => {
     const s = stroke("#000", 1);
     expect(Object.keys(s)).toEqual(["color", "width"]);
+  });
+
+  test("normalizes width and dash values", () => {
+    expect(
+      stroke("#000", -1, {
+        dash: { segments: [4, -2, Number.POSITIVE_INFINITY], offset: Number.NaN },
+      }),
+    ).toEqual({
+      color: "#000",
+      width: 0,
+      dash: { segments: [4, 0, 0], offset: 0 },
+    });
   });
 });
 
@@ -337,6 +501,25 @@ describe("interactive", () => {
     expect(ir.drag_bounds).toEqual({
       min_x: 0,
       max_x: 200,
+    });
+  });
+
+  test("normalizes explicit hit rect values", () => {
+    const r = rect(0, 0, 50, 50);
+    const ir = interactive(r, "target", {
+      hit_rect: {
+        x: -10,
+        y: Number.NaN,
+        w: -20,
+        h: Number.POSITIVE_INFINITY,
+      },
+    });
+
+    expect(ir.hit_rect).toEqual({
+      x: -10,
+      y: 0,
+      w: 0,
+      h: 0,
     });
   });
 });
