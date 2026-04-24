@@ -81,6 +81,19 @@ function parseSocketAddress(address: string): SocketTarget {
   return { kind: "unix", path: address };
 }
 
+function formatSocketError(connected: boolean, err: Error): string {
+  const socketError = err as Error & { code?: unknown };
+  const code =
+    typeof socketError.code === "string" && socketError.code !== "" ? socketError.code : null;
+  const phase = connected ? "Socket connection lost" : "Socket connection failed";
+
+  if (code) {
+    return `${phase} (${code}): ${err.message}`;
+  }
+
+  return `${phase}: ${err.message}`;
+}
+
 /**
  * Transport that connects to a plushie renderer over a Unix socket
  * or TCP connection.
@@ -97,6 +110,9 @@ export class SocketTransport implements Transport {
   private msgpackBuffer: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   private jsonBuffer = "";
   private closed = false;
+  private connected = false;
+  private reportedClose = false;
+  private pendingCloseReason: string | null = null;
 
   constructor(opts: SocketTransportOptions) {
     this.format = opts.format ?? "msgpack";
@@ -120,17 +136,34 @@ export class SocketTransport implements Transport {
       }
     });
 
+    this.socket.on("connect", () => {
+      this.connected = true;
+    });
+
     this.socket.on("close", () => {
-      if (!this.closed) {
-        this.closeHandler?.("Socket closed");
+      if (!this.closed && !this.reportedClose) {
+        this.reportClose(
+          this.connected
+            ? "Socket connection lost: socket closed"
+            : "Socket connection closed before establishment",
+        );
       }
     });
 
     this.socket.on("error", (err) => {
-      if (!this.closed) {
-        this.closeHandler?.(`Socket error: ${err.message}`);
+      if (!this.closed && !this.reportedClose) {
+        this.reportClose(formatSocketError(this.connected, err));
       }
     });
+  }
+
+  private reportClose(reason: string): void {
+    this.reportedClose = true;
+    if (this.closeHandler) {
+      this.closeHandler(reason);
+    } else {
+      this.pendingCloseReason = reason;
+    }
   }
 
   private handleMsgpackData(data: Buffer): void {
@@ -185,6 +218,11 @@ export class SocketTransport implements Transport {
 
   onClose(handler: (reason: string) => void): void {
     this.closeHandler = handler;
+    if (this.pendingCloseReason !== null) {
+      const reason = this.pendingCloseReason;
+      this.pendingCloseReason = null;
+      handler(reason);
+    }
   }
 
   close(): void {
