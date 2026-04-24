@@ -178,6 +178,59 @@ describe("diff", () => {
     expect(diff(old, now)).toEqual([]);
   });
 
+  test("null prop values compare equal", () => {
+    const old = w("root", "text", { optional: null });
+    const now = w("root", "text", { optional: null });
+    expect(diff(old, now)).toEqual([]);
+  });
+
+  test("date prop values compare by timestamp", () => {
+    expect(
+      diff(
+        w("root", "text", { updatedAt: new Date("2026-04-24T00:00:00.000Z") }),
+        w("root", "text", { updatedAt: new Date("2026-04-24T00:00:00.000Z") }),
+      ),
+    ).toEqual([]);
+
+    const ops = diff(
+      w("root", "text", { updatedAt: new Date("2026-04-24T00:00:00.000Z") }),
+      w("root", "text", { updatedAt: new Date("2026-04-25T00:00:00.000Z") }),
+    );
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.op).toBe("update_props");
+  });
+
+  test("map and set prop values compare by contents", () => {
+    expect(
+      diff(
+        w("root", "text", { state: new Map([["open", true]]) }),
+        w("root", "text", { state: new Map([["open", true]]) }),
+      ),
+    ).toEqual([]);
+
+    expect(
+      diff(
+        w("root", "text", { selected: new Set(["a"]) }),
+        w("root", "text", { selected: new Set(["b"]) }),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test("too-deep prop values produce a bounded update", () => {
+    let oldValue: unknown = "same";
+    let newValue: unknown = "same";
+    for (let i = 0; i < 9; i++) {
+      oldValue = { value: oldValue };
+      newValue = { value: newValue };
+    }
+    const ops = diff(
+      w("root", "text", { value: oldValue }),
+      w("root", "text", { value: newValue }),
+    );
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.op).toBe("update_props");
+  });
+
   test("changed nested prop object produces update", () => {
     const old = w("root", "text", { style: { base: "primary" } });
     const now = w("root", "text", { style: { base: "secondary" } });

@@ -25,6 +25,7 @@ import {
   renderPlaceholder,
   type WidgetDef,
 } from "../widget-handler.js";
+import { treeValueEqual } from "./equality.js";
 
 /**
  * A wire-compatible tree node. All keys are strings, all values
@@ -838,7 +839,7 @@ function normalizeMemoNode(
   const cacheKey = `${nodeId}\0${scope}\0${windowId ?? ""}`;
   const prev = ctx?.memoPrev?.get(cacheKey);
 
-  if (prev && depsEqual(prev.deps, deps)) {
+  if (prev && treeValueEqual(prev.deps, deps)) {
     if (ctx?.newEntries) {
       for (const [key, entry] of prev.entries) {
         const current = ctx.registry?.get(key);
@@ -997,34 +998,6 @@ function normalizeMemoBody(
   return normalizeNode(result as UINode, scope, windowId, ctx, depth);
 }
 
-function depsEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (a === null || b === null) return false;
-  if (typeof a !== typeof b) return false;
-
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-      if (!depsEqual(a[i], b[i])) return false;
-    }
-    return true;
-  }
-
-  if (typeof a === "object" && typeof b === "object") {
-    const aObj = a as Record<string, unknown>;
-    const bObj = b as Record<string, unknown>;
-    const aKeys = Object.keys(aObj);
-    const bKeys = Object.keys(bObj);
-    if (aKeys.length !== bKeys.length) return false;
-    for (const key of aKeys) {
-      if (!depsEqual(aObj[key], bObj[key])) return false;
-    }
-    return true;
-  }
-
-  return false;
-}
-
 // -- Widget view cache handling ------------------------------------------------
 
 function widgetRegKey(windowId: string | undefined, scopedId: string): string {
@@ -1053,7 +1026,7 @@ function tryWidgetViewCache(
   const current = ctx.registry?.get(ck);
   const currentProps = node.meta?.["__widget_handler_props__"];
   const newKey = def.cacheKey(currentProps, current?.state);
-  if (!depsEqual(prev.key, newKey)) return null;
+  if (!treeValueEqual(prev.key, newKey)) return null;
 
   if (ctx.newEntries && ctx.widgetView) {
     for (const [key, entry] of prev.entries) {

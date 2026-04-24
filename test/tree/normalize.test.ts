@@ -426,6 +426,75 @@ describe("memo", () => {
     expect(result2.props["content"]).toBe("v2");
   });
 
+  test("memo deps compare dates by timestamp", () => {
+    resetMemoCounter();
+    let callCount = 0;
+    const body = () => {
+      callCount++;
+      return node("a", "text", { content: `v${callCount}` });
+    };
+
+    const ctx1: NormalizeContext = { memo: new Map(), memoPrev: new Map() };
+    normalize(memo(new Date("2026-04-24T00:00:00.000Z"), body), ctx1);
+
+    resetMemoCounter();
+    const ctx2: NormalizeContext = { memo: new Map(), memoPrev: ctx1.memo };
+    normalize(memo(new Date("2026-04-24T00:00:00.000Z"), body), ctx2);
+
+    resetMemoCounter();
+    const ctx3: NormalizeContext = { memo: new Map(), memoPrev: ctx2.memo };
+    normalize(memo(new Date("2026-04-25T00:00:00.000Z"), body), ctx3);
+
+    expect(callCount).toBe(2);
+  });
+
+  test("memo deps compare maps and sets by contents", () => {
+    resetMemoCounter();
+    let callCount = 0;
+    const body = () => {
+      callCount++;
+      return node("a", "text", { content: `v${callCount}` });
+    };
+
+    const ctx1: NormalizeContext = { memo: new Map(), memoPrev: new Map() };
+    normalize(memo({ map: new Map([["mode", "edit"]]), set: new Set([{ id: "a" }]) }, body), ctx1);
+
+    resetMemoCounter();
+    const ctx2: NormalizeContext = { memo: new Map(), memoPrev: ctx1.memo };
+    normalize(memo({ map: new Map([["mode", "edit"]]), set: new Set([{ id: "a" }]) }, body), ctx2);
+
+    resetMemoCounter();
+    const ctx3: NormalizeContext = { memo: new Map(), memoPrev: ctx2.memo };
+    normalize(memo({ map: new Map([["mode", "view"]]), set: new Set([{ id: "a" }]) }, body), ctx3);
+
+    expect(callCount).toBe(2);
+  });
+
+  test("too-deep memo deps miss cache without overflowing", () => {
+    resetMemoCounter();
+    let callCount = 0;
+    const body = () => {
+      callCount++;
+      return node("a", "text", { content: `v${callCount}` });
+    };
+    const nested = () => {
+      let value: unknown = "same";
+      for (let i = 0; i < 9; i++) {
+        value = { value };
+      }
+      return value;
+    };
+
+    const ctx1: NormalizeContext = { memo: new Map(), memoPrev: new Map() };
+    normalize(memo(nested(), body), ctx1);
+
+    resetMemoCounter();
+    const ctx2: NormalizeContext = { memo: new Map(), memoPrev: ctx1.memo };
+    normalize(memo(nested(), body), ctx2);
+
+    expect(callCount).toBe(2);
+  });
+
   test("memo cache evicts oldest entries when the cache limit is reached", () => {
     resetMemoCounter();
     let firstCalls = 0;
@@ -505,6 +574,50 @@ describe("memo", () => {
 });
 
 describe("widget view cache", () => {
+  test("cache keys use bounded tree equality", () => {
+    let views = 0;
+    let cacheKey: unknown = new Date("2026-04-24T00:00:00.000Z");
+    const def: WidgetDef<object, object> = {
+      view: (id) => {
+        views++;
+        return node(`${id}-text`, "text", { content: `v${views}` });
+      },
+      cacheKey: () => cacheKey,
+    };
+    const render = () => node("main", "window", {}, [buildWidget(def, "cached", {})]);
+
+    const newEntries1 = new Map<string, RegistryEntry>();
+    const ctx1: NormalizeContext = {
+      registry: new Map<string, RegistryEntry>(),
+      newEntries: newEntries1,
+      widgetViewPrev: new Map(),
+      widgetView: new Map(),
+    };
+    const result1 = normalize(render(), ctx1);
+
+    cacheKey = new Date("2026-04-24T00:00:00.000Z");
+    const ctx2: NormalizeContext = {
+      registry: newEntries1,
+      newEntries: new Map<string, RegistryEntry>(),
+      widgetViewPrev: ctx1.widgetView,
+      widgetView: new Map(),
+    };
+    const result2 = normalize(render(), ctx2);
+
+    cacheKey = new Date("2026-04-25T00:00:00.000Z");
+    const ctx3: NormalizeContext = {
+      registry: ctx2.newEntries,
+      newEntries: new Map<string, RegistryEntry>(),
+      widgetViewPrev: ctx2.widgetView,
+      widgetView: new Map(),
+    };
+    const result3 = normalize(render(), ctx3);
+
+    expect(result1.children[0]?.props["content"]).toBe("v1");
+    expect(result2.children[0]?.props["content"]).toBe("v1");
+    expect(result3.children[0]?.props["content"]).toBe("v3");
+  });
+
   test("evicts oldest entries when the cache limit is reached", () => {
     let childViews = 0;
     const childDef: WidgetDef<object, { readonly label: string }> = {

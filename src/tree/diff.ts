@@ -21,6 +21,7 @@
  * @module
  */
 
+import { treeValueEqual } from "./equality.js";
 import type { WireNode } from "./normalize.js";
 
 // =========================================================================
@@ -133,7 +134,7 @@ function diffProps(
 
   // Check for changed and new props
   for (const key of Object.keys(newProps)) {
-    if (!deepEqual(oldProps[key], newProps[key])) {
+    if (!treeValueEqual(oldProps[key], newProps[key])) {
       changes[key] = newProps[key];
       hasChanges = true;
     }
@@ -231,36 +232,4 @@ function indexAfterRemovals(oldIdx: number, removedIndices: number[]): number {
     if (removed < oldIdx) count++;
   }
   return oldIdx - count;
-}
-
-/**
- * Deep equality check for prop values.
- * Handles primitives, arrays, and plain objects.
- */
-function deepEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (a === null || b === null) return false;
-  if (typeof a !== typeof b) return false;
-
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-      if (!deepEqual(a[i], b[i])) return false;
-    }
-    return true;
-  }
-
-  if (typeof a === "object" && typeof b === "object") {
-    const aObj = a as Record<string, unknown>;
-    const bObj = b as Record<string, unknown>;
-    const aKeys = Object.keys(aObj);
-    const bKeys = Object.keys(bObj);
-    if (aKeys.length !== bKeys.length) return false;
-    for (const key of aKeys) {
-      if (!deepEqual(aObj[key], bObj[key])) return false;
-    }
-    return true;
-  }
-
-  return false;
 }
