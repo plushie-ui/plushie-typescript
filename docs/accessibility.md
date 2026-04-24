@@ -33,6 +33,17 @@ Every widget accepts an `a11y` prop for explicit overrides:
   label="Volume" a11y={{ orientation: 'horizontal' }} />
 ```
 
+`a11y` is UI metadata for the tree sent to the renderer. Build it in
+`view()` from the current app state instead of storing the `a11y`
+object as separate model state. It is fine for app data to contain
+labels, descriptions, or error text when those values naturally belong
+to the domain.
+
+Input widgets also accept a `validation` prop. Store domain validation
+state or data in your model as needed, then project it to the widget
+`validation` prop for the current view. The renderer uses that prop to
+set accessibility metadata such as invalid and error-message state.
+
 ### Available fields
 
 | Field | Type | Description |

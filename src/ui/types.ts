@@ -654,8 +654,17 @@ function encodeStatusOverride(value: StatusOverride): Record<string, unknown> {
 // =========================================================================
 
 /**
- * Accessibility properties. All fields are optional.
- * See the protocol spec for full documentation of each field.
+ * Accessibility metadata for a widget in the rendered UI tree.
+ *
+ * This is a view/wire prop: builders encode it into the node sent to
+ * the renderer, and the renderer normalizes it into platform
+ * accessibility metadata. Derive it in `view()` from app data instead
+ * of storing the `A11y` object as independent app-model state. App data
+ * can still contain natural labels or descriptions when those values are
+ * part of the domain.
+ *
+ * All fields are optional. See the protocol spec for full documentation
+ * of each field.
  */
 export interface A11y {
   role?: string;
@@ -730,13 +739,18 @@ export function encodeA11y(value: A11y): Record<string, unknown> {
 // =========================================================================
 
 /**
- * Form-validation state for input widgets.
+ * Renderer-facing form-validation state for input widgets.
+ *
+ * This is a view/wire prop. Store whatever domain validation data your
+ * app needs in the model, then project the current result to
+ * `ValidationState` in `view()`. Do not keep the widget `validation`
+ * prop as a second source of truth in app state.
  *
  * Accepted shapes (builders on text_input, text_editor, checkbox,
  * pick_list, combo_box accept this as their `validation` prop):
  *
  * - `"valid"` - validated and OK
- * - `"pending"` - validation in progress (sets `a11y.busy`)
+ * - `"pending"` - validation in progress
  * - `["invalid", message]` or `{ state: "invalid", message }` -
  *   failed with a human-readable message (sets `a11y.invalid` and
  *   `a11y.error_message`)
