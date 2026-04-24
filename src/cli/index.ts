@@ -40,6 +40,7 @@ import {
   PLUSHIE_RUST_VERSION,
   platformBinaryName,
 } from "../client/binary.js";
+import { DevServer } from "../dev-server.js";
 import { DEFAULT_WASM_DIR, WASM_BG_FILE, WASM_JS_FILE } from "../wasm.js";
 import { resolveCargoPlushie } from "./cargo-plushie.js";
 
@@ -799,6 +800,130 @@ function findTsx(): string | null {
 }
 
 // =========================================================================
+// Dev
+// =========================================================================
+
+function spawnApp(tsx: string, appFile: string, extraEnv: Record<string, string>): ChildProcess {
+  return spawn(tsx, [appFile], {
+    stdio: "inherit",
+    env: { ...process.env, ...extraEnv },
+  });
+}
+
+function stopChild(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolveStop) => {
+    const killTimer = setTimeout(() => {
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill("SIGKILL");
+      }
+    }, 2_000);
+
+    child.once("exit", () => {
+      clearTimeout(killTimer);
+      resolveStop();
+    });
+
+    child.kill("SIGTERM");
+  });
+}
+
+async function runDev(
+  appFile: string,
+  tsx: string,
+  noWatch: boolean,
+  extraEnv: Record<string, string>,
+): Promise<void> {
+  if (noWatch) {
+    const child = spawnApp(tsx, appFile, extraEnv);
+    process.exitCode = await waitForChild(child);
+    return;
+  }
+
+  let child: ChildProcess | null = null;
+  let reload = Promise.resolve();
+  let stoppingChild: Promise<void> | null = null;
+  let stoppingProcess: ChildProcess | null = null;
+  let shuttingDown = false;
+
+  const startChild = (): void => {
+    const next = spawnApp(tsx, appFile, extraEnv);
+    next.once("error", (err) => {
+      console.error(`[plushie dev] failed to run app: ${String(err)}`);
+    });
+    child = next;
+  };
+
+  const restartChild = async (): Promise<void> => {
+    if (shuttingDown) return;
+    const previous = child;
+    if (previous !== null) {
+      stoppingProcess = previous;
+      stoppingChild = stopChild(previous);
+      try {
+        await stoppingChild;
+      } finally {
+        if (child === previous) {
+          child = null;
+        }
+        stoppingChild = null;
+        stoppingProcess = null;
+      }
+    }
+    if (!shuttingDown) {
+      startChild();
+    }
+  };
+
+  const server = new DevServer({
+    dirs: [dirname(resolve(appFile))],
+    trapSignals: false,
+    onReload: () => {
+      reload = reload.then(restartChild, restartChild);
+    },
+  });
+
+  const cleanup = async (): Promise<void> => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    server.stop();
+    const current = child;
+    if (current !== null && current === stoppingProcess && stoppingChild !== null) {
+      await stoppingChild;
+    } else if (current !== null) {
+      child = null;
+      await stopChild(current);
+    }
+    if (stoppingChild !== null) {
+      await stoppingChild;
+    }
+  };
+
+  const exitCleanup = (): void => {
+    server.stop();
+    if (child !== null && child.exitCode === null && child.signalCode === null) {
+      child.kill("SIGTERM");
+    }
+  };
+
+  const handleSignal = (signal: NodeJS.Signals): void => {
+    void cleanup().finally(() => {
+      process.exit(signal === "SIGINT" ? 130 : 143);
+    });
+  };
+
+  process.once("SIGINT", handleSignal);
+  process.once("SIGTERM", handleSignal);
+  process.once("exit", exitCleanup);
+
+  startChild();
+  server.start();
+}
+
+// =========================================================================
 // Main
 // =========================================================================
 
@@ -879,14 +1004,7 @@ async function main(argv: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const devArgs = noWatch ? [positional[0]] : ["--watch", positional[0]];
-      const devChild = spawn(devTsx, devArgs, {
-        stdio: "inherit",
-        env: { ...process.env, ...extraEnv },
-      });
-      devChild.on("exit", (code) => {
-        process.exitCode = code ?? 1;
-      });
+      await runDev(positional[0], devTsx, noWatch, extraEnv);
       break;
     }
     case "run": {
