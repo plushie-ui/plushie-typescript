@@ -25,19 +25,18 @@ import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import {
   chmodSync,
   copyFileSync,
-  createWriteStream,
   existsSync,
   mkdirSync,
   readFileSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { get as httpsGet } from "node:https";
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
 import {
   RELEASE_BASE_URL as BASE_URL,
-  downloadBinary as downloadBinaryAPI,
+  downloadFileWithChecksum,
+  downloadReleaseBinary,
   PLUSHIE_RUST_VERSION,
   platformBinaryName,
 } from "../client/binary.js";
@@ -116,76 +115,16 @@ Config (plushie.extensions.json):
 // =========================================================================
 
 /**
- * Follow redirects and download a URL to a file.
- * GitHub releases redirect to S3, so we need to follow 302s.
- */
-function downloadFile(url: string, destPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const follow = (currentUrl: string, depth = 0) => {
-      if (depth > 5) {
-        reject(new Error("Too many redirects"));
-        return;
-      }
-
-      httpsGet(currentUrl, { headers: { "User-Agent": "plushie-ts-sdk" } }, (res) => {
-        // Follow redirects
-        if ((res.statusCode === 301 || res.statusCode === 302) && res.headers["location"]) {
-          follow(res.headers["location"], depth + 1);
-          return;
-        }
-
-        if (res.statusCode !== 200) {
-          reject(new Error(`HTTP ${String(res.statusCode)} downloading ${currentUrl}`));
-          return;
-        }
-
-        const dir = dirname(destPath);
-        mkdirSync(dir, { recursive: true });
-
-        const file = createWriteStream(destPath);
-        res.pipe(file);
-        file.on("finish", () => {
-          file.close();
-          resolve();
-        });
-        file.on("error", reject);
-      }).on("error", reject);
-    };
-
-    follow(url);
-  });
-}
-
-/**
  * Download a file and verify its SHA256 checksum.
  */
 async function downloadWithChecksum(url: string, destPath: string, label: string): Promise<void> {
-  const checksumUrl = `${url}.sha256`;
-
   process.stdout.write(`  Downloading ${label}...`);
-  await downloadFile(url, destPath);
-  console.log(" done");
-
-  // Download and verify checksum
   try {
-    const checksumPath = `${destPath}.sha256`;
-    await downloadFile(checksumUrl, checksumPath);
-
-    const { createHash } = await import("node:crypto");
-    const fileData = readFileSync(destPath);
-    const actualHash = createHash("sha256").update(fileData).digest("hex");
-    const expectedHash = readFileSync(checksumPath, "utf-8").trim().split(/\s+/)[0] ?? "";
-
-    if (actualHash !== expectedHash) {
-      console.error(`  WARNING: SHA256 mismatch for ${label}`);
-      console.error(`    expected: ${expectedHash}`);
-      console.error(`    actual:   ${actualHash}`);
-    } else {
-      console.log(`  SHA256 verified: ${actualHash.slice(0, 16)}...`);
-    }
-  } catch {
-    // Checksum verification is best-effort
-    console.log("  (checksum verification skipped)");
+    await downloadFileWithChecksum(url, destPath);
+    console.log(" done");
+  } catch (err) {
+    console.log(" failed");
+    throw err;
   }
 }
 
@@ -257,30 +196,11 @@ async function handleDownloadBinary(force: boolean, binFile?: string): Promise<v
   console.log(`  From: ${url}`);
   console.log();
 
-  // Use the programmatic API for the actual download
-  const resultPath = await downloadBinaryAPI({ destDir, force: true });
-
-  // Verify checksum on top of the API download
-  const checksumUrl = `${url}.sha256`;
-  try {
-    const checksumPath = `${resultPath}.sha256`;
-    await downloadFile(checksumUrl, checksumPath);
-
-    const { createHash } = await import("node:crypto");
-    const fileData = readFileSync(resultPath);
-    const actualHash = createHash("sha256").update(fileData).digest("hex");
-    const expectedHash = readFileSync(checksumPath, "utf-8").trim().split(/\s+/)[0] ?? "";
-
-    if (actualHash !== expectedHash) {
-      console.error(`  WARNING: SHA256 mismatch for ${binaryName}`);
-      console.error(`    expected: ${expectedHash}`);
-      console.error(`    actual:   ${actualHash}`);
-    } else {
-      console.log(`  SHA256 verified: ${actualHash.slice(0, 16)}...`);
-    }
-  } catch {
-    console.log("  (checksum verification skipped)");
-  }
+  const resultPath = await downloadReleaseBinary({
+    binaryName,
+    destPath,
+    force: true,
+  });
 
   console.log();
   console.log(`Binary installed to ${resultPath}`);
