@@ -122,6 +122,25 @@ test('clicking increment updates the count', async ({ session }) => {
 destroys a test session for each test. Sessions are backed by a shared
 binary process with multiplexed sessions for isolation.
 
+Vitest modifiers and test options pass through:
+
+```typescript
+const test = testWith(myApp, { interactTimeout: 500 })
+
+test.only('saves quickly', { timeout: 10_000 }, async ({ session, taskId }) => {
+  await session.click('save')
+  await session.assertText('status', `Saved ${taskId}`)
+})
+
+test.skip('needs the slow backend', async ({ session }) => {
+  await session.click('render')
+})
+```
+
+Vitest's `timeout` option controls the whole test. Plushie's
+`interactTimeout` controls how long interaction helpers wait for the
+renderer to respond.
+
 ### Manual session creation
 
 ```typescript

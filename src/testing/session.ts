@@ -36,19 +36,27 @@ export interface Element {
   readonly text: string | null;
 }
 
+export interface TestSessionOptions {
+  readonly interactTimeout?: number;
+}
+
 /**
  * A test session wrapping a Runtime and a pooled renderer session.
  *
  * All interactions go through the real plushie binary in the configured test mode.
  */
 export class TestSession<M> {
+  private static readonly DEFAULT_INTERACT_TIMEOUT_MS = 15_000;
+
   private runtime: Runtime<M>;
   private readonly config: AppConfig<M>;
   private readonly pool: SessionPool;
   private sessionId: string;
   private readonly format: WireFormat;
   private readonly mode: "mock" | "headless";
+  private readonly interactTimeoutMs: number;
   private requestCounter = 0;
+  private stopPromise: Promise<void> | null = null;
 
   constructor(
     config: AppConfig<M>,
@@ -56,12 +64,14 @@ export class TestSession<M> {
     sessionId: string,
     format: WireFormat,
     mode: "mock" | "headless",
+    options: TestSessionOptions = {},
   ) {
     this.config = config;
     this.pool = pool;
     this.sessionId = sessionId;
     this.format = format;
     this.mode = mode;
+    this.interactTimeoutMs = options.interactTimeout ?? TestSession.DEFAULT_INTERACT_TIMEOUT_MS;
     const transport = new PooledTransport(pool, sessionId, format, { unregisterOnClose: false });
     this.runtime = new Runtime(config, transport, sessionId);
   }
@@ -73,8 +83,19 @@ export class TestSession<M> {
 
   /** Stop the test session. */
   stop(): void {
-    this.runtime.stop();
-    void this.pool.unregister(this.sessionId);
+    void this.stopAndWait();
+  }
+
+  /** @internal */
+  async stopAndWait(): Promise<void> {
+    if (this.stopPromise) return this.stopPromise;
+
+    this.stopPromise = (async () => {
+      this.runtime.stop();
+      await this.pool.unregister(this.sessionId);
+    })();
+
+    return this.stopPromise;
   }
 
   /** Get the current model. */
@@ -656,8 +677,6 @@ export class TestSession<M> {
   // Internal
   // =======================================================================
 
-  private static readonly INTERACT_TIMEOUT_MS = 15_000;
-
   private async interact(
     action: string,
     selector: WireSelector | Record<string, never>,
@@ -682,7 +701,7 @@ export class TestSession<M> {
       const timer = setTimeout(() => {
         cleanup();
         reject(new Error(`interact timed out: action=${action} selector=${selectorDesc}`));
-      }, TestSession.INTERACT_TIMEOUT_MS);
+      }, this.interactTimeoutMs);
 
       this.pool.onSessionMessage(this.sessionId, (raw) => {
         try {

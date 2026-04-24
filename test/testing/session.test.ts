@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { describe, expect, test, vi } from "vitest";
-import type { AppConfig } from "../../src/app.js";
+import type { AppConfig, AppDefinition } from "../../src/app.js";
 import type { SessionPool } from "../../src/client/pool.js";
 import { PROTOCOL_VERSION } from "../../src/client/protocol.js";
 import { TestSession } from "../../src/testing/session.js";
@@ -43,6 +43,7 @@ function createMessageSessionDouble(): {
     };
     runtime: { tree: () => null };
     sessionId: string;
+    interactTimeoutMs: number;
     requestCounter: number;
   };
 
@@ -55,6 +56,7 @@ function createMessageSessionDouble(): {
   };
   stubbed.runtime = { tree: () => null };
   stubbed.sessionId = "test_session";
+  stubbed.interactTimeoutMs = 15_000;
   stubbed.requestCounter = 0;
 
   return {
@@ -309,6 +311,30 @@ describe("TestSession temporary interceptors", () => {
     await expect(pending).rejects.toThrow('Unknown top-level message type "unknown_thing"');
     expect(getCurrentHandler()).toBe(originalHandler);
   });
+
+  test("interact uses the configured timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      const { session, originalHandler, getCurrentHandler } = createMessageSessionDouble();
+      const stubbed = session as unknown as { interactTimeoutMs: number };
+      stubbed.interactTimeoutMs = 25;
+
+      const pending = session.click("save");
+      const rejection = expect(pending).rejects.toThrow(
+        "interact timed out: action=click selector=id=save",
+      );
+      await vi.advanceTimersByTimeAsync(24);
+
+      expect(getCurrentHandler()).not.toBe(originalHandler);
+
+      await vi.advanceTimersByTimeAsync(1);
+
+      await rejection;
+      expect(getCurrentHandler()).toBe(originalHandler);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("TestSession reset", () => {
@@ -382,6 +408,73 @@ describe("TestSession reset", () => {
       expect(pool.unregistered).toEqual(["pool_1", "pool_2"]);
     } finally {
       delete mutableConfig.requiredWidgets;
+    }
+  });
+});
+
+describe("createSession", () => {
+  test("unregisters the pool session when startup fails", async () => {
+    vi.resetModules();
+
+    const startError = new Error("start failed");
+    const register = vi.fn(() => "pool_1");
+    const startPool = vi.fn();
+    const stopPoolMock = vi.fn();
+    const unregister = vi.fn().mockResolvedValue(undefined);
+    const startSession = vi.fn().mockRejectedValue(startError);
+    const stopAndWait = vi.fn(async () => {
+      await unregister("pool_1");
+    });
+
+    class SessionPoolDouble {
+      register = register;
+      start = startPool;
+      stop = stopPoolMock;
+      unregister = unregister;
+      mode(): "mock" {
+        return "mock";
+      }
+    }
+
+    class TestSessionDouble {
+      start = startSession;
+      stopAndWait = stopAndWait;
+    }
+
+    vi.doMock("../../src/client/binary.js", () => ({
+      resolveBinary: () => "unused",
+    }));
+    vi.doMock("../../src/client/pool.js", () => ({
+      SessionPool: SessionPoolDouble,
+    }));
+    vi.doMock("../../src/testing/session.js", () => ({
+      TestSession: TestSessionDouble,
+    }));
+
+    try {
+      const { createSession, stopPool: stopGlobalPool } = await import(
+        "../../src/testing/index.js"
+      );
+      const appDef = {
+        config: resetAppConfig,
+        run: vi.fn(),
+      } as unknown as AppDefinition<unknown>;
+
+      await expect(createSession(appDef)).rejects.toBe(startError);
+
+      expect(startPool).toHaveBeenCalledOnce();
+      expect(register).toHaveBeenCalledOnce();
+      expect(startSession).toHaveBeenCalledOnce();
+      expect(stopAndWait).toHaveBeenCalledOnce();
+      expect(unregister).toHaveBeenCalledWith("pool_1");
+
+      stopGlobalPool();
+      expect(stopPoolMock).toHaveBeenCalledOnce();
+    } finally {
+      vi.doUnmock("../../src/client/binary.js");
+      vi.doUnmock("../../src/client/pool.js");
+      vi.doUnmock("../../src/testing/session.js");
+      vi.resetModules();
     }
   });
 });

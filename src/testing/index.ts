@@ -29,9 +29,35 @@ import { resolveBinary } from "../client/binary.js";
 import { SessionPool } from "../client/pool.js";
 import type { WireFormat } from "../client/transport.js";
 import { TestSession } from "./session.js";
+import { createTestWithApi, type VitestLikeTestApi } from "./vitest.js";
 
 export type { WireNode } from "../tree/normalize.js";
 export type { Element, TestSession } from "./session.js";
+
+export type PlushieTestCallback<M, C extends Record<string, unknown> = Record<string, unknown>> = (
+  ctx: C & { session: TestSession<M> },
+) => unknown;
+export type PlushieTestName = string | (() => unknown);
+
+export interface PlushieTestCallable<M> {
+  (
+    name: PlushieTestName,
+    fn?: PlushieTestCallback<M>,
+    options?: number | Record<string, unknown>,
+  ): void;
+  (name: PlushieTestName, options?: Record<string, unknown>, fn?: PlushieTestCallback<M>): void;
+}
+
+export type PlushieTestApi<M> = PlushieTestCallable<M> & {
+  readonly concurrent: PlushieTestApi<M>;
+  readonly fails: PlushieTestApi<M>;
+  readonly only: PlushieTestApi<M>;
+  readonly sequential: PlushieTestApi<M>;
+  readonly skip: PlushieTestApi<M>;
+  readonly todo: PlushieTestApi<M>;
+  skipIf(condition: unknown): PlushieTestApi<M>;
+  runIf(condition: unknown): PlushieTestApi<M>;
+};
 
 /** Options for creating test sessions. */
 export interface TestOptions {
@@ -43,6 +69,8 @@ export interface TestOptions {
   format?: WireFormat;
   /** Maximum concurrent sessions. Defaults to 8. */
   maxSessions?: number;
+  /** Timeout in milliseconds for renderer interaction helpers. Defaults to 15000. */
+  interactTimeout?: number;
 }
 
 // -- Singleton pool -------------------------------------------------------
@@ -95,8 +123,15 @@ export async function createSession<M>(
   const sessionId = pool.register();
   const format = opts?.format ?? poolOptions.format ?? "msgpack";
   const mode = pool.mode();
-  const session = new TestSession(appDef.config, pool, sessionId, format, mode);
-  await session.start();
+  const sessionOptions =
+    opts?.interactTimeout === undefined ? {} : { interactTimeout: opts.interactTimeout };
+  const session = new TestSession(appDef.config, pool, sessionId, format, mode, sessionOptions);
+  try {
+    await session.start();
+  } catch (error) {
+    await session.stopAndWait();
+    throw error;
+  }
   return session;
 }
 
@@ -119,18 +154,26 @@ export async function createSession<M>(
  * @param opts - Test options.
  * @returns A vitest-compatible test function with a `session` fixture.
  */
-export function testWith<M>(appDef: AppDefinition<M>, opts?: TestOptions) {
-  // Dynamic import to avoid hard dependency on vitest
-  // Users who call testWith are already in a vitest context
-  return async function testRunner(
-    _name: string,
-    fn: (ctx: { session: TestSession<M> }) => Promise<void>,
-  ): Promise<void> {
-    const session = await createSession(appDef, opts);
-    try {
-      await fn({ session });
-    } finally {
-      session.stop();
-    }
+export function testWith<M>(appDef: AppDefinition<M>, opts?: TestOptions): PlushieTestApi<M> {
+  return createTestWithApi(resolveVitestTest(), () =>
+    createSession(appDef, opts),
+  ) as unknown as PlushieTestApi<M>;
+}
+
+function resolveVitestTest(): VitestLikeTestApi {
+  const meta = import.meta as ImportMeta & {
+    readonly vitest?: { readonly test?: unknown };
   };
+  const global = globalThis as typeof globalThis & {
+    readonly __vitest_index__?: { readonly test?: unknown };
+  };
+  const testApi = meta.vitest?.test ?? global.__vitest_index__?.test;
+
+  if (typeof testApi !== "function") {
+    throw new Error(
+      "testWith() must be called from a Vitest test module. Use createSession() outside Vitest.",
+    );
+  }
+
+  return testApi as VitestLikeTestApi;
 }
