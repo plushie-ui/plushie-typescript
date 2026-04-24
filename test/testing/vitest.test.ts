@@ -3,6 +3,7 @@ import { app } from "../../src/app.js";
 import { testWith } from "../../src/testing/index.js";
 import type { TestSession } from "../../src/testing/session.js";
 import { createTestWithApi } from "../../src/testing/vitest.js";
+import vitestConfig from "../../vitest.config.js";
 
 type FakeTestApi = ((...args: unknown[]) => void) & Record<PropertyKey, unknown>;
 
@@ -48,6 +49,10 @@ function createSessionDouble(
 }
 
 describe("createTestWithApi", () => {
+  test("config stops the shared testing pool from the test worker", () => {
+    expect(vitestConfig.test?.setupFiles).toEqual(["test/setup.ts"]);
+  });
+
   test("real Vitest exposes accessor modifiers and this-dependent conditionals", () => {
     const skip = Object.getOwnPropertyDescriptor(test, "skip");
     const only = Object.getOwnPropertyDescriptor(test, "only");

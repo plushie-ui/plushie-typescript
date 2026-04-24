@@ -432,6 +432,17 @@ export class TestSession<M> {
    */
   async assertScreenshot(name: string): Promise<void> {
     const result = await this.screenshot(name);
+    const isMockStub =
+      this.mode === "mock" &&
+      result.hash === "" &&
+      result.width === 0 &&
+      result.height === 0 &&
+      (result.rgba === null || result.rgba === undefined);
+    if (isMockStub) return;
+    if (result.rgba === null || result.rgba === undefined) {
+      throw new Error(`assertScreenshot: screenshot "${name}" did not include pixel data`);
+    }
+
     const screenshotDir = path.resolve("test", "screenshots");
     const metaPath = path.join(screenshotDir, `${name}.json`);
 

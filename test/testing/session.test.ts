@@ -211,6 +211,25 @@ function createTreeHashSessionDouble(
   return session;
 }
 
+function createScreenshotSessionDouble(
+  result: {
+    hash: string;
+    width: number;
+    height: number;
+    rgba: unknown;
+  },
+  mode: "mock" | "headless" = "mock",
+): TestSession<unknown> {
+  const session = Object.create(TestSession.prototype) as TestSession<unknown>;
+  const stubbed = session as unknown as {
+    screenshot: (name: string) => Promise<typeof result>;
+    mode: "mock" | "headless";
+  };
+  stubbed.screenshot = vi.fn().mockResolvedValue(result);
+  stubbed.mode = mode;
+  return session;
+}
+
 async function withTempGoldenDir(fn: (dir: string) => Promise<void>): Promise<void> {
   const originalCwd = process.cwd();
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "plushie-tree-hash-"));
@@ -542,6 +561,64 @@ describe("TestSession tree hash goldens", () => {
 
       await expect(mockSession.assertTreeHash("counter")).resolves.toBeUndefined();
       await expect(headlessSession.assertTreeHash("counter")).resolves.toBeUndefined();
+    });
+  });
+});
+
+describe("TestSession screenshot goldens", () => {
+  test("skips mock screenshot stubs without creating golden files", async () => {
+    await withTempGoldenDir(async () => {
+      const session = createScreenshotSessionDouble({
+        hash: "",
+        width: 0,
+        height: 0,
+        rgba: null,
+      });
+
+      await session.assertScreenshot("counter");
+
+      expect(fs.existsSync(path.join("test", "screenshots", "counter.json"))).toBe(false);
+    });
+  });
+
+  test("skips mock screenshot stubs without comparing existing golden files", async () => {
+    await withTempGoldenDir(async () => {
+      const metaPath = path.join("test", "screenshots", "counter.json");
+      fs.mkdirSync(path.dirname(metaPath), { recursive: true });
+      fs.writeFileSync(
+        metaPath,
+        JSON.stringify({ hash: "real-hash", width: 100, height: 100 }, null, 2) + "\n",
+        "utf-8",
+      );
+      const session = createScreenshotSessionDouble({
+        hash: "",
+        width: 0,
+        height: 0,
+        rgba: null,
+      });
+
+      await expect(session.assertScreenshot("counter")).resolves.toBeUndefined();
+      expect(fs.readFileSync(metaPath, "utf-8")).toBe(
+        JSON.stringify({ hash: "real-hash", width: 100, height: 100 }, null, 2) + "\n",
+      );
+    });
+  });
+
+  test("fails when non-mock screenshots omit pixel data", async () => {
+    await withTempGoldenDir(async () => {
+      const session = createScreenshotSessionDouble(
+        {
+          hash: "",
+          width: 0,
+          height: 0,
+          rgba: null,
+        },
+        "headless",
+      );
+
+      await expect(session.assertScreenshot("counter")).rejects.toThrow(
+        'assertScreenshot: screenshot "counter" did not include pixel data',
+      );
     });
   });
 });
