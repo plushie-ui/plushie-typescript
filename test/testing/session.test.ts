@@ -22,6 +22,19 @@ function createSessionDouble(): {
   return { session, interact };
 }
 
+function createQuerySessionDouble(): {
+  session: TestSession<unknown>;
+  query: ReturnType<typeof vi.fn>;
+} {
+  const session = Object.create(TestSession.prototype) as TestSession<unknown>;
+  const query = vi.fn().mockResolvedValue(null);
+  const stubbed = session as unknown as {
+    query: typeof query;
+  };
+  stubbed.query = query;
+  return { session, query };
+}
+
 function createMessageSessionDouble(): {
   session: TestSession<unknown>;
   emit: (msg: Record<string, unknown>) => void;
@@ -243,6 +256,35 @@ async function withTempGoldenDir(fn: (dir: string) => Promise<void>): Promise<vo
     vi.unstubAllEnvs();
   }
 }
+
+describe("TestSession selectors", () => {
+  test("parses attribute selectors", async () => {
+    const { session, query } = createQuerySessionDouble();
+
+    await session.find("[text=Save]");
+    await session.find("main#[role=button]");
+
+    expect(query).toHaveBeenNthCalledWith(1, { by: "text", value: "Save" });
+    expect(query).toHaveBeenNthCalledWith(2, {
+      by: "role",
+      value: "button",
+      window_id: "main",
+    });
+  });
+
+  test("rejects hyphenated unknown attributes with the normal attribute error", async () => {
+    const { session, query } = createQuerySessionDouble();
+
+    await expect(session.find("[data-role=button]")).rejects.toThrow(
+      'Unknown attribute selector "[data-role=...]". Use "text", "role", or "label".',
+    );
+    await expect(session.find("main#[data-role=button]")).rejects.toThrow(
+      'Unknown attribute selector "[data-role=...]". Use "text", "role", or "label".',
+    );
+
+    expect(query).not.toHaveBeenCalled();
+  });
+});
 
 describe("TestSession canvas helpers", () => {
   test("send canonical canvas action names", async () => {

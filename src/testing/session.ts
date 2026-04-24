@@ -924,7 +924,7 @@ function wireNodeToElement(raw: Record<string, unknown>): Element {
   };
 }
 
-const ATTR_RE = /^\[(\w+)=(.+)\]$/;
+const ATTR_RE = /^\[([\w-]+)=(.+)\]$/;
 
 function parseSelector(selector: string): WireSelector {
   const hashIdx = selector.indexOf("#");
