@@ -543,7 +543,7 @@ export class TestSession<M> {
    * - `"#path/to/id"` -> find by ID (explicit prefix)
    * - `"window#path/to/id"` -> window-qualified ID
    * - `":focused"` -> find the focused widget
-   * - `"window#:focused"` -> window-qualified focused widget
+   * - `"window#:focused"` or `"#window#:focused"` -> window-qualified focused widget
    * - `"[text=Save]"` -> find by text content
    * - `"[role=button]"` -> find by a11y role
    * - `"[label=Email]"` -> find by a11y label
@@ -929,12 +929,19 @@ const ATTR_RE = /^\[([\w-]+)=(.+)\]$/;
 function parseSelector(selector: string): WireSelector {
   const hashIdx = selector.indexOf("#");
 
-  // ":focused" or "window#:focused"
+  // ":focused", "window#:focused", or "#window#:focused"
   if (selector === ":focused") {
     return { by: "focused" };
   }
   if (hashIdx > 0 && selector.slice(hashIdx + 1) === ":focused") {
     return { by: "focused", window_id: selector.slice(0, hashIdx) };
+  }
+  if (selector.startsWith("#")) {
+    const prefixed = selector.slice(1);
+    const prefixedHashIdx = prefixed.indexOf("#");
+    if (prefixedHashIdx > 0 && prefixed.slice(prefixedHashIdx + 1) === ":focused") {
+      return { by: "focused", window_id: prefixed.slice(0, prefixedHashIdx) };
+    }
   }
 
   // "[text=Save]" or "window#[text=Save]"

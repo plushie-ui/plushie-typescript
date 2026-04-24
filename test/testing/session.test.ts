@@ -258,6 +258,32 @@ async function withTempGoldenDir(fn: (dir: string) => Promise<void>): Promise<vo
 }
 
 describe("TestSession selectors", () => {
+  test("parses focused selectors", async () => {
+    const { session, query } = createQuerySessionDouble();
+
+    await session.find(":focused");
+    await session.find("main#:focused");
+    await session.find("#main#:focused");
+
+    expect(query).toHaveBeenNthCalledWith(1, { by: "focused" });
+    expect(query).toHaveBeenNthCalledWith(2, { by: "focused", window_id: "main" });
+    expect(query).toHaveBeenNthCalledWith(3, { by: "focused", window_id: "main" });
+  });
+
+  test("keeps id selector parsing separate from focused selectors", async () => {
+    const { session, query } = createQuerySessionDouble();
+
+    await session.find("#save");
+    await session.find("main#save");
+
+    expect(query).toHaveBeenNthCalledWith(1, { by: "id", value: "save" });
+    expect(query).toHaveBeenNthCalledWith(2, {
+      by: "id",
+      value: "save",
+      window_id: "main",
+    });
+  });
+
   test("parses attribute selectors", async () => {
     const { session, query } = createQuerySessionDouble();
 
