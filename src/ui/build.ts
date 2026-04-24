@@ -21,6 +21,9 @@ export type AnimationDescriptor = Readonly<Record<string, unknown>> & {
   readonly [ANIMATION_DESCRIPTOR]: true;
 };
 
+/** Animation descriptors keyed by the wire prop name they animate. */
+export type AnimationMap = Readonly<Record<string, AnimationDescriptor>>;
+
 /**
  * Props for renderer-side animations. Any widget can extend this
  * interface to accept animation descriptors.
@@ -39,12 +42,12 @@ export interface AnimationProps {
    * Values are Transition, Spring, or Sequence descriptors that the
    * renderer interpolates with zero wire traffic during animation.
    */
-  readonly animate?: Readonly<Record<string, unknown>>;
+  readonly animate?: AnimationMap;
   /**
    * Exit animation descriptors. Applied when the widget is removed
    * from the tree. Same format as `animate`.
    */
-  readonly exit?: Readonly<Record<string, unknown>>;
+  readonly exit?: AnimationMap;
 }
 
 /**
@@ -58,6 +61,20 @@ export function isAnimationDescriptor(value: unknown): value is AnimationDescrip
   );
 }
 
+function validateAnimationMap(
+  label: "animate" | "exit",
+  values: Readonly<Record<string, unknown>>,
+): AnimationMap {
+  for (const [key, value] of Object.entries(values)) {
+    if (!isAnimationDescriptor(value)) {
+      throw new Error(
+        `${label}.${key} is not an animation descriptor (use transition(), spring(), or sequence())`,
+      );
+    }
+  }
+  return values as AnimationMap;
+}
+
 /**
  * Merge animation props onto a wire props record.
  * Extracts `animate` and `exit` from the source object and merges
@@ -69,12 +86,12 @@ export function mergeAnimationProps(
   source: { animate?: Readonly<Record<string, unknown>>; exit?: Readonly<Record<string, unknown>> },
 ): Record<string, unknown> {
   if (source.animate) {
-    for (const [key, value] of Object.entries(source.animate)) {
+    for (const [key, value] of Object.entries(validateAnimationMap("animate", source.animate))) {
       props[key] = value;
     }
   }
   if (source.exit) {
-    props["exit"] = source.exit;
+    props["exit"] = validateAnimationMap("exit", source.exit);
   }
   return props;
 }
@@ -234,8 +251,8 @@ export function withAnimation(
   animate: Readonly<Record<string, unknown>>,
   exit?: Readonly<Record<string, unknown>>,
 ): UINode {
-  const merged = { ...node.props, ...animate };
-  if (exit) merged["exit"] = exit;
+  const merged = { ...node.props, ...validateAnimationMap("animate", animate) };
+  if (exit) merged["exit"] = validateAnimationMap("exit", exit);
   return Object.freeze({
     ...node,
     props: Object.freeze(merged),

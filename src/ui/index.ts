@@ -1,7 +1,7 @@
 // Re-export tree node utilities.
 export { autoId, createNode, resetAutoId } from "../tree/index.js";
 // Re-export build utilities.
-export type { AnimationDescriptor, AnimationProps } from "./build.js";
+export type { AnimationDescriptor, AnimationMap, AnimationProps } from "./build.js";
 export {
   containerNode,
   extractHandlers,

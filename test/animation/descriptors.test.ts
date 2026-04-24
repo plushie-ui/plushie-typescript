@@ -5,7 +5,7 @@ import { sequence } from "../../src/animation/sequence.js";
 import { spring } from "../../src/animation/spring.js";
 import { ANIMATION_DESCRIPTOR, loop, transition } from "../../src/animation/transition.js";
 import type { UINode } from "../../src/types.js";
-import { withAnimation } from "../../src/ui/build.js";
+import { mergeAnimationProps, withAnimation } from "../../src/ui/build.js";
 
 describe("transition", () => {
   test("creates a frozen descriptor with defaults", () => {
@@ -240,5 +240,38 @@ describe("withAnimation", () => {
     const s = spring({ to: 1.05, preset: "bouncy" });
     const animated = withAnimation(node, { scale: s });
     expect(animated.props["scale"]).toBe(s);
+  });
+
+  test("rejects non-descriptor animate values", () => {
+    expect(() => withAnimation(node, { opacity: { to: 1 } })).toThrow(
+      "animate.opacity is not an animation descriptor",
+    );
+  });
+
+  test("rejects non-descriptor exit values", () => {
+    expect(() =>
+      withAnimation(
+        node,
+        { opacity: transition({ to: 1, from: 0, duration: 200 }) },
+        { opacity: { to: 0 } },
+      ),
+    ).toThrow("exit.opacity is not an animation descriptor");
+  });
+
+  test("mergeAnimationProps validates descriptor values", () => {
+    const props: Record<string, unknown> = {};
+    const fadeIn = transition({ to: 1, from: 0, duration: 200 });
+    const fadeOut = transition({ to: 0, duration: 150 });
+
+    mergeAnimationProps(props, {
+      animate: { opacity: fadeIn },
+      exit: { opacity: fadeOut },
+    });
+
+    expect(props["opacity"]).toBe(fadeIn);
+    expect(props["exit"]).toEqual({ opacity: fadeOut });
+    expect(() => mergeAnimationProps({}, { animate: { opacity: { to: 1 } } })).toThrow(
+      "animate.opacity is not an animation descriptor",
+    );
   });
 });
