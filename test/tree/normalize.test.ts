@@ -4,6 +4,7 @@ import { diff } from "../../src/tree/diff.js";
 import type { NormalizeContext } from "../../src/tree/normalize.js";
 import { isAutoId, normalize } from "../../src/tree/normalize.js";
 import type { UINode } from "../../src/types.js";
+import { buildWidget, type RegistryEntry, type WidgetDef } from "../../src/widget-handler.js";
 
 function node(
   id: string,
@@ -424,6 +425,57 @@ describe("memo", () => {
     expect(result2.props["content"]).toBe("v2");
   });
 
+  test("memo cache evicts oldest entries when the cache limit is reached", () => {
+    resetMemoCounter();
+    let firstCalls = 0;
+    let secondCalls = 0;
+    let thirdCalls = 0;
+    const bodies = [
+      () => {
+        firstCalls++;
+        return node("a", "text", { content: "a" });
+      },
+      () => {
+        secondCalls++;
+        return node("b", "text", { content: "b" });
+      },
+      () => {
+        thirdCalls++;
+        return node("c", "text", { content: "c" });
+      },
+    ] as const;
+    const render = () =>
+      node(
+        "root",
+        "column",
+        {},
+        bodies.map((body) => memo("stable", body)),
+      );
+
+    const ctx1: NormalizeContext = {
+      newEntries: new Map<string, RegistryEntry>(),
+      memo: new Map(),
+      memoPrev: new Map(),
+      memoCacheLimit: 2,
+    };
+    normalize(render(), ctx1);
+    expect(ctx1.memo?.size).toBe(2);
+
+    resetMemoCounter();
+    const ctx2: NormalizeContext = {
+      newEntries: new Map<string, RegistryEntry>(),
+      memo: new Map(),
+      memoPrev: ctx1.memo,
+      memoCacheLimit: 2,
+    };
+    normalize(render(), ctx2);
+
+    expect(firstCalls).toBe(2);
+    expect(secondCalls).toBe(1);
+    expect(thirdCalls).toBe(1);
+    expect(ctx2.memo?.size).toBe(2);
+  });
+
   test("memo with null body returns empty container", () => {
     resetMemoCounter();
     const m = memo(null, () => null);
@@ -448,6 +500,58 @@ describe("memo", () => {
     const result = normalize(m);
     expect(result.id).toBe("a");
     expect(result.type).toBe("text");
+  });
+});
+
+describe("widget view cache", () => {
+  test("evicts oldest entries when the cache limit is reached", () => {
+    let childViews = 0;
+    const childDef: WidgetDef<object, { readonly label: string }> = {
+      view: (id, props) => {
+        childViews++;
+        return node(`${id}-text`, "text", { content: props.label });
+      },
+    };
+    const parentDef: WidgetDef<object, { readonly label: string }> = {
+      view: (id, props) =>
+        node(`${id}-box`, "container", {}, [
+          buildWidget(childDef, `${id}-child`, { label: props.label }),
+        ]),
+      cacheKey: (props) => props.label,
+    };
+    const render = () =>
+      node("main", "window", {}, [
+        node("content", "column", {}, [
+          buildWidget(parentDef, "w1", { label: "stable" }),
+          buildWidget(parentDef, "w2", { label: "stable" }),
+          buildWidget(parentDef, "w3", { label: "stable" }),
+        ]),
+      ]);
+
+    const newEntries1 = new Map<string, RegistryEntry>();
+    const ctx1: NormalizeContext = {
+      registry: new Map<string, RegistryEntry>(),
+      newEntries: newEntries1,
+      widgetViewPrev: new Map(),
+      widgetView: new Map(),
+      widgetViewCacheLimit: 2,
+    };
+    normalize(render(), ctx1);
+
+    expect(childViews).toBe(3);
+    expect(ctx1.widgetView?.size).toBe(2);
+
+    const ctx2: NormalizeContext = {
+      registry: newEntries1,
+      newEntries: new Map<string, RegistryEntry>(),
+      widgetViewPrev: ctx1.widgetView,
+      widgetView: new Map(),
+      widgetViewCacheLimit: 2,
+    };
+    normalize(render(), ctx2);
+
+    expect(childViews).toBe(4);
+    expect(ctx2.widgetView?.size).toBe(2);
   });
 });
 

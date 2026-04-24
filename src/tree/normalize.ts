@@ -62,6 +62,9 @@ export type MemoCache = ReadonlyMap<string, MemoCacheEntry>;
 /** Widget view cache: maps widget keys to cached views. */
 export type WidgetViewCache = ReadonlyMap<string, WidgetViewCacheEntry>;
 
+const DEFAULT_MEMO_CACHE_LIMIT = 2048;
+const DEFAULT_WIDGET_VIEW_CACHE_LIMIT = 2048;
+
 /**
  * Check whether an ID is auto-generated (unstable, doesn't create scope).
  */
@@ -131,10 +134,14 @@ export interface NormalizeContext {
   readonly memoPrev?: MemoCache | undefined;
   /** New memo cache being built during this normalization pass. */
   readonly memo?: Map<string, MemoCacheEntry> | undefined;
+  /** Maximum entries retained in the new memo cache. */
+  readonly memoCacheLimit?: number | undefined;
   /** Previous render's widget view cache for cache_key hit detection. */
   readonly widgetViewPrev?: WidgetViewCache | undefined;
   /** New widget view cache being built during this normalization pass. */
   readonly widgetView?: Map<string, WidgetViewCacheEntry> | undefined;
+  /** Maximum entries retained in the new widget view cache. */
+  readonly widgetViewCacheLimit?: number | undefined;
 }
 
 export function normalize(
@@ -736,7 +743,7 @@ function normalizeMemoNode(
           : entry;
         ctx.newEntries.set(key, refreshed);
       }
-      ctx.memo.set(cacheKey, prev);
+      setCapped(ctx.memo, cacheKey, prev, memoCacheLimit(ctx));
     }
     return prev.tree;
   }
@@ -758,9 +765,36 @@ function normalizeMemoNode(
   }
 
   const entry: MemoCacheEntry = { deps, tree, entries: deltaEntries };
-  ctx?.memo?.set(cacheKey, entry);
+  if (ctx?.memo) {
+    setCapped(ctx.memo, cacheKey, entry, memoCacheLimit(ctx));
+  }
 
   return tree;
+}
+
+function memoCacheLimit(ctx: NormalizeContext | undefined): number {
+  return normalizeCacheLimit(ctx?.memoCacheLimit, DEFAULT_MEMO_CACHE_LIMIT);
+}
+
+function widgetViewCacheLimit(ctx: NormalizeContext): number {
+  return normalizeCacheLimit(ctx.widgetViewCacheLimit, DEFAULT_WIDGET_VIEW_CACHE_LIMIT);
+}
+
+function normalizeCacheLimit(limit: number | undefined, fallback: number): number {
+  if (limit === undefined) return fallback;
+  if (!Number.isFinite(limit)) return fallback;
+  return Math.max(0, Math.floor(limit));
+}
+
+function setCapped<K, V>(map: Map<K, V>, key: K, value: V, limit: number): void {
+  if (limit <= 0) return;
+
+  map.set(key, value);
+  while (map.size > limit) {
+    const oldest = map.keys().next();
+    if (oldest.done) return;
+    map.delete(oldest.value);
+  }
 }
 
 function normalizeMemoBody(
@@ -854,7 +888,7 @@ function tryWidgetViewCache(
         : entry;
       ctx.newEntries.set(key, refreshed);
     }
-    ctx.widgetView.set(ck, prev);
+    setCapped(ctx.widgetView, ck, prev, widgetViewCacheLimit(ctx));
   }
 
   return prev.tree;
@@ -885,7 +919,14 @@ function storeWidgetViewCache(
     }
   }
 
-  ctx.widgetView?.set(ck, { key, tree: normalized, entries: deltaEntries });
+  if (ctx.widgetView) {
+    setCapped(
+      ctx.widgetView,
+      ck,
+      { key, tree: normalized, entries: deltaEntries },
+      widgetViewCacheLimit(ctx),
+    );
+  }
 }
 
 /**
