@@ -42,9 +42,11 @@ export interface Element {
  * All interactions go through the real plushie binary in the configured test mode.
  */
 export class TestSession<M> {
-  private readonly runtime: Runtime<M>;
+  private runtime: Runtime<M>;
+  private readonly config: AppConfig<M>;
   private readonly pool: SessionPool;
-  private readonly sessionId: string;
+  private sessionId: string;
+  private readonly format: WireFormat;
   private readonly mode: "mock" | "headless";
   private requestCounter = 0;
 
@@ -55,10 +57,12 @@ export class TestSession<M> {
     format: WireFormat,
     mode: "mock" | "headless",
   ) {
+    this.config = config;
     this.pool = pool;
     this.sessionId = sessionId;
+    this.format = format;
     this.mode = mode;
-    const transport = new PooledTransport(pool, sessionId, format);
+    const transport = new PooledTransport(pool, sessionId, format, { unregisterOnClose: false });
     this.runtime = new Runtime(config, transport, sessionId);
   }
 
@@ -70,6 +74,7 @@ export class TestSession<M> {
   /** Stop the test session. */
   stop(): void {
     this.runtime.stop();
+    void this.pool.unregister(this.sessionId);
   }
 
   /** Get the current model. */
@@ -258,9 +263,28 @@ export class TestSession<M> {
     return this.runtime.getDiagnostics();
   }
 
-  /** Re-initialize the app (call init again, re-render with snapshot). */
-  reset(): void {
-    this.runtime.reinit();
+  /** Replace the renderer session and start the app from its initial state. */
+  async reset(): Promise<void> {
+    const oldSessionId = this.sessionId;
+    this.runtime.stop();
+    await this.pool.unregister(oldSessionId);
+
+    const newSessionId = this.pool.register();
+    const transport = new PooledTransport(this.pool, newSessionId, this.format, {
+      unregisterOnClose: false,
+    });
+    const runtime = new Runtime(this.config, transport, newSessionId);
+
+    try {
+      await runtime.start();
+    } catch (error) {
+      runtime.stop();
+      await this.pool.unregister(newSessionId);
+      throw error;
+    }
+
+    this.sessionId = newSessionId;
+    this.runtime = runtime;
   }
 
   // =======================================================================

@@ -34,6 +34,15 @@ interface PoolSession {
   closeHandler: ((reason: string) => void) | null;
 }
 
+const UNREGISTER_TIMEOUT_MS = 5000;
+
+function isTerminalSessionLifecycle(msg: Record<string, unknown>, sessionId: string): boolean {
+  if (msg["type"] !== "event") return false;
+  if (msg["session"] !== sessionId) return false;
+  const family = msg["family"];
+  return family === "session_closed" || family === "session_error";
+}
+
 /**
  * A pool of multiplexed sessions sharing a single renderer process.
  *
@@ -48,6 +57,7 @@ export class SessionPool {
   private jsonBuffer = "";
   private readonly opts: Required<PoolOptions>;
   private started = false;
+  private processHello: Record<string, unknown> | null = null;
 
   constructor(opts: PoolOptions) {
     this.opts = {
@@ -99,6 +109,7 @@ export class SessionPool {
       this.child = null;
       this.sessions.clear();
       this.started = false;
+      this.processHello = null;
 
       child.stdin?.end();
 
@@ -114,6 +125,7 @@ export class SessionPool {
     } else {
       this.sessions.clear();
       this.started = false;
+      this.processHello = null;
     }
   }
 
@@ -129,34 +141,42 @@ export class SessionPool {
   }
 
   /**
-   * Unregister a session. Sends a Reset message and waits for
-   * the reset_response before removing.
+   * Unregister a session. Sends a Reset message and waits for the
+   * renderer to finish tearing the session down before removing it.
    */
   async unregister(sessionId: string): Promise<void> {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
     return new Promise<void>((resolve) => {
-      // Send reset and wait for response
       const resetId = `reset_${sessionId}`;
       const originalHandler = session.messageHandler;
+      let settled = false;
+
+      const finish = (): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        this.sessions.delete(sessionId);
+        resolve();
+      };
+
+      const timeout = setTimeout(finish, UNREGISTER_TIMEOUT_MS);
 
       session.messageHandler = (msg) => {
         if (msg["type"] === "reset_response" && msg["id"] === resetId) {
-          this.sessions.delete(sessionId);
-          resolve();
-        } else {
-          originalHandler?.(msg);
+          return;
         }
+
+        if (isTerminalSessionLifecycle(msg, sessionId)) {
+          finish();
+          return;
+        }
+
+        originalHandler?.(msg);
       };
 
       this.sendRaw(sessionId, encodeReset(sessionId, resetId));
-
-      // Timeout fallback: don't block forever
-      setTimeout(() => {
-        this.sessions.delete(sessionId);
-        resolve();
-      }, 5000);
     });
   }
 
@@ -168,7 +188,19 @@ export class SessionPool {
   /** Register a message handler for a session. */
   onSessionMessage(sessionId: string, handler: (msg: Record<string, unknown>) => void): void {
     const session = this.sessions.get(sessionId);
-    if (session) session.messageHandler = handler;
+    if (!session) return;
+
+    session.messageHandler = handler;
+
+    const hello = this.processHello;
+    if (hello) {
+      queueMicrotask(() => {
+        const current = this.sessions.get(sessionId);
+        if (current?.messageHandler === handler) {
+          handler(hello);
+        }
+      });
+    }
   }
 
   /** Get the current message handler for a session (for test framework access). */
@@ -241,19 +273,18 @@ export class SessionPool {
   private routeMessage(msg: Record<string, unknown>): void {
     const sessionId = typeof msg["session"] === "string" ? msg["session"] : "";
 
+    if (sessionId === "" && msg["type"] === "hello") {
+      this.processHello = msg;
+      for (const s of this.sessions.values()) {
+        s.messageHandler?.(msg);
+      }
+      return;
+    }
+
     // Route to specific session
     const session = this.sessions.get(sessionId);
     if (session?.messageHandler) {
       session.messageHandler(msg);
-      return;
-    }
-
-    // Hello message (session "") is process-level, broadcast to first session
-    if (sessionId === "" && msg["type"] === "hello") {
-      for (const s of this.sessions.values()) {
-        s.messageHandler?.(msg);
-        break;
-      }
     }
   }
 }
@@ -268,11 +299,18 @@ export class PooledTransport implements Transport {
   readonly format: WireFormat;
   private readonly pool: SessionPool;
   private readonly sessionId: string;
+  private readonly unregisterOnClose: boolean;
 
-  constructor(pool: SessionPool, sessionId: string, format: WireFormat = "msgpack") {
+  constructor(
+    pool: SessionPool,
+    sessionId: string,
+    format: WireFormat = "msgpack",
+    opts?: { readonly unregisterOnClose?: boolean },
+  ) {
     this.pool = pool;
     this.sessionId = sessionId;
     this.format = format;
+    this.unregisterOnClose = opts?.unregisterOnClose ?? true;
   }
 
   send(msg: Record<string, unknown>): void {
@@ -288,7 +326,8 @@ export class PooledTransport implements Transport {
   }
 
   close(): void {
-    // Don't close the pool; just unregister the session
-    void this.pool.unregister(this.sessionId);
+    if (this.unregisterOnClose) {
+      void this.pool.unregister(this.sessionId);
+    }
   }
 }

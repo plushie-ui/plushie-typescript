@@ -229,7 +229,7 @@ const event = await session.awaitAsync('fetchResult', 5000)
 ### Lifecycle
 
 ```typescript
-session.reset()  // re-initialize the app to initial state
+await session.reset()  // reset renderer state and re-initialize the app
 session.stop()   // close the session
 ```
 

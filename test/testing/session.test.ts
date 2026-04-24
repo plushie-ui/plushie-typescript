@@ -2,6 +2,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { describe, expect, test, vi } from "vitest";
+import type { AppConfig } from "../../src/app.js";
+import type { SessionPool } from "../../src/client/pool.js";
+import { PROTOCOL_VERSION } from "../../src/client/protocol.js";
 import { TestSession } from "../../src/testing/session.js";
 
 function createSessionDouble(): {
@@ -60,6 +63,136 @@ function createMessageSessionDouble(): {
     originalHandler,
     getCurrentHandler: () => currentHandler,
   };
+}
+
+class ResetPoolDouble {
+  readonly sequence: string[] = [];
+  readonly sent: Array<{ sessionId: string; msg: Record<string, unknown> }> = [];
+  readonly unregistered: string[] = [];
+  private nextSessionId = 1;
+  private processHello: Record<string, unknown> | null = null;
+  private readonly handlers = new Map<string, (msg: Record<string, unknown>) => void>();
+  private readonly closeHandlers = new Map<string, (reason: string) => void>();
+  private readonly unregisterResolvers = new Map<string, () => void>();
+
+  register(): string {
+    const id = `pool_${String(this.nextSessionId++)}`;
+    this.sequence.push(`register ${id}`);
+    return id;
+  }
+
+  async unregister(sessionId: string): Promise<void> {
+    this.sequence.push(`unregister ${sessionId}`);
+    return new Promise<void>((resolve) => {
+      this.unregisterResolvers.set(sessionId, () => {
+        this.sequence.push(`closed ${sessionId}`);
+        this.unregistered.push(sessionId);
+        this.handlers.delete(sessionId);
+        this.closeHandlers.delete(sessionId);
+        this.unregisterResolvers.delete(sessionId);
+        resolve();
+      });
+    });
+  }
+
+  closeSession(sessionId: string): void {
+    this.unregisterResolvers.get(sessionId)?.();
+  }
+
+  routeProcessHello(protocol = PROTOCOL_VERSION): void {
+    const msg = {
+      type: "hello",
+      protocol_version: protocol,
+      mode: "mock",
+      name: "plushie-renderer",
+      version: "test",
+      backend: "mock",
+      transport: "pool",
+      extensions: [],
+      native_widgets: [],
+      widgets: [],
+      widget_sets: [],
+      session: "",
+    };
+    this.processHello = msg;
+
+    for (const handler of this.handlers.values()) {
+      handler(msg);
+      break;
+    }
+  }
+
+  sendToSession(sessionId: string, msg: Record<string, unknown>): void {
+    const wireMsg: Record<string, unknown> = { ...msg, session: sessionId };
+    this.sent.push({ sessionId, msg: wireMsg });
+
+    if (wireMsg["type"] === "tree_hash") {
+      queueMicrotask(() => {
+        this.handlers.get(sessionId)?.({
+          type: "tree_hash_response",
+          id: wireMsg["id"],
+          hash: "fresh-hash",
+          session: sessionId,
+        });
+      });
+    }
+  }
+
+  onSessionMessage(sessionId: string, handler: (msg: Record<string, unknown>) => void): void {
+    this.handlers.set(sessionId, handler);
+    const hello = this.processHello;
+    if (hello) {
+      queueMicrotask(() => {
+        if (this.handlers.get(sessionId) === handler) {
+          handler(hello);
+        }
+      });
+    }
+  }
+
+  getSessionHandler(sessionId: string): ((msg: Record<string, unknown>) => void) | null {
+    return this.handlers.get(sessionId) ?? null;
+  }
+
+  onSessionClose(sessionId: string, handler: (reason: string) => void): void {
+    this.closeHandlers.set(sessionId, handler);
+  }
+
+  mode(): "mock" {
+    return "mock";
+  }
+}
+
+const resetAppConfig: AppConfig<{ count: number }> = {
+  init: { count: 0 },
+  view: () => ({
+    id: "main",
+    type: "window",
+    props: { title: "Reset Test" },
+    children: [],
+  }),
+  update: (state) => state,
+};
+
+async function createResetSession(): Promise<{
+  session: TestSession<{ count: number }>;
+  pool: ResetPoolDouble;
+}> {
+  const pool = new ResetPoolDouble();
+  pool.routeProcessHello();
+  const sessionId = pool.register();
+  const session = new TestSession(
+    resetAppConfig,
+    pool as unknown as SessionPool,
+    sessionId,
+    "msgpack",
+    "mock",
+  );
+  await session.start();
+  pool.sequence.length = 0;
+  pool.sent.length = 0;
+  pool.unregistered.length = 0;
+  return { session, pool };
 }
 
 function createTreeHashSessionDouble(
@@ -175,6 +308,81 @@ describe("TestSession temporary interceptors", () => {
 
     await expect(pending).rejects.toThrow('Unknown top-level message type "unknown_thing"');
     expect(getCurrentHandler()).toBe(originalHandler);
+  });
+});
+
+describe("TestSession reset", () => {
+  test("unregisters the old session and starts a fresh runtime", async () => {
+    const { session, pool } = await createResetSession();
+
+    const reset = session.reset();
+
+    expect(pool.sequence).toEqual(["unregister pool_1"]);
+    expect(pool.sent).toEqual([]);
+
+    pool.closeSession("pool_1");
+    await reset;
+
+    expect(pool.sequence).toEqual(["unregister pool_1", "closed pool_1", "register pool_2"]);
+    expect(pool.unregistered).toEqual(["pool_1"]);
+    expect(pool.sent[0]).toMatchObject({
+      sessionId: "pool_2",
+      msg: { type: "settings", session: "pool_2" },
+    });
+    expect(pool.sent).toContainEqual(
+      expect.objectContaining({
+        sessionId: "pool_2",
+        msg: expect.objectContaining({ type: "snapshot", session: "pool_2" }),
+      }),
+    );
+  });
+
+  test("uses the fresh session ID for later renderer operations", async () => {
+    const { session, pool } = await createResetSession();
+
+    const reset = session.reset();
+    pool.closeSession("pool_1");
+    await reset;
+    pool.sent.length = 0;
+
+    await expect(session.treeHash("after_reset")).resolves.toBe("fresh-hash");
+
+    expect(pool.sent).toContainEqual({
+      sessionId: "pool_2",
+      msg: {
+        type: "tree_hash",
+        session: "pool_2",
+        id: "test_1",
+        name: "after_reset",
+      },
+    });
+  });
+
+  test("unregisters the fresh session when startup fails", async () => {
+    const { session, pool } = await createResetSession();
+    const mutableConfig = resetAppConfig as unknown as { requiredWidgets?: readonly string[] };
+    mutableConfig.requiredWidgets = ["missing_widget"];
+
+    try {
+      const reset = session.reset();
+      pool.closeSession("pool_1");
+      await vi.waitFor(() => {
+        expect(pool.sequence).toContain("unregister pool_2");
+      });
+      pool.closeSession("pool_2");
+      await expect(reset).rejects.toThrow("missing required widgets");
+
+      expect(pool.sequence).toEqual([
+        "unregister pool_1",
+        "closed pool_1",
+        "register pool_2",
+        "unregister pool_2",
+        "closed pool_2",
+      ]);
+      expect(pool.unregistered).toEqual(["pool_1", "pool_2"]);
+    } finally {
+      delete mutableConfig.requiredWidgets;
+    }
   });
 });
 
