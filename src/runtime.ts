@@ -71,7 +71,6 @@ import type {
   WidgetEvent,
 } from "./types.js";
 import { COMMAND, decodeEffectResult } from "./types.js";
-import { handlersMeta } from "./ui/handlers.js";
 import {
   collectSubscriptions as collectWidgetSubscriptions,
   dispatchThroughWidgets,
@@ -867,6 +866,7 @@ export class Runtime<M> {
       const newEntries = new Map<string, RegistryEntry>();
       const memo = new Map<string, import("./tree/normalize.js").MemoCacheEntry>();
       const widgetView = new Map<string, import("./tree/normalize.js").WidgetViewCacheEntry>();
+      const handlerMap = new Map<string, Map<string, Handler<unknown>>>();
       const normalizeCtx: NormalizeContext = {
         registry: this.state.widgetHandlerRegistry,
         newEntries,
@@ -874,6 +874,7 @@ export class Runtime<M> {
         memo,
         widgetViewPrev: this.state.widgetViewCache,
         widgetView,
+        handlerMap,
       };
       const tree = normalize(viewResult, normalizeCtx);
 
@@ -898,8 +899,7 @@ export class Runtime<M> {
         this.state.widgetHandlerRegistry = new Map();
       }
 
-      // Extract handlers registered during view()
-      this.state.handlerMap = this.buildHandlerMap(viewResult);
+      this.state.handlerMap = handlerMap;
 
       // Diff and send
       if (forceSnapshot || this.state.tree === null) {
@@ -943,54 +943,6 @@ export class Runtime<M> {
 
       // Signal that the tree may be out of sync with the model
       this.dispatchDesyncEvent(error);
-    }
-  }
-
-  // =======================================================================
-  // Handler map
-  // =======================================================================
-
-  private buildHandlerMap(view: AppView): Map<string, Map<string, Handler<unknown>>> {
-    const map = new Map<string, Map<string, Handler<unknown>>>();
-    if (view === null) return map;
-    if (Array.isArray(view)) {
-      for (const node of view) {
-        this.collectHandlers(node, map, undefined, node.id);
-      }
-      return map;
-    }
-    const node = view as import("./app.js").WindowNode;
-    this.collectHandlers(node, map, undefined, node.id);
-    return map;
-  }
-
-  private collectHandlers(
-    node: import("./types.js").UINode,
-    map: Map<string, Map<string, Handler<unknown>>>,
-    scope: string | undefined,
-    windowId: string | undefined,
-  ): void {
-    const currentWindowId = node.type === "window" ? node.id : windowId;
-    const currentId =
-      scope !== undefined && !node.id.startsWith("auto:") ? `${scope}/${node.id}` : node.id;
-    const childScope = node.type === "window" || node.id.startsWith("auto:") ? scope : currentId;
-    const nodeHandlers = handlersMeta(node.meta);
-
-    if (nodeHandlers && currentWindowId) {
-      const key = this.handlerKey(currentWindowId, currentId);
-      let typeMap = map.get(key);
-      if (!typeMap) {
-        typeMap = new Map();
-        map.set(key, typeMap);
-      }
-
-      for (const [eventType, handler] of Object.entries(nodeHandlers)) {
-        typeMap.set(eventType, handler);
-      }
-    }
-
-    for (const child of node.children) {
-      this.collectHandlers(child, map, childScope, currentWindowId);
     }
   }
 

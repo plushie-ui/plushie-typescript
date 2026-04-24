@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
+import { handlersMeta } from "../../src/ui/handlers.js";
 import {
   Canvas,
   ComboBox,
@@ -65,6 +66,16 @@ import {
   verticalSlider,
 } from "../../src/ui/index.js";
 
+function expectNodeHandler(
+  node: { meta?: Readonly<Record<string, unknown>> | undefined },
+  eventType: string,
+) {
+  const handlers = handlersMeta(node.meta);
+  expect(handlers).toBeDefined();
+  expect(handlers?.[eventType]).toEqual(expect.any(Function));
+  return handlers?.[eventType];
+}
+
 beforeEach(() => clearHandlers());
 
 // ---------------------------------------------------------------------------
@@ -91,13 +102,10 @@ describe("Radio", () => {
     expect(node.props["selected"]).toBe("b");
   });
 
-  test("registers onSelect handler", () => {
+  test("attaches onSelect handler metadata", () => {
     const handler = (s: unknown) => s;
-    radio("opt-c", "c", { selected: null, onSelect: handler });
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("select");
-    expect(handlers[0]!.handler).toBe(handler);
+    const node = radio("opt-c", "c", { selected: null, onSelect: handler });
+    expect(expectNodeHandler(node, "select")).toBe(handler);
   });
 });
 
@@ -117,13 +125,11 @@ describe("Toggler", () => {
     expect(node.props["text_alignment"]).toBe("center");
   });
 
-  test("registers onToggle handler, not in wire props", () => {
+  test("attaches onToggle handler metadata, not in wire props", () => {
     const handler = (s: unknown) => s;
     const node = Toggler({ id: "tog", value: false, onToggle: handler });
     expect(node.props["onToggle"]).toBeUndefined();
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("toggle");
+    expect(expectNodeHandler(node, "toggle")).toBe(handler);
   });
 });
 
@@ -144,13 +150,12 @@ describe("VerticalSlider", () => {
     expect(node.props["shift_step"]).toBe(10);
   });
 
-  test("registers onSlide and onSlideRelease handlers", () => {
+  test("attaches onSlide and onSlideRelease handler metadata", () => {
     const h1 = (s: unknown) => s;
     const h2 = (s: unknown) => s;
-    verticalSlider("vs3", 50, [0, 100], { onSlide: h1, onSlideRelease: h2 });
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(2);
-    expect(handlers.map((h) => h.eventType).sort()).toEqual(["slide", "slide_release"]);
+    const node = verticalSlider("vs3", 50, [0, 100], { onSlide: h1, onSlideRelease: h2 });
+    expect(expectNodeHandler(node, "slide")).toBe(h1);
+    expect(expectNodeHandler(node, "slide_release")).toBe(h2);
   });
 });
 
@@ -171,13 +176,11 @@ describe("PickList", () => {
     expect(node.props["text_size"]).toBe(16);
   });
 
-  test("registers onSelect handler, not in wire props", () => {
+  test("attaches onSelect handler metadata, not in wire props", () => {
     const handler = (s: unknown) => s;
     const node = PickList({ id: "pl3", options: ["a"], onSelect: handler });
     expect(node.props["onSelect"]).toBeUndefined();
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("select");
+    expect(expectNodeHandler(node, "select")).toBe(handler);
   });
 
   test("boolean onOpen sets wire prop without handler", () => {
@@ -198,13 +201,12 @@ describe("ComboBox", () => {
     expect(node.props["options"]).toEqual(["red", "blue"]);
   });
 
-  test("registers onSelect and onInput handlers", () => {
+  test("attaches onSelect and onInput handler metadata", () => {
     const h1 = (s: unknown) => s;
     const h2 = (s: unknown) => s;
-    comboBox("cb2", ["a"], { onSelect: h1, onInput: h2 });
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(2);
-    expect(handlers.map((h) => h.eventType).sort()).toEqual(["input", "select"]);
+    const node = comboBox("cb2", ["a"], { onSelect: h1, onInput: h2 });
+    expect(expectNodeHandler(node, "select")).toBe(h1);
+    expect(expectNodeHandler(node, "input")).toBe(h2);
   });
 
   test("function handler for onOptionHovered sets on_option_hovered=true", () => {
@@ -212,6 +214,7 @@ describe("ComboBox", () => {
     const node = ComboBox({ id: "cb3", options: [], onOptionHovered: handler });
     expect(node.props["on_option_hovered"]).toBe(true);
     expect(node.props["onOptionHovered"]).toBeUndefined();
+    expect(expectNodeHandler(node, "option_hovered")).toBe(handler);
   });
 });
 
@@ -231,13 +234,11 @@ describe("TextEditor", () => {
     expect(node.props["highlight_syntax"]).toBe("elixir");
   });
 
-  test("registers onInput handler, not in wire props", () => {
+  test("attaches onInput handler metadata, not in wire props", () => {
     const handler = (s: unknown) => s;
     const node = TextEditor({ id: "ed3", onInput: handler });
     expect(node.props["onInput"]).toBeUndefined();
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("input");
+    expect(expectNodeHandler(node, "input")).toBe(handler);
   });
 });
 
@@ -474,14 +475,12 @@ describe("Scrollable", () => {
     expect(node.props["scrollbar_width"]).toBe(8);
   });
 
-  test("function handler for onScroll registers and sets wire prop", () => {
+  test("function handler for onScroll attaches metadata and sets wire prop", () => {
     const handler = (s: unknown) => s;
     const node = Scrollable({ id: "sc", onScroll: handler, children: [] });
     expect(node.props["on_scroll"]).toBe(true);
     expect(node.props["onScroll"]).toBeUndefined();
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("scrolled");
+    expect(expectNodeHandler(node, "scrolled")).toBe(handler);
   });
 
   test("boolean onScroll sets wire prop without handler", () => {
@@ -646,13 +645,11 @@ describe("Table", () => {
     expect(node.props["sort_order"]).toBe("asc");
   });
 
-  test("registers onSort handler, not in wire props", () => {
+  test("attaches onSort handler metadata, not in wire props", () => {
     const handler = (s: unknown) => s;
     const node = Table({ id: "tbl3", columns: [], rows: [], onSort: handler });
     expect(node.props["onSort"]).toBeUndefined();
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("sort");
+    expect(expectNodeHandler(node, "sort")).toBe(handler);
   });
 
   test("tableRow creates a table_row container with children", () => {
@@ -690,14 +687,13 @@ describe("PaneGrid", () => {
     expect(node.props["split_axis"]).toBe("horizontal");
   });
 
-  test("registers handler props", () => {
+  test("attaches handler prop metadata", () => {
     const h1 = (s: unknown) => s;
     const h2 = (s: unknown) => s;
     const node = PaneGrid({ id: "pg2", onPaneClick: h1, onPaneResize: h2, children: [] });
     expect(node.props["onPaneClick"]).toBeUndefined();
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(2);
-    expect(handlers.map((h) => h.eventType).sort()).toEqual(["pane_clicked", "pane_resized"]);
+    expect(expectNodeHandler(node, "pane_clicked")).toBe(h1);
+    expect(expectNodeHandler(node, "pane_resized")).toBe(h2);
   });
 });
 
@@ -730,14 +726,12 @@ describe("PointerArea", () => {
     expect(node.children).toHaveLength(1);
   });
 
-  test("function handler registers and sets wire prop", () => {
+  test("function handler attaches metadata and sets wire prop", () => {
     const handler = (s: unknown) => s;
     const node = PointerArea({ id: "ma2", onPress: handler, children: [] });
     expect(node.props["on_press"]).toBe(true);
     expect(node.props["onPress"]).toBeUndefined();
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("click");
+    expect(expectNodeHandler(node, "click")).toBe(handler);
   });
 
   test("boolean-only props set wire prop without registering", () => {
@@ -754,12 +748,12 @@ describe("PointerArea", () => {
     expect(drainHandlers()).toHaveLength(0);
   });
 
-  test("multiple handler-capable props registered correctly", () => {
+  test("multiple handler-capable props attach metadata", () => {
     const h = (s: unknown) => s;
-    pointerArea({ id: "ma4", onPress: h, onMove: h, onScroll: h }, []);
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(3);
-    expect(handlers.map((e) => e.eventType).sort()).toEqual(["click", "move", "scroll"]);
+    const node = pointerArea({ id: "ma4", onPress: h, onMove: h, onScroll: h }, []);
+    expect(expectNodeHandler(node, "click")).toBe(h);
+    expect(expectNodeHandler(node, "move")).toBe(h);
+    expect(expectNodeHandler(node, "scroll")).toBe(h);
   });
 });
 
@@ -774,14 +768,12 @@ describe("Sensor", () => {
     expect(node.children).toHaveLength(1);
   });
 
-  test("function handler sets on_resize wire prop", () => {
+  test("function handler attaches metadata and sets on_resize wire prop", () => {
     const handler = (s: unknown) => s;
     const node = Sensor({ id: "sen2", onResize: handler, children: [] });
     expect(node.props["on_resize"]).toBe(true);
     expect(node.props["onResize"]).toBeUndefined();
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("resize");
+    expect(expectNodeHandler(node, "resize")).toBe(handler);
   });
 
   test("boolean onResize sets wire prop without handler", () => {
@@ -826,14 +818,12 @@ describe("Canvas", () => {
     expect(node.id).toBe("cv");
   });
 
-  test("function handler registers and sets wire prop", () => {
+  test("function handler attaches metadata and sets wire prop", () => {
     const handler = (s: unknown) => s;
     const node = Canvas({ id: "cv2", onPress: handler, children: [] });
     expect(node.props["on_press"]).toBe(true);
     expect(node.props["onPress"]).toBeUndefined();
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("press");
+    expect(expectNodeHandler(node, "press")).toBe(handler);
   });
 
   test("boolean handler sets wire prop without registering", () => {

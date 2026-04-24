@@ -3,7 +3,8 @@ import { memo, resetMemoCounter } from "../../src/memo.js";
 import { diff } from "../../src/tree/diff.js";
 import type { NormalizeContext } from "../../src/tree/normalize.js";
 import { isAutoId, normalize } from "../../src/tree/normalize.js";
-import type { UINode } from "../../src/types.js";
+import type { Handler, UINode } from "../../src/types.js";
+import { Button } from "../../src/ui/index.js";
 import { buildWidget, type RegistryEntry, type WidgetDef } from "../../src/widget-handler.js";
 
 function node(
@@ -552,6 +553,120 @@ describe("widget view cache", () => {
 
     expect(childViews).toBe(4);
     expect(ctx2.widgetView?.size).toBe(2);
+  });
+});
+
+describe("handler metadata", () => {
+  test("collects handlers from custom widget views during normalization", () => {
+    const handler = (s: unknown) => s;
+    const def: WidgetDef<object, object> = {
+      view: (id) => Button({ id, children: "Run", onClick: handler }),
+    };
+    const handlerMap = new Map<string, Map<string, Handler<unknown>>>();
+    const ctx: NormalizeContext = {
+      registry: new Map<string, RegistryEntry>(),
+      newEntries: new Map<string, RegistryEntry>(),
+      handlerMap,
+    };
+
+    normalize(node("main", "window", {}, [buildWidget(def, "custom", {})]), ctx);
+
+    expect(handlerMap.get("main\u0000custom")?.get("click")).toBe(handler);
+  });
+
+  test("replays memo body handlers on cache hits", () => {
+    const handler = (s: unknown) => s;
+    const render = () =>
+      node("main", "window", {}, [
+        memo("stable", () => Button({ id: "run", children: "Run", onClick: handler })),
+      ]);
+
+    resetMemoCounter();
+    const ctx1: NormalizeContext = {
+      memo: new Map(),
+      memoPrev: new Map(),
+      handlerMap: new Map<string, Map<string, Handler<unknown>>>(),
+    };
+    normalize(render(), ctx1);
+    expect(ctx1.handlerMap?.get("main\u0000run")?.get("click")).toBe(handler);
+
+    resetMemoCounter();
+    const ctx2: NormalizeContext = {
+      memo: new Map(),
+      memoPrev: ctx1.memo,
+      handlerMap: new Map<string, Map<string, Handler<unknown>>>(),
+    };
+    normalize(render(), ctx2);
+    expect(ctx2.handlerMap?.get("main\u0000run")?.get("click")).toBe(handler);
+  });
+
+  test("replays cached widget view handlers on cache hits", () => {
+    const handlers: Handler<unknown>[] = [];
+    const def: WidgetDef<object, { readonly label: string }> = {
+      view: (id, props) => {
+        const handler: Handler<unknown> = (s) => s;
+        handlers.push(handler);
+        return Button({ id, children: props.label, onClick: handler });
+      },
+      cacheKey: (props) => props.label,
+    };
+    const render = () => node("main", "window", {}, [buildWidget(def, "cached", { label: "Run" })]);
+
+    const newEntries1 = new Map<string, RegistryEntry>();
+    const ctx1: NormalizeContext = {
+      registry: new Map<string, RegistryEntry>(),
+      newEntries: newEntries1,
+      widgetView: new Map(),
+      widgetViewPrev: new Map(),
+      handlerMap: new Map<string, Map<string, Handler<unknown>>>(),
+    };
+    normalize(render(), ctx1);
+    expect(ctx1.handlerMap?.get("main\u0000cached")?.get("click")).toBe(handlers[0]);
+
+    const ctx2: NormalizeContext = {
+      registry: newEntries1,
+      newEntries: new Map<string, RegistryEntry>(),
+      widgetView: new Map(),
+      widgetViewPrev: ctx1.widgetView,
+      handlerMap: new Map<string, Map<string, Handler<unknown>>>(),
+    };
+    normalize(render(), ctx2);
+    expect(ctx2.handlerMap?.get("main\u0000cached")?.get("click")).toBe(handlers[1]);
+  });
+
+  test("removes cached widget view handlers when fresh render omits them", () => {
+    const handler: Handler<unknown> = (s) => s;
+    let enabled = true;
+    const def: WidgetDef<object, { readonly label: string }> = {
+      view: (id, props) =>
+        enabled
+          ? Button({ id, children: props.label, onClick: handler })
+          : Button({ id, children: props.label }),
+      cacheKey: (props) => props.label,
+    };
+    const render = () => node("main", "window", {}, [buildWidget(def, "cached", { label: "Run" })]);
+
+    const newEntries1 = new Map<string, RegistryEntry>();
+    const ctx1: NormalizeContext = {
+      registry: new Map<string, RegistryEntry>(),
+      newEntries: newEntries1,
+      widgetView: new Map(),
+      widgetViewPrev: new Map(),
+      handlerMap: new Map<string, Map<string, Handler<unknown>>>(),
+    };
+    normalize(render(), ctx1);
+    expect(ctx1.handlerMap?.get("main\u0000cached")?.get("click")).toBe(handler);
+
+    enabled = false;
+    const ctx2: NormalizeContext = {
+      registry: newEntries1,
+      newEntries: new Map<string, RegistryEntry>(),
+      widgetView: new Map(),
+      widgetViewPrev: ctx1.widgetView,
+      handlerMap: new Map<string, Map<string, Handler<unknown>>>(),
+    };
+    normalize(render(), ctx2);
+    expect(ctx2.handlerMap?.get("main\u0000cached")?.get("click")).toBeUndefined();
   });
 });
 

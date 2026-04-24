@@ -1,5 +1,5 @@
-// Clean handler state between tests
 import { beforeEach, describe, expect, test } from "vitest";
+import { handlersMeta } from "../../src/ui/handlers.js";
 import {
   Button,
   button,
@@ -11,7 +11,9 @@ import {
   column,
   container,
   drainHandlers,
+  extractHandlers,
   Row,
+  registerHandler,
   Slider,
   slider,
   Text,
@@ -20,7 +22,44 @@ import {
   Window,
 } from "../../src/ui/index.js";
 
+function expectNodeHandler(
+  node: { meta?: Readonly<Record<string, unknown>> | undefined },
+  eventType: string,
+) {
+  const handlers = handlersMeta(node.meta);
+  expect(handlers).toBeDefined();
+  expect(handlers?.[eventType]).toEqual(expect.any(Function));
+  return handlers?.[eventType];
+}
+
 beforeEach(() => clearHandlers());
+
+describe("handler collector", () => {
+  test("direct register and drain returns collected handlers", () => {
+    const handler = (s: unknown) => s;
+    registerHandler("save", "click", handler);
+    const handlers = drainHandlers();
+    expect(handlers).toEqual([{ widgetId: "save", eventType: "click", handler }]);
+    expect(drainHandlers()).toEqual([]);
+  });
+
+  test("clear drops collected handlers", () => {
+    registerHandler("save", "click", (s: unknown) => s);
+    clearHandlers();
+    expect(drainHandlers()).toEqual([]);
+  });
+
+  test("extractHandlers keeps non-function handler props", () => {
+    const { clean, meta } = extractHandlers(
+      "save",
+      { label: "Save", onClick: false },
+      { onClick: "click" },
+    );
+
+    expect(clean).toEqual({ label: "Save", onClick: false });
+    expect(meta).toBeUndefined();
+  });
+});
 
 describe("Text", () => {
   test("creates text node with content", () => {
@@ -65,19 +104,15 @@ describe("Button", () => {
     expect(node.props["label"]).toBe("Save");
   });
 
-  test("registers onClick handler", () => {
+  test("attaches onClick handler metadata", () => {
     const handler = (s: unknown) => s;
-    Button({ id: "save", children: "Save", onClick: handler });
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.widgetId).toBe("save");
-    expect(handlers[0]!.eventType).toBe("click");
-    expect(handlers[0]!.handler).toBe(handler);
+    const node = Button({ id: "save", children: "Save", onClick: handler });
+    expect(expectNodeHandler(node, "click")).toBe(handler);
+    expect(drainHandlers()).toEqual([]);
   });
 
   test("handler NOT in wire props", () => {
-    Button({ id: "save", children: "Save", onClick: (s: unknown) => s });
-    const node = Button({ id: "btn", children: "Test" });
+    const node = Button({ id: "save", children: "Save", onClick: (s: unknown) => s });
     expect(node.props["onClick"]).toBeUndefined();
   });
 
@@ -86,11 +121,19 @@ describe("Button", () => {
     expect(node.props["label"]).toBe("Click me");
   });
 
-  test("function API: explicit id with handler", () => {
+  test("function API: explicit id with handler metadata", () => {
     const handler = (s: unknown) => s;
-    button("save", "Save", { onClick: handler });
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
+    const node = button("save", "Save", { onClick: handler });
+    expect(expectNodeHandler(node, "click")).toBe(handler);
+  });
+
+  test("handler construction does not populate stale collector state", () => {
+    const handler = (s: unknown) => s;
+    expect(() => {
+      Button({ id: "save", children: "Save", onClick: handler });
+      throw new Error("view failed");
+    }).toThrow("view failed");
+    expect(drainHandlers()).toEqual([]);
   });
 });
 
@@ -179,12 +222,10 @@ describe("TextInput", () => {
     expect(node.props["value"]).toBe("test@example.com");
   });
 
-  test("registers onInput handler", () => {
+  test("attaches onInput handler metadata", () => {
     const handler = (s: unknown) => s;
-    TextInput({ id: "email", value: "", onInput: handler });
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("input");
+    const node = TextInput({ id: "email", value: "", onInput: handler });
+    expect(expectNodeHandler(node, "input")).toBe(handler);
   });
 
   test("onSubmit as boolean sets wire prop", () => {
@@ -192,12 +233,11 @@ describe("TextInput", () => {
     expect(node.props["on_submit"]).toBe(true);
   });
 
-  test("onSubmit as handler registers and sets wire prop", () => {
+  test("onSubmit as handler attaches metadata and sets wire prop", () => {
     const handler = (s: unknown) => s;
     const node = TextInput({ id: "email", value: "", onSubmit: handler });
     expect(node.props["on_submit"]).toBe(true);
-    const handlers = drainHandlers();
-    expect(handlers.some((h) => h.eventType === "submit")).toBe(true);
+    expect(expectNodeHandler(node, "submit")).toBe(handler);
   });
 });
 
@@ -209,12 +249,10 @@ describe("Checkbox", () => {
     expect(node.props["label"]).toBe("I agree");
   });
 
-  test("registers onToggle handler", () => {
+  test("attaches onToggle handler metadata", () => {
     const handler = (s: unknown) => s;
-    checkbox("agree", false, { onToggle: handler });
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(1);
-    expect(handlers[0]!.eventType).toBe("toggle");
+    const node = checkbox("agree", false, { onToggle: handler });
+    expect(expectNodeHandler(node, "toggle")).toBe(handler);
   });
 });
 
@@ -226,12 +264,11 @@ describe("Slider", () => {
     expect(node.props["range"]).toEqual([0, 100]);
   });
 
-  test("registers onSlide and onSlideRelease handlers", () => {
+  test("attaches onSlide and onSlideRelease handler metadata", () => {
     const h1 = (s: unknown) => s;
     const h2 = (s: unknown) => s;
-    slider("vol", 50, [0, 100], { onSlide: h1, onSlideRelease: h2 });
-    const handlers = drainHandlers();
-    expect(handlers).toHaveLength(2);
-    expect(handlers.map((h) => h.eventType).sort()).toEqual(["slide", "slide_release"]);
+    const node = slider("vol", 50, [0, 100], { onSlide: h1, onSlideRelease: h2 });
+    expect(expectNodeHandler(node, "slide")).toBe(h1);
+    expect(expectNodeHandler(node, "slide_release")).toBe(h2);
   });
 });

@@ -2,7 +2,7 @@
  * Widget builder utilities.
  *
  * Provides helpers for creating UINodes with typed props, optional
- * fields (nil-omission), and handler registration.
+ * fields (nil-omission), and handler metadata.
  *
  * @module
  */
@@ -10,7 +10,7 @@
 import { ANIMATION_DESCRIPTOR } from "../animation/transition.js";
 import { autoId } from "../tree/node.js";
 import type { Handler, UINode } from "../types.js";
-import { type HandlerMeta, registerHandler, withHandlersMeta } from "./handlers.js";
+import { type HandlerMeta, withHandlersMeta } from "./handlers.js";
 import type { A11y } from "./types.js";
 
 /**
@@ -174,18 +174,17 @@ export function containerNodeWithMeta(
 }
 
 /**
- * Register handlers from an options object for a widget.
- * Extracts `onXxx` props, registers them, and returns the
- * remaining non-handler props.
+ * Extract handlers from an options object for a widget.
+ * Function-valued `onXxx` props become TypeScript-side metadata.
+ * Non-function values remain in the cleaned props.
  *
- * @param widgetId - The widget's ID.
+ * @param _widgetId - The widget's ID. Kept in the signature to match widget builder call sites.
  * @param opts - Raw options that may include handler props.
  * @param handlerMap - Map of handler prop names to wire event types.
  * @returns Options with handler props removed.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function extractHandlers<T>(
-  widgetId: string,
+  _widgetId: string,
   opts: T,
   handlerMap: Record<string, string>,
 ): { clean: T; meta?: Readonly<Record<string, unknown>> } {
@@ -194,10 +193,9 @@ export function extractHandlers<T>(
   for (const [propName, eventType] of Object.entries(handlerMap)) {
     const handler = clean[propName];
     if (typeof handler === "function") {
-      registerHandler(widgetId, eventType, handler as Handler<unknown>);
       handlers[eventType] = handler as Handler<unknown>;
+      delete clean[propName];
     }
-    delete clean[propName];
   }
   const meta = withHandlersMeta(
     undefined,

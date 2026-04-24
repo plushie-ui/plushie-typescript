@@ -310,6 +310,7 @@ export function renderPlaceholder(
 
   // Attach metadata to the rendered node for registry derivation
   const widgetMeta = Object.freeze({
+    ...(rendered.meta ?? {}),
     [META_KEY]: def,
     [PROPS_KEY]: props,
     [STATE_KEY]: entry.state,

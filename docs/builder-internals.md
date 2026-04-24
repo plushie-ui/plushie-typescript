@@ -22,22 +22,27 @@ are serializable, diffable, and carry no behavior.
 
 ## Handler collection
 
-Widget builders register event handlers into a module-level collector
-during `view()`. After `view()` returns, the runtime drains the
-collector and builds a handler map.
+Widget builders attach event handlers to private node metadata. During
+normalization, the runtime walks the scoped tree, reads that metadata,
+and builds a fresh handler map.
 
 ```
 view() called
   -> Button({ onClick: increment }) called
-    -> registerHandler("btn", "click", increment) into collector
-    -> returns UINode { id: "btn", type: "button", props: { label: "+" } }
+    -> returns UINode {
+         id: "btn",
+         type: "button",
+         props: { label: "+" },
+         meta: { __handlers__: { click: increment } }
+       }
        (onClick is NOT in props)
-  -> runtime drains collector -> Map { "btn" -> { "click" -> increment } }
+  -> runtime normalizes IDs and collects handlers
+  -> handler map: Map { "window\u0000btn" -> { "click" -> increment } }
 ```
 
 This means handlers never touch the wire. The UINode sent to the
-renderer has no handler props. The handler map is rebuilt from scratch
-on every render cycle.
+renderer has no handler props or metadata. The handler map is rebuilt
+from scratch on every successful render cycle.
 
 ### Why this is safe
 
@@ -139,6 +144,6 @@ function API:
 button('save', 'Save', { onClick: handler })
 ```
 
-Both produce the same UINode and register the same handlers.
+Both produce the same UINode and attach the same handler metadata.
 The function API uses overloads for ergonomic call patterns
 (auto-ID sugar, positional content args).

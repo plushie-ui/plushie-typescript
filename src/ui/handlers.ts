@@ -1,9 +1,11 @@
 /**
- * Handler collection mechanism for the view -> runtime bridge.
+ * Handler helpers for widget events.
  *
- * During a view() call, widget builders register event handlers into
- * a module-level collector. After view() returns, the runtime reads
- * and clears the collector to build the handler dispatch map.
+ * Widget builders attach handlers to node metadata. The runtime reads
+ * that metadata while walking the tree to build the handler dispatch map.
+ *
+ * The module-level collector remains as a direct low-level API for tests
+ * and legacy callers. Widget builders do not write to it.
  *
  * Handlers are NOT included in UINode props; they never touch the
  * wire. They're stored TypeScript-side only.
@@ -44,13 +46,11 @@ export function handlersMeta(
   return undefined;
 }
 
-/** Module-level handler collector. Reset between view() calls. */
+/** Module-level handler collector for the direct low-level API. */
 let handlerEntries: HandlerEntry[] = [];
 
 /**
  * Register a handler for a widget event.
- * Called by widget builders during view() construction.
- *
  * @internal
  */
 export function registerHandler(
@@ -63,8 +63,6 @@ export function registerHandler(
 
 /**
  * Drain all collected handlers and reset the collector.
- * Called by the runtime after view() returns.
- *
  * @returns All handler entries collected during the last view() call.
  * @internal
  */

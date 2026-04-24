@@ -14,7 +14,8 @@
  * @module
  */
 
-import type { UINode } from "../types.js";
+import type { Handler, UINode } from "../types.js";
+import { handlersMeta } from "../ui/handlers.js";
 import {
   getStandardProps,
   isPlaceholder,
@@ -37,23 +38,25 @@ export interface WireNode {
 }
 
 /**
- * A cached memo subtree: the normalized tree and the registry entries
+ * A cached memo subtree: the normalized tree, registry entries, and handlers
  * accumulated during that subtree's normalization.
  */
 export interface MemoCacheEntry {
   readonly deps: unknown;
   readonly tree: WireNode;
   readonly entries: ReadonlyMap<string, RegistryEntry>;
+  readonly handlers: ReadonlyMap<string, ReadonlyMap<string, Handler<unknown>>>;
 }
 
 /**
- * A cached widget view: the normalized tree, registry entries, and the
- * key returned by the widget's cacheKey function.
+ * A cached widget view: the normalized tree, registry entries, handlers, and
+ * the key returned by the widget's cacheKey function.
  */
 export interface WidgetViewCacheEntry {
   readonly key: unknown;
   readonly tree: WireNode;
   readonly entries: ReadonlyMap<string, RegistryEntry>;
+  readonly handlers: ReadonlyMap<string, ReadonlyMap<string, Handler<unknown>>>;
 }
 
 /** Memo cache: maps memo site keys to cached subtrees. */
@@ -142,6 +145,8 @@ export interface NormalizeContext {
   readonly widgetView?: Map<string, WidgetViewCacheEntry> | undefined;
   /** Maximum entries retained in the new widget view cache. */
   readonly widgetViewCacheLimit?: number | undefined;
+  /** Handler map built from scoped handler metadata during normalization. */
+  readonly handlerMap?: Map<string, Map<string, Handler<unknown>>> | undefined;
 }
 
 export function normalize(
@@ -223,6 +228,8 @@ function normalizeNode(
   // Apply scope prefix to this node's ID
   const scopedId = scope !== "" && !isAutoId(id) ? `${scope}/${id}` : id;
 
+  collectNodeHandlers(node, currentWindowId, scopedId, ctx);
+
   // Widget placeholder expansion: if this node is a widget placeholder
   // and we have a registry context, render the placeholder and normalize
   // the rendered output in place.
@@ -238,7 +245,7 @@ function normalizeNode(
 
       // Check widget view cache before normalizing (after recording entry so
       // the widget's own entry is in the delta snapshot)
-      const cached = tryWidgetViewCache(node, currentWindowId, scopedId, ctx);
+      const cached = tryWidgetViewCache(node, result.node, currentWindowId, scopedId, ctx);
       if (cached) {
         return cached;
       }
@@ -247,6 +254,7 @@ function normalizeNode(
       const entriesBefore = ctx.newEntries
         ? new Map(ctx.newEntries)
         : new Map<string, RegistryEntry>();
+      const handlersBefore = cloneHandlerMap(ctx.handlerMap);
 
       const normalized = normalizeRenderedWidget(
         result.node,
@@ -259,7 +267,15 @@ function normalizeNode(
       );
 
       // Store in widget view cache if the def has a cacheKey
-      storeWidgetViewCache(node, currentWindowId, scopedId, ctx, entriesBefore, normalized);
+      storeWidgetViewCache(
+        node,
+        currentWindowId,
+        scopedId,
+        ctx,
+        entriesBefore,
+        handlersBefore,
+        normalized,
+      );
 
       return normalized;
     }
@@ -321,6 +337,8 @@ function normalizeRenderedWidget(
   standardProps?: Readonly<Record<string, unknown>> | null,
   depth = 0,
 ): WireNode {
+  collectNodeHandlers(node, windowId, scopedId, ctx);
+
   // Windows reset scope; otherwise children are scoped under this node.
   const childScope = node.type === "window" ? "" : scopedId;
 
@@ -342,6 +360,92 @@ function normalizeRenderedWidget(
     props,
     children,
   };
+}
+
+function collectNodeHandlers(
+  node: UINode,
+  windowId: string | undefined,
+  scopedId: string,
+  ctx: NormalizeContext | undefined,
+): void {
+  addNodeHandlers(ctx?.handlerMap, node, windowId, scopedId);
+}
+
+function addNodeHandlers(
+  target: Map<string, Map<string, Handler<unknown>>> | undefined,
+  node: UINode,
+  windowId: string | undefined,
+  scopedId: string,
+): void {
+  if (!windowId || !target) return;
+
+  const handlers = handlersMeta(node.meta);
+  if (!handlers) return;
+
+  const key = `${windowId}\u0000${scopedId}`;
+  let typeMap = target.get(key);
+  if (!typeMap) {
+    typeMap = new Map();
+    target.set(key, typeMap);
+  }
+
+  for (const [eventType, handler] of Object.entries(handlers)) {
+    typeMap.set(eventType, handler);
+  }
+}
+
+interface HandlerSnapshot {
+  readonly handlers: Map<string, Map<string, Handler<unknown>>>;
+  readonly coveredKeys: Set<string>;
+}
+
+function renderedHandlerSnapshot(
+  node: UINode,
+  windowId: string | undefined,
+  scopedId: string,
+): HandlerSnapshot {
+  const snapshot: HandlerSnapshot = {
+    handlers: new Map<string, Map<string, Handler<unknown>>>(),
+    coveredKeys: new Set<string>(),
+  };
+
+  collectSnapshotNode(node, windowId, scopedId, snapshot);
+
+  const childScope = node.type === "window" ? "" : scopedId;
+  for (const child of node.children) {
+    collectRawSnapshot(child, childScope, windowId, snapshot);
+  }
+  return snapshot;
+}
+
+function collectRawSnapshot(
+  node: UINode,
+  scope: string,
+  windowId: string | undefined,
+  snapshot: HandlerSnapshot,
+): void {
+  const currentWindowId = node.type === "window" ? node.id : windowId;
+  const scopedId = scope !== "" && !isAutoId(node.id) ? `${scope}/${node.id}` : node.id;
+
+  collectSnapshotNode(node, currentWindowId, scopedId, snapshot);
+  if (node.type === "__widget__") return;
+
+  const childScope = isAutoId(node.id) || node.type === "window" ? scope : scopedId;
+  for (const child of node.children) {
+    collectRawSnapshot(child, childScope, currentWindowId, snapshot);
+  }
+}
+
+function collectSnapshotNode(
+  node: UINode,
+  windowId: string | undefined,
+  scopedId: string,
+  snapshot: HandlerSnapshot,
+): void {
+  if (!windowId || node.type === "__widget__") return;
+
+  snapshot.coveredKeys.add(`${windowId}\u0000${scopedId}`);
+  addNodeHandlers(snapshot.handlers, node, windowId, scopedId);
 }
 
 // Widget types that accept at most one child.
@@ -735,7 +839,7 @@ function normalizeMemoNode(
   const prev = ctx?.memoPrev?.get(cacheKey);
 
   if (prev && depsEqual(prev.deps, deps)) {
-    if (ctx?.memo && ctx?.newEntries) {
+    if (ctx?.newEntries) {
       for (const [key, entry] of prev.entries) {
         const current = ctx.registry?.get(key);
         const refreshed = current
@@ -743,6 +847,9 @@ function normalizeMemoNode(
           : entry;
         ctx.newEntries.set(key, refreshed);
       }
+    }
+    replayHandlers(ctx?.handlerMap, prev.handlers);
+    if (ctx?.memo) {
       setCapped(ctx.memo, cacheKey, prev, memoCacheLimit(ctx));
     }
     return prev.tree;
@@ -751,6 +858,7 @@ function normalizeMemoNode(
   const entriesBefore = ctx?.newEntries
     ? new Map(ctx.newEntries)
     : new Map<string, RegistryEntry>();
+  const handlersBefore = cloneHandlerMap(ctx?.handlerMap);
 
   const result = body();
   const tree = normalizeMemoBody(result, nodeId, scope, windowId, ctx, depth);
@@ -764,7 +872,12 @@ function normalizeMemoNode(
     }
   }
 
-  const entry: MemoCacheEntry = { deps, tree, entries: deltaEntries };
+  const entry: MemoCacheEntry = {
+    deps,
+    tree,
+    entries: deltaEntries,
+    handlers: handlerDelta(handlersBefore, ctx?.handlerMap),
+  };
   if (ctx?.memo) {
     setCapped(ctx.memo, cacheKey, entry, memoCacheLimit(ctx));
   }
@@ -794,6 +907,67 @@ function setCapped<K, V>(map: Map<K, V>, key: K, value: V, limit: number): void 
     const oldest = map.keys().next();
     if (oldest.done) return;
     map.delete(oldest.value);
+  }
+}
+
+function cloneHandlerMap(
+  map: Map<string, Map<string, Handler<unknown>>> | undefined,
+): Map<string, Map<string, Handler<unknown>>> {
+  const clone = new Map<string, Map<string, Handler<unknown>>>();
+  if (!map) return clone;
+
+  for (const [key, handlers] of map) {
+    clone.set(key, new Map(handlers));
+  }
+  return clone;
+}
+
+function handlerDelta(
+  before: Map<string, Map<string, Handler<unknown>>>,
+  after: Map<string, Map<string, Handler<unknown>>> | undefined,
+): Map<string, Map<string, Handler<unknown>>> {
+  const delta = new Map<string, Map<string, Handler<unknown>>>();
+  if (!after) return delta;
+
+  for (const [key, handlers] of after) {
+    const beforeHandlers = before.get(key);
+    let changed: Map<string, Handler<unknown>> | undefined;
+    for (const [eventType, handler] of handlers) {
+      if (beforeHandlers?.get(eventType) === handler) continue;
+      changed ??= new Map<string, Handler<unknown>>();
+      changed.set(eventType, handler);
+    }
+    if (changed) {
+      delta.set(key, changed);
+    }
+  }
+  return delta;
+}
+
+function replayHandlers(
+  target: Map<string, Map<string, Handler<unknown>>> | undefined,
+  handlers: ReadonlyMap<string, ReadonlyMap<string, Handler<unknown>>>,
+): void {
+  replayHandlersExcept(target, handlers, new Set<string>());
+}
+
+function replayHandlersExcept(
+  target: Map<string, Map<string, Handler<unknown>>> | undefined,
+  handlers: ReadonlyMap<string, ReadonlyMap<string, Handler<unknown>>>,
+  skippedKeys: ReadonlySet<string>,
+): void {
+  if (!target) return;
+
+  for (const [key, cachedHandlers] of handlers) {
+    if (skippedKeys.has(key)) continue;
+    let typeMap = target.get(key);
+    if (!typeMap) {
+      typeMap = new Map<string, Handler<unknown>>();
+      target.set(key, typeMap);
+    }
+    for (const [eventType, handler] of cachedHandlers) {
+      typeMap.set(eventType, handler);
+    }
   }
 }
 
@@ -864,6 +1038,7 @@ function getDefFromPlaceholder(node: UINode): WidgetDef<unknown, unknown> | null
 
 function tryWidgetViewCache(
   node: UINode,
+  renderedNode: UINode,
   windowId: string | undefined,
   scopedId: string,
   ctx: NormalizeContext,
@@ -890,6 +1065,9 @@ function tryWidgetViewCache(
     }
     setCapped(ctx.widgetView, ck, prev, widgetViewCacheLimit(ctx));
   }
+  const freshHandlers = renderedHandlerSnapshot(renderedNode, windowId, scopedId);
+  replayHandlersExcept(ctx.handlerMap, prev.handlers, freshHandlers.coveredKeys);
+  replayHandlers(ctx.handlerMap, freshHandlers.handlers);
 
   return prev.tree;
 }
@@ -900,6 +1078,7 @@ function storeWidgetViewCache(
   scopedId: string,
   ctx: NormalizeContext,
   entriesBefore: Map<string, RegistryEntry>,
+  handlersBefore: Map<string, Map<string, Handler<unknown>>>,
   normalized: WireNode,
 ): void {
   const def = getDefFromPlaceholder(node);
@@ -923,7 +1102,12 @@ function storeWidgetViewCache(
     setCapped(
       ctx.widgetView,
       ck,
-      { key, tree: normalized, entries: deltaEntries },
+      {
+        key,
+        tree: normalized,
+        entries: deltaEntries,
+        handlers: handlerDelta(handlersBefore, ctx.handlerMap),
+      },
       widgetViewCacheLimit(ctx),
     );
   }
