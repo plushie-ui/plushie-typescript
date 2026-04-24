@@ -733,7 +733,7 @@ function applyA11yRewrites(
     const ref = a11y[key];
     if (typeof ref === "string" && ref !== "") {
       const rewritten = scopeRef(ref, scope);
-      if (!declared.has(rewritten)) {
+      if (shouldWarnUnresolvedRef(key, node, rewritten, declared)) {
         warnUnresolved(key, ref, node.id);
       }
       a11y[key] = rewritten;
@@ -783,6 +783,20 @@ function scopeRef(ref: string, scope: string): string {
   if (scope === "" || ref === "") return ref;
   if (ref.includes("/") || ref.includes("#")) return ref;
   return scope.endsWith("#") ? `${scope}${ref}` : `${scope}/${ref}`;
+}
+
+function shouldWarnUnresolvedRef(
+  key: (typeof A11Y_SINGLE_REF_KEYS)[number],
+  node: WireNode,
+  rewritten: string,
+  declared: Set<string>,
+): boolean {
+  if (declared.has(rewritten)) return false;
+  return key !== "active_descendant" || !allowsMissingActiveDescendant(node);
+}
+
+function allowsMissingActiveDescendant(node: WireNode): boolean {
+  return node.type === "combo_box" || node.type === "pick_list";
 }
 
 function warnUnresolved(key: string, ref: string, ownerId: string): void {

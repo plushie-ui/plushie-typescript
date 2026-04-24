@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { memo, resetMemoCounter } from "../../src/memo.js";
 import { diff } from "../../src/tree/diff.js";
 import type { MemoCacheEntry, NormalizeContext, WireNode } from "../../src/tree/normalize.js";
@@ -374,6 +374,68 @@ describe("normalize builder-default a11y", () => {
     const trigger = wire.children[0]!.children[0]!;
     const a11y = trigger.props["a11y"] as Record<string, unknown>;
     expect(a11y["described_by"]).toBe("form/help");
+  });
+
+  test("allows popup active_descendant refs to target dynamic options", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const parent = node("form", "column", {}, [
+        node("country", "combo_box", {
+          a11y: { active_descendant: "country-us" },
+        }),
+        node("state", "pick_list", {
+          a11y: { active_descendant: "state-ca" },
+        }),
+      ]);
+
+      const wire = normalize(parent);
+
+      const comboA11y = wire.children[0]!.props["a11y"] as Record<string, unknown>;
+      const pickListA11y = wire.children[1]!.props["a11y"] as Record<string, unknown>;
+      expect(comboA11y["active_descendant"]).toBe("form/country-us");
+      expect(pickListA11y["active_descendant"]).toBe("form/state-ca");
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  test("warns on other missing refs for popup widgets", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const parent = node("form", "container", {}, [
+        node("country", "combo_box", {
+          a11y: { labelled_by: "missing-label" },
+        }),
+      ]);
+
+      const wire = normalize(parent);
+
+      const a11y = wire.children[0]!.props["a11y"] as Record<string, unknown>;
+      expect(a11y["labelled_by"]).toBe("form/missing-label");
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("a11y.labelled_by"));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  test("warns on missing active_descendant refs for non-popup widgets", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const parent = node("form", "container", {}, [
+        node("email", "text_input", {
+          a11y: { active_descendant: "email-suggestion" },
+        }),
+      ]);
+
+      const wire = normalize(parent);
+
+      const a11y = wire.children[0]!.props["a11y"] as Record<string, unknown>;
+      expect(a11y["active_descendant"]).toBe("form/email-suggestion");
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("a11y.active_descendant"));
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
 
