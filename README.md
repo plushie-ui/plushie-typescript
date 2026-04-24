@@ -65,8 +65,8 @@ complete project demos, including native Rust extensions, see the
 repo.
 
 To add Plushie to your own project, see the
-[getting started guide](docs/getting-started.md),
-or browse the [docs](docs/) for all guides and references.
+[getting started guide](docs/guides/02-getting-started.md),
+or browse the [docs](docs/README.md) for all guides and references.
 
 ## How it works
 
