@@ -12,6 +12,7 @@ import type { DecodedResponse, WireMessage, WirePatchOp } from "../../src/client
 import {
   decodeMessage,
   encodeInteract,
+  encodeLoadFont,
   encodePatch,
   encodeQuery,
   encodeSettings,
@@ -553,6 +554,99 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
         const node = q2Resp.data as Record<string, unknown>;
         const props = node["props"] as Record<string, unknown>;
         expect(props["content"]).toBe("session two");
+      }
+    } finally {
+      transport.close();
+    }
+  });
+
+  // load_font is a typed binary message (not a widget_op envelope). The
+  // round-trip exercises both the msgpack-binary path and the json-base64
+  // path: the renderer just needs to accept the envelope without throwing
+  // a structural error. Bogus font bytes are fine for that, the format
+  // sniff in fontdb fails downstream and is logged at the renderer.
+  test("msgpack: load_font sends native binary data", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "msgpack",
+      args: ["--mock"],
+    });
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello");
+      transport.send(encodeSettings("", {}) as Record<string, unknown>);
+      await helloPromise;
+
+      // After a successful settings round-trip, the session is healthy.
+      // Any wire-shape rejection on load_font would either close the
+      // transport or emit a session_error before the next exchange.
+      const fontBytes = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04, 0x05]);
+      transport.send(
+        encodeLoadFont("", "TestFont", fontBytes, "msgpack") as Record<string, unknown>,
+      );
+
+      // Follow up with a query to confirm the session is still alive.
+      transport.send(
+        encodeSnapshot("", {
+          id: "root",
+          type: "text",
+          props: { content: "alive" },
+          children: [],
+        }) as Record<string, unknown>,
+      );
+
+      const queryPromise = waitForMessage(transport, (d) => d.type === "query_response");
+      transport.send(
+        encodeQuery("", "after_font", "find", { by: "id", value: "root" }) as Record<
+          string,
+          unknown
+        >,
+      );
+      const qResp = await queryPromise;
+      expect(qResp.type).toBe("query_response");
+      if (qResp.type === "query_response") {
+        expect(qResp.data).not.toBeNull();
+      }
+    } finally {
+      transport.close();
+    }
+  });
+
+  test("json: load_font sends base64-encoded data", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "json",
+      args: ["--mock"],
+    });
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello");
+      transport.send(encodeSettings("", {}) as Record<string, unknown>);
+      await helloPromise;
+
+      const fontBytes = new Uint8Array([0x10, 0x20, 0x30, 0x40]);
+      transport.send(encodeLoadFont("", "JsonFont", fontBytes, "json") as Record<string, unknown>);
+
+      transport.send(
+        encodeSnapshot("", {
+          id: "root",
+          type: "text",
+          props: { content: "still here" },
+          children: [],
+        }) as Record<string, unknown>,
+      );
+
+      const queryPromise = waitForMessage(transport, (d) => d.type === "query_response");
+      transport.send(
+        encodeQuery("", "after_font_json", "find", { by: "id", value: "root" }) as Record<
+          string,
+          unknown
+        >,
+      );
+      const qResp = await queryPromise;
+      expect(qResp.type).toBe("query_response");
+      if (qResp.type === "query_response") {
+        expect(qResp.data).not.toBeNull();
       }
     } finally {
       transport.close();
