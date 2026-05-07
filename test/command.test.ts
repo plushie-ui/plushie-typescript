@@ -190,10 +190,17 @@ describe("Command", () => {
     expect(cmd.payload).toEqual({ op: "delete_image", handle: "avatar" });
   });
 
-  test("clearImages() clears all images", () => {
+  test("listImages() rides the typed image_op channel", () => {
+    const cmd = Command.listImages("inventory");
+    expect(cmd.type).toBe("image_op");
+    expect(cmd.payload["op"]).toBe("list");
+    expect(cmd.payload["tag"]).toBe("inventory");
+  });
+
+  test("clearImages() rides the typed image_op channel", () => {
     const cmd = Command.clearImages();
-    expect(cmd.type).toBe("widget_op");
-    expect(cmd.payload["op"]).toBe("clear_images");
+    expect(cmd.type).toBe("image_op");
+    expect(cmd.payload["op"]).toBe("clear");
   });
 
   // -- Pane operations ------------------------------------------------------

@@ -449,12 +449,12 @@ export function deleteImage(handle: string): Command {
 
 /** Lists all in-memory image handles. Result arrives as a tagged event. */
 export function listImages(tag: string): Command {
-  return cmd("widget_op", { op: "list_images", tag });
+  return cmd("image_op", { op: "list", tag });
 }
 
 /** Clears all in-memory images. */
 export function clearImages(): Command {
-  return cmd("widget_op", { op: "clear_images" });
+  return cmd("image_op", { op: "clear" });
 }
 
 // -- Pane operations --------------------------------------------------------
