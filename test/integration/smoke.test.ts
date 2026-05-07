@@ -10,7 +10,9 @@
 import { describe, expect, test } from "vitest";
 import type { DecodedResponse, WireMessage, WirePatchOp } from "../../src/client/protocol.js";
 import {
+  decodeEvent,
   decodeMessage,
+  encodeAdvanceFrame,
   encodeInteract,
   encodeLoadFont,
   encodePatch,
@@ -606,6 +608,172 @@ describe.skipIf(!binaryAvailable)("integration: binary smoke test", () => {
       expect(qResp.type).toBe("query_response");
       if (qResp.type === "query_response") {
         expect(qResp.data).not.toBeNull();
+      }
+    } finally {
+      transport.close();
+    }
+  });
+
+  // The four tests below drive real renderer subscription events through
+  // decodeEvent end-to-end. They guard against silent decoder drift: a
+  // wire-shape regression in cursor_moved, key_press, ime_commit, or
+  // animation_frame would surface here as zeroed-out coordinates,
+  // empty key strings, missing IME text, or null timestamps.
+
+  test("cursor_moved subscription event decodes coordinates from real renderer", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "json",
+      args: ["--mock"],
+    });
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello");
+      transport.send(encodeSettings("", {}) as Record<string, unknown>);
+      await helloPromise;
+
+      // Subscribe to pointer-move so the renderer routes the synthesized
+      // cursor_moved event back to us.
+      transport.send(encodeSubscribe("", "on_pointer_move", "mouse") as Record<string, unknown>);
+
+      const interactPromise = waitForMessage(transport, (d) => d.type === "interact_response");
+      transport.send(
+        encodeInteract(
+          "",
+          "move-1",
+          "move_to",
+          { by: "id", value: "" },
+          { x: 123.5, y: 456.25 },
+        ) as Record<string, unknown>,
+      );
+      const response = await interactPromise;
+
+      expect(response.type).toBe("interact_response");
+      if (response.type === "interact_response") {
+        const events = response.events as WireMessage[];
+        const cursor = events.find((e) => e["family"] === "cursor_moved");
+        expect(cursor).toBeDefined();
+        const decoded = decodeEvent(cursor!);
+        expect(decoded.kind).toBe("widget");
+        if (decoded.kind === "widget") {
+          expect(decoded.type).toBe("move");
+          expect(decoded.data?.["x"]).toBeCloseTo(123.5);
+          expect(decoded.data?.["y"]).toBeCloseTo(456.25);
+          expect(decoded.data?.["pointer"]).toBe("mouse");
+        }
+      }
+    } finally {
+      transport.close();
+    }
+  });
+
+  test("key_press subscription event decodes key from real renderer", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "json",
+      args: ["--mock"],
+    });
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello");
+      transport.send(encodeSettings("", {}) as Record<string, unknown>);
+      await helloPromise;
+
+      transport.send(encodeSubscribe("", "on_key_press", "keys") as Record<string, unknown>);
+
+      const interactPromise = waitForMessage(transport, (d) => d.type === "interact_response");
+      transport.send(
+        encodeInteract("", "press-1", "press", { by: "id", value: "" }, { key: "Enter" }) as Record<
+          string,
+          unknown
+        >,
+      );
+      const response = await interactPromise;
+
+      expect(response.type).toBe("interact_response");
+      if (response.type === "interact_response") {
+        const events = response.events as WireMessage[];
+        const key = events.find((e) => e["family"] === "key_press");
+        expect(key).toBeDefined();
+        const decoded = decodeEvent(key!);
+        expect(decoded.kind).toBe("key");
+        if (decoded.kind === "key") {
+          expect(decoded.type).toBe("press");
+          expect(decoded.key).toBe("Enter");
+        }
+      }
+    } finally {
+      transport.close();
+    }
+  });
+
+  test("animation_frame subscription event decodes timestamp from real renderer", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "json",
+      args: ["--mock"],
+    });
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello");
+      transport.send(encodeSettings("", {}) as Record<string, unknown>);
+      await helloPromise;
+
+      transport.send(encodeSubscribe("", "on_animation_frame", "anim") as Record<string, unknown>);
+
+      const framePromise = waitForMessage(
+        transport,
+        (d) => d.type === "event" && d.data.kind === "system" && d.data.type === "animation_frame",
+      );
+      transport.send(encodeAdvanceFrame("", 32_000) as Record<string, unknown>);
+      const decoded = await framePromise;
+
+      expect(decoded.type).toBe("event");
+      if (decoded.type === "event" && decoded.data.kind === "system") {
+        expect(decoded.data.type).toBe("animation_frame");
+        expect(decoded.data.value).toBe(32_000);
+      }
+    } finally {
+      transport.close();
+    }
+  });
+
+  test("wheel_scrolled subscription event decodes deltas from real renderer", async () => {
+    const transport = new SpawnTransport({
+      binary: binaryPath!,
+      format: "json",
+      args: ["--mock"],
+    });
+
+    try {
+      const helloPromise = waitForMessage(transport, (d) => d.type === "hello");
+      transport.send(encodeSettings("", {}) as Record<string, unknown>);
+      await helloPromise;
+
+      transport.send(encodeSubscribe("", "on_pointer_scroll", "scroll") as Record<string, unknown>);
+
+      const interactPromise = waitForMessage(transport, (d) => d.type === "interact_response");
+      transport.send(
+        encodeInteract(
+          "",
+          "scroll-1",
+          "scroll",
+          { by: "id", value: "" },
+          { delta_x: 10.5, delta_y: -25.0 },
+        ) as Record<string, unknown>,
+      );
+      const response = await interactPromise;
+
+      if (response.type === "interact_response") {
+        const events = response.events as WireMessage[];
+        const wheel = events.find((e) => e["family"] === "wheel_scrolled");
+        expect(wheel).toBeDefined();
+        const decoded = decodeEvent(wheel!);
+        if (decoded.kind === "widget") {
+          expect(decoded.type).toBe("scroll");
+          expect(decoded.data?.["delta_x"]).toBeCloseTo(10.5);
+          expect(decoded.data?.["delta_y"]).toBeCloseTo(-25.0);
+        }
       }
     } finally {
       transport.close();

@@ -624,13 +624,25 @@ describe("decodeEvent", () => {
       family: "key_press",
       tag: "keys",
       modifiers: { ctrl: true, shift: false, alt: false, logo: false, command: true },
-      data: { key: "s", modified_key: "s", physical_key: "KeyS", location: "standard" },
+      value: {
+        key: "s",
+        modified_key: "s",
+        physical_key: "KeyS",
+        location: "standard",
+        text: "s",
+        repeat: false,
+      },
       captured: false,
     });
     expect(event.kind).toBe("key");
     if (event.kind === "key") {
       expect(event.type).toBe("press");
       expect(event.key).toBe("s");
+      expect(event.modifiedKey).toBe("s");
+      expect(event.physicalKey).toBe("KeyS");
+      expect(event.location).toBe("standard");
+      expect(event.text).toBe("s");
+      expect(event.repeat).toBe(false);
       expect(event.modifiers.ctrl).toBe(true);
       expect(event.modifiers.command).toBe(true);
       expect(event.tag).toBe("keys");
@@ -644,11 +656,12 @@ describe("decodeEvent", () => {
       family: "key_press",
       tag: "keys",
       modifiers: { ctrl: false, shift: false, alt: false, logo: false, command: false },
-      data: { key: "a" },
+      value: { key: "a" },
       captured: false,
       window_id: "editor",
     });
     if (event.kind === "key") {
+      expect(event.key).toBe("a");
       expect(event.windowId).toBe("editor");
     }
   });
@@ -660,10 +673,11 @@ describe("decodeEvent", () => {
       family: "key_press",
       tag: "keys",
       modifiers: { ctrl: false, shift: false, alt: false, logo: false, command: false },
-      data: { key: "a" },
+      value: { key: "a" },
       captured: false,
     });
     if (event.kind === "key") {
+      expect(event.key).toBe("a");
       expect(event.windowId).toBeNull();
     }
   });
@@ -676,7 +690,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "cursor_moved",
       tag: "mouse",
-      data: { x: 100.5, y: 200.3 },
+      value: { x: 100.5, y: 200.3 },
       captured: false,
       window_id: "main",
     });
@@ -686,6 +700,7 @@ describe("decodeEvent", () => {
       expect(event.id).toBe("main");
       expect(event.scope).toEqual([]);
       expect(event.data?.["x"]).toBeCloseTo(100.5);
+      expect(event.data?.["y"]).toBeCloseTo(200.3);
       expect(event.data?.["pointer"]).toBe("mouse");
     }
   });
@@ -714,12 +729,13 @@ describe("decodeEvent", () => {
       session: "",
       family: "wheel_scrolled",
       tag: "mouse",
-      data: { delta_x: 0, delta_y: -3, unit: "line" },
+      value: { delta_x: 0, delta_y: -3, unit: "line" },
       captured: false,
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
       expect(event.type).toBe("scroll");
+      expect(event.data?.["delta_x"]).toBe(0);
       expect(event.data?.["delta_y"]).toBe(-3);
       expect(event.data?.["unit"]).toBe("line");
     }
@@ -731,7 +747,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "finger_pressed",
       tag: "touch",
-      data: { id: 1, x: 50, y: 100 },
+      value: { id: 1, x: 50, y: 100 },
       captured: false,
       window_id: "main",
     });
@@ -741,6 +757,7 @@ describe("decodeEvent", () => {
       expect(event.data?.["pointer"]).toBe("touch");
       expect(event.data?.["finger"]).toBe(1);
       expect(event.data?.["x"]).toBe(50);
+      expect(event.data?.["y"]).toBe(100);
     }
   });
 
@@ -764,7 +781,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "finger_lost",
       tag: "touch",
-      data: { id: 2, x: 0, y: 0 },
+      value: { id: 2, x: 0, y: 0 },
       captured: false,
     });
     expect(event.kind).toBe("widget");
@@ -772,6 +789,62 @@ describe("decodeEvent", () => {
       expect(event.type).toBe("release");
       expect(event.data?.["lost"]).toBe(true);
       expect(event.data?.["pointer"]).toBe("touch");
+      expect(event.data?.["finger"]).toBe(2);
+    }
+  });
+
+  test("decodes finger_moved subscription event as move WidgetEvent", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "finger_moved",
+      tag: "touch",
+      value: { id: 3, x: 25.5, y: 75.25 },
+      captured: false,
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("move");
+      expect(event.data?.["pointer"]).toBe("touch");
+      expect(event.data?.["finger"]).toBe(3);
+      expect(event.data?.["x"]).toBeCloseTo(25.5);
+      expect(event.data?.["y"]).toBeCloseTo(75.25);
+    }
+  });
+
+  test("decodes finger_lifted subscription event as release WidgetEvent", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "finger_lifted",
+      tag: "touch",
+      value: { id: 4, x: 200, y: 300 },
+      captured: false,
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("release");
+      expect(event.data?.["pointer"]).toBe("touch");
+      expect(event.data?.["finger"]).toBe(4);
+      expect(event.data?.["x"]).toBe(200);
+      expect(event.data?.["y"]).toBe(300);
+    }
+  });
+
+  test("decodes button_released subscription event with button string", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "button_released",
+      tag: "mouse",
+      value: "right",
+      captured: false,
+      window_id: "main",
+    });
+    if (event.kind === "widget") {
+      expect(event.type).toBe("release");
+      expect(event.data?.["button"]).toBe("right");
+      expect(event.data?.["pointer"]).toBe("mouse");
     }
   });
 
@@ -783,7 +856,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "ime_preedit",
       id: "editor",
-      data: { text: "compose", cursor: { start: 0, end: 7 } },
+      value: { text: "compose", cursor: { start: 0, end: 7 } },
       captured: false,
     });
     expect(event.kind).toBe("ime");
@@ -791,6 +864,23 @@ describe("decodeEvent", () => {
       expect(event.type).toBe("preedit");
       expect(event.text).toBe("compose");
       expect(event.cursor).toEqual([0, 7]);
+    }
+  });
+
+  test("decodes ime_commit event with text", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "ime_commit",
+      id: "editor",
+      value: { text: "committed" },
+      captured: false,
+    });
+    expect(event.kind).toBe("ime");
+    if (event.kind === "ime") {
+      expect(event.type).toBe("commit");
+      expect(event.text).toBe("committed");
+      expect(event.cursor).toBeNull();
     }
   });
 
@@ -861,7 +951,7 @@ describe("decodeEvent", () => {
       family: "press",
       id: "area/context",
       window_id: "main",
-      data: { x: 50, y: 100, button: "right", pointer: "mouse" },
+      value: { x: 50, y: 100, button: "right", pointer: "mouse" },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
@@ -880,7 +970,7 @@ describe("decodeEvent", () => {
       family: "move",
       id: "canvas",
       window_id: "main",
-      data: { x: 50, y: 100, pointer: "mouse" },
+      value: { x: 50, y: 100, pointer: "mouse" },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
@@ -898,11 +988,12 @@ describe("decodeEvent", () => {
       family: "pane_clicked",
       id: "grid",
       window_id: "main",
-      data: { pane: "pane_1" },
+      value: { pane: "pane_1" },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
       expect(event.type).toBe("pane_clicked");
+      expect(event.data?.["pane"]).toBe("pane_1");
     }
   });
 
@@ -915,7 +1006,7 @@ describe("decodeEvent", () => {
       family: "resize",
       id: "container/sensor_1",
       window_id: "main",
-      data: { width: 320, height: 240 },
+      value: { width: 320, height: 240 },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
@@ -935,7 +1026,7 @@ describe("decodeEvent", () => {
       session: "",
       family: "animation_frame",
       tag: "frame",
-      data: { timestamp: 16000 },
+      value: { timestamp: 16000 },
     });
     expect(event.kind).toBe("system");
     if (event.kind === "system") {
@@ -978,13 +1069,15 @@ describe("decodeEvent", () => {
       family: "key_press",
       id: "canvas_1/element_1",
       window_id: "main",
-      data: { key: "ArrowRight", modifiers: { ctrl: false, shift: false, alt: false } },
+      value: { key: "ArrowRight" },
+      modifiers: { ctrl: false, shift: false, alt: false, logo: false, command: false },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
       expect(event.type).toBe("key_press");
       expect(event.id).toBe("element_1");
       expect(event.scope).toEqual(["canvas_1"]);
+      expect(event.data?.["key"]).toBe("ArrowRight");
     }
   });
 
@@ -995,11 +1088,12 @@ describe("decodeEvent", () => {
       family: "key_release",
       id: "canvas_1",
       window_id: "main",
-      data: { key: "Escape" },
+      value: { key: "Escape" },
     });
     expect(event.kind).toBe("widget");
     if (event.kind === "widget") {
       expect(event.type).toBe("key_release");
+      expect(event.data?.["key"]).toBe("Escape");
     }
   });
 
@@ -1010,10 +1104,13 @@ describe("decodeEvent", () => {
       family: "key_press",
       tag: "keys",
       modifiers: { ctrl: false, shift: false, alt: false, logo: false, command: false },
-      data: { key: "a" },
+      value: { key: "a" },
       captured: false,
     });
     expect(event.kind).toBe("key");
+    if (event.kind === "key") {
+      expect(event.key).toBe("a");
+    }
   });
 
   // -- Session lifecycle --

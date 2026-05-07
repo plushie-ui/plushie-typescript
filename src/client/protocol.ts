@@ -839,12 +839,13 @@ function parseModifiers(mods: unknown): Modifiers {
  */
 export function decodeEvent(raw: WireMessage): Event {
   const family = str(raw, "family");
-  const data = obj(raw, "data");
-  const _session = str(raw, "session");
 
-  // Session lifecycle events (multiplexed mode)
+  // Session lifecycle events (multiplexed mode). The headless session
+  // worker emits these as raw envelopes with a `data` payload, so the
+  // SDK reads `data` for these two families specifically.
   if (family === "session_error") {
     const session = str(raw, "session");
+    const data = obj(raw, "data");
     const code = data && typeof data["code"] === "string" ? (data["code"] as string) : "";
     const errorText = data && typeof data["error"] === "string" ? (data["error"] as string) : "";
     return {
@@ -856,6 +857,7 @@ export function decodeEvent(raw: WireMessage): Event {
   }
   if (family === "session_closed") {
     const session = str(raw, "session");
+    const data = obj(raw, "data");
     const reason = data && typeof data["reason"] === "string" ? (data["reason"] as string) : "";
     return {
       kind: "session_closed",
@@ -864,10 +866,17 @@ export function decodeEvent(raw: WireMessage): Event {
     };
   }
 
+  // Every other event family the renderer emits flows through
+  // `OutgoingEvent`, which serializes structured payloads under
+  // `value`, never `data`. Each branch below reads `value` (or
+  // top-level fields like `modifiers` and `captured`) to match the
+  // wire shape.
+  const value = obj(raw, "value");
+
   // Widget events: all widget-scoped events (standard, pointer, pane, etc.)
   // are decoded into WidgetEvent with data maps.
   if (isWidgetFamily(family)) {
-    return decodeWidgetEvent(raw, family, data);
+    return decodeWidgetEvent(raw, family, value);
   }
 
   // Key events: dual dispatch. With non-empty id -> WidgetEvent (scoped
@@ -875,9 +884,9 @@ export function decodeEvent(raw: WireMessage): Event {
   if (family === "key_press" || family === "key_release") {
     const id = str(raw, "id");
     if (id !== "") {
-      return decodeWidgetEvent(raw, family, data);
+      return decodeWidgetEvent(raw, family, value);
     }
-    return decodeKeyEvent(raw, family, data);
+    return decodeKeyEvent(raw, family, value);
   }
   if (family === "modifiers_changed") {
     return decodeModifiersEvent(raw);
@@ -885,7 +894,7 @@ export function decodeEvent(raw: WireMessage): Event {
 
   // IME events
   if (isImeFamily(family)) {
-    return decodeImeEvent(raw, family, data);
+    return decodeImeEvent(raw, family, value);
   }
 
   // Window lifecycle events
@@ -895,12 +904,12 @@ export function decodeEvent(raw: WireMessage): Event {
 
   // System events
   if (isSystemFamily(family)) {
-    return decodeSystemEvent(raw, family, data);
+    return decodeSystemEvent(raw, family, value);
   }
 
   // Subscription pointer events (iced-native families converted to unified WidgetEvents)
   if (isSubscriptionPointerFamily(family)) {
-    return decodeSubscriptionPointerEvent(raw, family);
+    return decodeSubscriptionPointerEvent(raw, family, value);
   }
 
   // The renderer and SDK are lock-step; an unrecognized family is a protocol
@@ -973,22 +982,20 @@ function coerceWidgetValue(v: unknown): string | number | boolean | null {
 function decodeWidgetEvent(
   raw: WireMessage,
   family: string,
-  data: WireMessage | null,
+  value: WireMessage | null,
 ): WidgetEvent {
   const wireId = str(raw, "id");
   const { id, scope, windowId } = splitScopedId(wireId);
   // Structured pointer / scroll / resize / key payloads arrive in
-  // `value`. When `data` is empty, treat a value-shaped object as the
-  // data payload so PointerData / ScrolledData / DragData fields are
-  // reachable through `event.data`.
+  // `value`. Object-shaped values become the event's data map so
+  // PointerData / ScrolledData / DragData fields are reachable through
+  // `event.data`. The raw `value` is also kept for the scalar `value`
+  // slot below (e.g. text input value strings, button strings).
   const rawValue = raw["value"];
-  const valueIsObject =
-    typeof rawValue === "object" && rawValue !== null && !Array.isArray(rawValue);
-  const payload = data ?? (valueIsObject ? (rawValue as Record<string, unknown>) : null);
   // `captured` lives at the top level on the wire; surface it inside
   // `data` so pointer / scroll / drag events can observe it without a
   // second lookup.
-  let mergedData: Record<string, unknown> | null = payload ? { ...payload } : null;
+  let mergedData: Record<string, unknown> | null = value ? { ...value } : null;
   if (raw["captured"] === true) {
     mergedData = { ...(mergedData ?? {}), captured: true };
   }
@@ -1010,26 +1017,30 @@ function optionalWindowId(msg: WireMessage): string | null {
   return typeof msg["window_id"] === "string" ? msg["window_id"] : null;
 }
 
-function decodeKeyEvent(raw: WireMessage, family: string, data: WireMessage | null): KeyEvent {
+function decodeKeyEvent(raw: WireMessage, family: string, value: WireMessage | null): KeyEvent {
   const type = family === "key_press" ? ("press" as const) : ("release" as const);
+  // The renderer writes the structured key payload (key, modified_key,
+  // physical_key, location, text, repeat) under the `value` field of
+  // OutgoingEvent. Top-level `modifiers` and `captured` live as
+  // siblings on the envelope.
   return {
     kind: "key",
     type,
-    key: data ? str(data, "key") : "",
-    modifiedKey: data
-      ? typeof data["modified_key"] === "string"
-        ? data["modified_key"]
+    key: value ? str(value, "key") : "",
+    modifiedKey: value
+      ? typeof value["modified_key"] === "string"
+        ? value["modified_key"]
         : null
       : null,
-    physicalKey: data
-      ? typeof data["physical_key"] === "string"
-        ? data["physical_key"]
+    physicalKey: value
+      ? typeof value["physical_key"] === "string"
+        ? value["physical_key"]
         : null
       : null,
     modifiers: parseModifiers(raw["modifiers"]),
-    location: (data ? str(data, "location", "standard") : "standard") as KeyEvent["location"],
-    text: data ? (typeof data["text"] === "string" ? data["text"] : null) : null,
-    repeat: data ? data["repeat"] === true : false,
+    location: (value ? str(value, "location", "standard") : "standard") as KeyEvent["location"],
+    text: value ? (typeof value["text"] === "string" ? value["text"] : null) : null,
+    repeat: value ? value["repeat"] === true : false,
     tag: str(raw, "tag"),
     captured: bool(raw, "captured"),
     windowId: optionalWindowId(raw),
@@ -1070,10 +1081,19 @@ function isSubscriptionPointerFamily(family: string): boolean {
   return SUBSCRIPTION_POINTER_FAMILIES.has(family);
 }
 
-function decodeSubscriptionPointerEvent(raw: WireMessage, family: string): WidgetEvent {
+function decodeSubscriptionPointerEvent(
+  raw: WireMessage,
+  family: string,
+  value: WireMessage | null,
+): WidgetEvent {
   const windowId = optionalWindowId(raw) ?? "";
   const id = windowId || "__global__";
-  const data = obj(raw, "data");
+  // Subscription pointer events carry their structured payload under
+  // `value` on the wire (cursor_moved -> {x, y}, wheel_scrolled ->
+  // {delta_x, delta_y, unit}, finger_* -> {id, x, y}). button_pressed
+  // and button_released use a string `value` (the button name), so
+  // `obj(raw, "value")` is null for those branches and they read the
+  // top-level `value` directly.
 
   switch (family) {
     case "cursor_moved":
@@ -1085,8 +1105,8 @@ function decodeSubscriptionPointerEvent(raw: WireMessage, family: string): Widge
         scope: [],
         value: null,
         data: {
-          x: data ? num(data, "x") : 0,
-          y: data ? num(data, "y") : 0,
+          x: value ? num(value, "x") : 0,
+          y: value ? num(value, "y") : 0,
           pointer: "mouse",
           modifiers: parseModifiers(raw["modifiers"]),
         },
@@ -1139,9 +1159,9 @@ function decodeSubscriptionPointerEvent(raw: WireMessage, family: string): Widge
         scope: [],
         value: null,
         data: {
-          delta_x: data ? num(data, "delta_x") : 0,
-          delta_y: data ? num(data, "delta_y") : 0,
-          unit: data ? str(data, "unit") : "line",
+          delta_x: value ? num(value, "delta_x") : 0,
+          delta_y: value ? num(value, "delta_y") : 0,
+          unit: value ? str(value, "unit") : "line",
           pointer: "mouse",
           x: 0,
           y: 0,
@@ -1168,9 +1188,9 @@ function decodeSubscriptionPointerEvent(raw: WireMessage, family: string): Widge
         value: null,
         data: {
           pointer: "touch",
-          finger: data ? num(data, "id") : 0,
-          x: data ? num(data, "x") : 0,
-          y: data ? num(data, "y") : 0,
+          finger: value ? num(value, "id") : 0,
+          x: value ? num(value, "x") : 0,
+          y: value ? num(value, "y") : 0,
           button: "left",
           ...(family === "finger_lost" ? { lost: true } : {}),
         },
@@ -1191,22 +1211,25 @@ function isImeFamily(family: string): boolean {
   return IME_FAMILIES.has(family);
 }
 
-function decodeImeEvent(raw: WireMessage, family: string, data: WireMessage | null): ImeEvent {
+function decodeImeEvent(raw: WireMessage, family: string, value: WireMessage | null): ImeEvent {
   const typeMap: Record<string, ImeEvent["type"]> = {
     ime_opened: "opened",
     ime_preedit: "preedit",
     ime_commit: "commit",
     ime_closed: "closed",
   };
+  // ime_preedit and ime_commit carry their structured payload under
+  // `value` on the wire (text, optional cursor span); ime_opened and
+  // ime_closed have no payload.
   let cursor: readonly [number, number] | null = null;
-  if (data && typeof data["cursor"] === "object" && data["cursor"] !== null) {
-    const c = data["cursor"] as Record<string, unknown>;
+  if (value && typeof value["cursor"] === "object" && value["cursor"] !== null) {
+    const c = value["cursor"] as Record<string, unknown>;
     cursor = [num(c, "start"), num(c, "end")];
   }
   return {
     kind: "ime",
     type: typeMap[family] ?? "opened",
-    text: data ? (typeof data["text"] === "string" ? data["text"] : null) : null,
+    text: value ? (typeof value["text"] === "string" ? value["text"] : null) : null,
     cursor,
     tag: str(raw, "tag"),
     captured: bool(raw, "captured"),
@@ -1281,30 +1304,35 @@ function isSystemFamily(family: string): boolean {
 function decodeSystemEvent(
   raw: WireMessage,
   family: string,
-  data: WireMessage | null,
+  value: WireMessage | null,
 ): SystemEvent | WidgetCommandErrorEvent {
-  let eventData: unknown = data;
+  let eventData: unknown = value;
 
-  // Flatten specific system event data
-  if (family === "animation_frame" && data) {
-    eventData = data["timestamp"] ?? null;
+  // Flatten specific system event data. animation_frame and announce
+  // wrap their scalar payload in a single-key object on the wire
+  // (`{timestamp: ...}`, `{text: ...}`); unwrap so consumers see the
+  // scalar directly. theme_changed already carries its mode string as
+  // a scalar `value`. The `error` family carries its structured detail
+  // as the `value` object, with the source pinned by the top-level id.
+  if (family === "animation_frame" && value) {
+    eventData = value["timestamp"] ?? null;
   } else if (family === "theme_changed") {
     eventData = raw["value"] ?? null;
-  } else if (family === "announce" && data) {
-    eventData = data["text"] ?? null;
+  } else if (family === "announce" && value) {
+    eventData = value["text"] ?? null;
   } else if (family === "error") {
     if (str(raw, "id") === "widget_command") {
       return {
         kind: "widget_command_error",
-        reason: typeof data?.["reason"] === "string" ? (data["reason"] as string) : "",
-        nodeId: typeof data?.["node_id"] === "string" ? (data["node_id"] as string) : null,
-        family: typeof data?.["family"] === "string" ? (data["family"] as string) : null,
+        reason: typeof value?.["reason"] === "string" ? (value["reason"] as string) : "",
+        nodeId: typeof value?.["node_id"] === "string" ? (value["node_id"] as string) : null,
+        family: typeof value?.["family"] === "string" ? (value["family"] as string) : null,
         widgetType:
-          typeof data?.["widget_type"] === "string" ? (data["widget_type"] as string) : null,
-        message: typeof data?.["message"] === "string" ? (data["message"] as string) : null,
+          typeof value?.["widget_type"] === "string" ? (value["widget_type"] as string) : null,
+        message: typeof value?.["message"] === "string" ? (value["message"] as string) : null,
       } as WidgetCommandErrorEvent;
     }
-    eventData = data ? { id: str(raw, "id"), ...data } : { id: str(raw, "id") };
+    eventData = value ? { id: str(raw, "id"), ...value } : { id: str(raw, "id") };
   }
 
   return {
