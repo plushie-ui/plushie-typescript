@@ -857,7 +857,7 @@ export function decodeEvent(raw: WireMessage): Event {
 
   // Window lifecycle events
   if (isWindowFamily(family)) {
-    return decodeWindowEvent(raw, family, data);
+    return decodeWindowEvent(raw, family);
   }
 
   // System events
@@ -1201,11 +1201,7 @@ function isWindowFamily(family: string): boolean {
   return WINDOW_FAMILIES.has(family);
 }
 
-function decodeWindowEvent(
-  raw: WireMessage,
-  family: string,
-  data: WireMessage | null,
-): WindowEvent {
+function decodeWindowEvent(raw: WireMessage, family: string): WindowEvent {
   const typeMap: Record<string, WindowEvent["type"]> = {
     window_opened: "opened",
     window_closed: "closed",
@@ -1219,12 +1215,19 @@ function decodeWindowEvent(
     file_dropped: "file_dropped",
     files_hovered_left: "files_hovered_left",
   };
+  // Window events from the renderer carry their payload under `value`,
+  // matching the OutgoingEvent wire shape. window_opened in particular
+  // now puts `x` and `y` at the top of `value` (mirroring window_moved
+  // and window_resized) instead of nesting them inside a `position`
+  // object, so passing `value` straight through to consumers gives
+  // them the new flat shape.
+  const payload = obj(raw, "value");
   return {
     kind: "window",
     type: typeMap[family] ?? (family as WindowEvent["type"]),
-    windowId: data ? str(data, "window_id") : "",
+    windowId: payload ? str(payload, "window_id") : "",
     tag: str(raw, "tag"),
-    data: data as WindowEvent["data"],
+    data: payload as WindowEvent["data"],
   };
 }
 

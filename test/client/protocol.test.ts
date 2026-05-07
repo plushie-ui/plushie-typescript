@@ -776,18 +776,45 @@ describe("decodeEvent", () => {
 
   // -- Window events --
 
-  test("decodes window_opened event", () => {
+  test("decodes window_opened event with top-level x/y", () => {
     const event = decodeEvent({
       type: "event",
       session: "",
       family: "window_opened",
       tag: "windows",
-      data: { window_id: "main", width: 800, height: 600, scale_factor: 2.0 },
+      value: {
+        window_id: "main",
+        width: 800,
+        height: 600,
+        scale_factor: 2.0,
+        x: 100,
+        y: 200,
+      },
     });
     expect(event.kind).toBe("window");
     if (event.kind === "window") {
       expect(event.type).toBe("opened");
       expect(event.windowId).toBe("main");
+      expect(event.data?.["x"]).toBe(100);
+      expect(event.data?.["y"]).toBe(200);
+      expect(event.data?.["width"]).toBe(800);
+      expect(event.data?.["scale_factor"]).toBe(2.0);
+    }
+  });
+
+  test("decodes window_opened event without position", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "window_opened",
+      tag: "windows",
+      value: { window_id: "main", width: 1024, height: 768, scale_factor: 1.0 },
+    });
+    if (event.kind === "window") {
+      expect(event.type).toBe("opened");
+      expect(event.windowId).toBe("main");
+      expect(event.data?.["x"]).toBeUndefined();
+      expect(event.data?.["y"]).toBeUndefined();
     }
   });
 
@@ -797,10 +824,11 @@ describe("decodeEvent", () => {
       session: "",
       family: "window_resized",
       tag: "windows",
-      data: { window_id: "main", width: 1024, height: 768 },
+      value: { window_id: "main", width: 1024, height: 768 },
     });
     if (event.kind === "window") {
       expect(event.type).toBe("resized");
+      expect(event.windowId).toBe("main");
     }
   });
 
