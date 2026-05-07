@@ -30,18 +30,20 @@ bugs that matter where they actually live, which is at boundaries.
 The renderer offers three runtime modes; the test backends follow
 them by name. The naming is a cross-SDK contract.
 
-- **mock**: sub-millisecond per interaction. Protocol-only. Real
-  binary, real wire, real Core, no rendering. The default for most
-  tests; fast enough that a full suite runs through the binary
-  without flinching. `pnpm test` uses this.
-- **headless**: about 100ms per interaction. Real rendering via
-  tiny-skia, no display server. Used when the test cares about
-  pixels: screenshot golden files (`session.assertScreenshot`),
-  tree-hash assertions (`session.assertTreeHash`), layout-affecting
-  bugs. `PLUSHIE_TEST_BACKEND=headless pnpm test`.
+- **mock**: microseconds to milliseconds per interaction.
+  Protocol-only. Real binary, real wire, real Core, no rendering.
+  The default for most tests; fast enough that a full suite runs
+  through the binary without flinching. `pnpm test` uses this.
+- **headless**: tens to low hundreds of milliseconds per
+  interaction. Real rendering via tiny-skia, no display server.
+  Used when the test cares about pixels: screenshot golden files
+  (`session.assertScreenshot`), tree-hash assertions
+  (`session.assertTreeHash`), layout-affecting bugs.
+  `PLUSHIE_TEST_BACKEND=headless pnpm test`.
 - **windowed**: seconds per interaction. Full iced rendering with
-  a real display (Xvfb on Linux, native display elsewhere). Used
-  when the test cares about full window lifecycle, focus events,
+  a real display (headless weston on Linux, native display
+  elsewhere; Xvfb works for X11-only environments). Used when the
+  test cares about full window lifecycle, focus events,
   or platform-specific behavior.
 
 The names mean the same thing in plushie-rust, plushie-elixir,
