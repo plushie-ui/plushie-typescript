@@ -518,10 +518,12 @@ export function advanceFrame(timestamp: number): Command {
  * Load a font at runtime from binary data.
  *
  * `family` is the name the app will use to reference the font in
- * `default_font` and widget font props.
+ * `default_font` and widget font props. Sent as a typed `load_font`
+ * wire message: MessagePack carries `data` as native binary, JSON as
+ * a base64 string.
  */
 export function loadFont(family: string, data: Uint8Array): Command {
-  return cmd("widget_op", { op: "load_font", family, data });
+  return cmd("load_font", { family, data });
 }
 
 /** Query which widget currently has focus. */

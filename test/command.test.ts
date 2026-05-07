@@ -254,8 +254,7 @@ describe("Command", () => {
   test("loadFont() sends font data with family", () => {
     const data = new Uint8Array([0, 1, 2, 3]);
     const cmd = Command.loadFont("Inter", data);
-    expect(cmd.type).toBe("widget_op");
-    expect(cmd.payload["op"]).toBe("load_font");
+    expect(cmd.type).toBe("load_font");
     expect(cmd.payload["family"]).toBe("Inter");
     expect(cmd.payload["data"]).toBe(data);
   });

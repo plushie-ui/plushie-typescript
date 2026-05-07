@@ -283,6 +283,39 @@ export function encodeImageOp(
   return { type: "image_op", session, op, payload };
 }
 
+/**
+ * Encode a LoadFont message.
+ *
+ * `data` is the raw font bytes. The encoder leaves them as a
+ * `Uint8Array` for the MessagePack path (which serializes them as
+ * native binary); for the JSON path it base64-encodes them in line
+ * with the renderer's incoming-message contract.
+ */
+export function encodeLoadFont(
+  session: string,
+  family: string,
+  data: Uint8Array,
+  format: "msgpack" | "json",
+): WireMessage {
+  const wireData: unknown = format === "json" ? toBase64(data) : data;
+  return { type: "load_font", session, payload: { family, data: wireData } };
+}
+
+function toBase64(bytes: Uint8Array): string {
+  // Buffer is the cheapest path on Node and is the runtime that all
+  // real transports run on. `btoa` is reserved for any future browser
+  // path; the WasmTransport is JSON-only and will go through this
+  // helper too.
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64");
+  }
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i += 1) {
+    binary += String.fromCharCode(bytes[i]!);
+  }
+  return btoa(binary);
+}
+
 /** Encode a Command message (unified widget-targeted command). */
 export function encodeCommand(
   session: string,

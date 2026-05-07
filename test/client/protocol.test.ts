@@ -8,6 +8,7 @@ import {
   encodeEffect,
   encodeImageOp,
   encodeInteract,
+  encodeLoadFont,
   encodePatch,
   encodeQuery,
   encodeRegisterEffectStub,
@@ -265,6 +266,25 @@ describe("other encoders", () => {
     const payload = msg["payload"] as Record<string, unknown>;
     expect(payload["handle"]).toBe("sprite");
     expect(payload["data"]).toBe("base64data");
+  });
+
+  test("encodeLoadFont msgpack passes data as native binary", () => {
+    const data = new Uint8Array([0x00, 0x01, 0x02, 0xff]);
+    const msg = encodeLoadFont("s1", "Inter", data, "msgpack");
+    expect(msg["type"]).toBe("load_font");
+    expect(msg["session"]).toBe("s1");
+    const payload = msg["payload"] as Record<string, unknown>;
+    expect(payload["family"]).toBe("Inter");
+    expect(payload["data"]).toBe(data);
+  });
+
+  test("encodeLoadFont json base64-encodes data", () => {
+    const data = new Uint8Array([0x00, 0x01, 0x02, 0xff]);
+    const msg = encodeLoadFont("s1", "Inter", data, "json");
+    expect(msg["type"]).toBe("load_font");
+    const payload = msg["payload"] as Record<string, unknown>;
+    expect(payload["family"]).toBe("Inter");
+    expect(payload["data"]).toBe("AAEC/w==");
   });
 
   test("encodeCommand", () => {

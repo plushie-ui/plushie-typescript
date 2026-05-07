@@ -28,6 +28,7 @@ import {
   encodeEffect,
   encodeImageOp,
   encodeInteract,
+  encodeLoadFont,
   encodePatch,
   encodeRegisterEffectStub,
   encodeSettings,
@@ -1353,6 +1354,17 @@ export class Runtime<M> {
 
       case "advance_frame":
         this.send(encodeAdvanceFrame(this.sessionId, cmd.payload["timestamp"] as number));
+        break;
+
+      case "load_font":
+        this.send(
+          encodeLoadFont(
+            this.sessionId,
+            cmd.payload["family"] as string,
+            cmd.payload["data"] as Uint8Array,
+            this.transport.format,
+          ),
+        );
         break;
 
       default:
