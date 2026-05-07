@@ -34,12 +34,12 @@ that half.
   promise as much as a resilience one; see `goals-and-non-goals.md`.
 - **Renderer crash auto-recovery.** The transport owns the binary
   child process. On unexpected exit it notifies the runtime, which
-  drives a fresh transport, replays settings, and sends a fresh
-  full snapshot to re-sync the tree. The user's
-  `handleRendererExit` callback can adjust the model before
-  re-sync (e.g., reset transient UI state). Restart is
-  unconditional: there is no backoff loop. If the binary cannot
-  start, the runtime surfaces the failure and shuts down.
+  drives a fresh transport with bounded exponential backoff,
+  replays settings, and sends a fresh full snapshot to re-sync the
+  tree. The user's `handleRendererExit` callback can adjust the
+  model before re-sync (e.g., reset transient UI state). After
+  the configured max-restart limit the runtime surfaces the
+  failure and shuts down.
 - **AbortController for async work.** Every `Command.async` and
   `Command.stream` gets an AbortController. `Command.cancel(tag)`
   fires `abort()` on the signal AND increments a nonce so stale
