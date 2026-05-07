@@ -484,7 +484,13 @@ export class Runtime<M> {
     const s = this.config.settings ?? {};
     const result: Record<string, unknown> = {};
     if (s.defaultTextSize !== undefined) result["default_text_size"] = s.defaultTextSize;
-    if (s.defaultFont !== undefined) result["default_font"] = s.defaultFont;
+    if (s.defaultFont !== undefined) {
+      // Canonical wire shape is an object (`{family, ...}`); the renderer
+      // silently ignores `default_font` if it's a bare string. Tolerate
+      // untyped JS callers passing a string by promoting to the object form.
+      result["default_font"] =
+        typeof s.defaultFont === "string" ? { family: s.defaultFont } : s.defaultFont;
+    }
     if (s.antialiasing !== undefined) result["antialiasing"] = s.antialiasing;
     if (s.vsync !== undefined) result["vsync"] = s.vsync;
     if (s.scaleFactor !== undefined) result["scale_factor"] = s.scaleFactor;

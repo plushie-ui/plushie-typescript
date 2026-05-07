@@ -168,7 +168,7 @@ app has no subscriptions.
 | Field | Type | Description |
 |---|---|---|
 | `defaultTextSize` | `number` | Pixel size applied to text widgets that omit `size`. |
-| `defaultFont` | `string \| FontSpec` | Baseline font family. |
+| `defaultFont` | `FontSpec` | Baseline font family. |
 | `antialiasing` | `boolean` | Enable MSAA. |
 | `vsync` | `boolean` | Sync to display refresh. |
 | `scaleFactor` | `number` | Override HiDPI scale. |

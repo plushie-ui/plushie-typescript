@@ -30,7 +30,7 @@ export type AppView = WindowNode | readonly WindowNode[] | null;
  */
 export interface AppSettings {
   readonly defaultTextSize?: number;
-  readonly defaultFont?: string | { family: string; weight?: string; style?: string };
+  readonly defaultFont?: { family: string; weight?: string; style?: string };
   readonly antialiasing?: boolean;
   readonly vsync?: boolean;
   readonly scaleFactor?: number;

@@ -147,7 +147,7 @@ const counter = app({
 | Field | Type | Wire key | Description |
 |---|---|---|---|
 | `defaultTextSize` | `number` | `default_text_size` | Default pixel size for text widgets that omit `size`. |
-| `defaultFont` | `string \| { family, weight?, style? }` | `default_font` | Default font for text widgets that omit `font`. |
+| `defaultFont` | `{ family, weight?, style? }` | `default_font` | Default font for text widgets that omit `font`. |
 | `antialiasing` | `boolean` | `antialiasing` | Enables font antialiasing. Defaults on at the renderer. |
 | `vsync` | `boolean` | `vsync` | Syncs frame presentation to the display refresh rate. |
 | `scaleFactor` | `number` | `scale_factor` | Multiplier on top of OS DPI scaling. `2.0` on a 2x HiDPI display yields 4x physical per logical pixel. |
