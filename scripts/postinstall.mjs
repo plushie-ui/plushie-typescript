@@ -26,7 +26,7 @@ import {
 import { get as httpsGet } from "node:https"
 import { basename, dirname, join, resolve } from "node:path"
 
-const PLUSHIE_RUST_VERSION = "0.6.1"
+const PLUSHIE_RUST_VERSION = "0.7.1"
 const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-renderer/releases/download"
 const DOWNLOAD_ATTEMPTS = 3
 const DOWNLOAD_RETRY_DELAY_MS = 100

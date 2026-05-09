@@ -19,8 +19,8 @@ Patch releases (`0.X.Y`) stay backwards-compatible within the SDK.
 The [CHANGELOG](../../CHANGELOG.md) lists every release's changes
 with breaking items called out first.
 
-Readers should pin exact versions (`"plushie": "0.5.0"`, not
-`"^0.5.0"`) until the SDK reaches 1.0. Minor bumps may reshape
+Readers should pin exact versions (`"plushie": "0.6.0"`, not
+`"^0.6.0"`) until the SDK reaches 1.0. Minor bumps may reshape
 public types, and an accidental resolver upgrade across a minor
 line can break a build.
 
@@ -156,7 +156,7 @@ disk.
 Pre-1.0, compatibility is scoped to exact version pairs. The SDK
 does not ship shims for older protocol versions and does not
 negotiate feature flags at handshake time. An app built against
-SDK `0.5.0` and renderer `0.6.1` is not expected to run against
+SDK `0.6.0` and renderer `0.7.1` is not expected to run against
 any other pair without a matching upgrade on the other side.
 
 Post-1.0, the project intends to hold protocol stability across

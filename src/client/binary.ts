@@ -35,7 +35,7 @@ import { arch, platform } from "node:process";
 import { extractBinaryFromSEA, isSEA } from "../sea.js";
 
 /** plushie-rust release version matching this SDK release. */
-export const PLUSHIE_RUST_VERSION = "0.6.1";
+export const PLUSHIE_RUST_VERSION = "0.7.1";
 
 /** GitHub release base URL. */
 export const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-renderer/releases/download";
