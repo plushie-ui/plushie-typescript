@@ -103,6 +103,14 @@ describe("encodeColor", () => {
   test("RGBA with alpha 1.0 omits alpha", () => {
     expect(encodeColor({ r: 1, g: 0, b: 0, a: 1 })).toBe("#ff0000");
   });
+
+  test("hex rejects non-hex digits", () => {
+    expect(() => encodeColor("#gg0000")).toThrow(/invalid color/);
+  });
+
+  test("hex rejects unsupported lengths", () => {
+    expect(() => encodeColor("#fffff")).toThrow(/invalid color/);
+  });
 });
 
 describe("encodeFont", () => {

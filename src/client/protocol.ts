@@ -999,6 +999,7 @@ function decodeWidgetEvent(
   if (raw["captured"] === true) {
     mergedData = { ...(mergedData ?? {}), captured: true };
   }
+  mergedData = normalizeWidgetPointerData(family, mergedData);
   return {
     kind: "widget",
     type: family as WidgetEvent["type"],
@@ -1008,6 +1009,60 @@ function decodeWidgetEvent(
     value: coerceWidgetValue(rawValue),
     data: mergedData as WidgetEvent["data"],
   };
+}
+
+const POINTER_TYPES = new Set(["mouse", "touch", "pen"]);
+const POINTER_BUTTONS = new Set(["left", "right", "middle", "back", "forward"]);
+
+function parsePointerType(raw: unknown): "mouse" | "touch" | "pen" {
+  if (raw === undefined || raw === null || raw === "") return "mouse";
+  if (typeof raw === "string" && POINTER_TYPES.has(raw)) {
+    return raw as "mouse" | "touch" | "pen";
+  }
+  throw new Error(`Unknown pointer type "${String(raw)}"`);
+}
+
+function parsePointerButton(raw: unknown): "left" | "right" | "middle" | "back" | "forward" {
+  if (raw === undefined || raw === null || raw === "") return "left";
+  if (typeof raw === "string" && POINTER_BUTTONS.has(raw)) {
+    return raw as "left" | "right" | "middle" | "back" | "forward";
+  }
+  throw new Error(`Unknown pointer button "${String(raw)}"`);
+}
+
+function normalizeWidgetPointerData(
+  family: string,
+  data: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  if (
+    family !== "press" &&
+    family !== "release" &&
+    family !== "move" &&
+    family !== "scroll" &&
+    family !== "double_click" &&
+    family !== "drag" &&
+    family !== "drag_end"
+  ) {
+    return data;
+  }
+
+  const normalized = { ...(data ?? {}) };
+  if (
+    family === "press" ||
+    family === "release" ||
+    family === "move" ||
+    family === "scroll" ||
+    family === "double_click"
+  ) {
+    normalized["pointer"] = parsePointerType(normalized["pointer"]);
+  }
+  if (family === "press" || family === "release" || family === "drag" || family === "drag_end") {
+    normalized["button"] = parsePointerButton(normalized["button"]);
+  }
+  if (family === "release") {
+    normalized["lost"] = normalized["lost"] === true;
+  }
+  return normalized;
 }
 
 // -- Key events -----------------------------------------------------------
@@ -1144,8 +1199,9 @@ function decodeSubscriptionPointerEvent(
         scope: [],
         value: null,
         data: {
-          button: typeof raw["value"] === "string" ? raw["value"] : "left",
+          button: parsePointerButton(raw["value"]),
           pointer: "mouse",
+          ...(family === "button_released" ? { lost: false } : {}),
           modifiers: parseModifiers(raw["modifiers"]),
         },
       };
@@ -1193,6 +1249,7 @@ function decodeSubscriptionPointerEvent(
           y: value ? num(value, "y") : 0,
           button: "left",
           ...(family === "finger_lost" ? { lost: true } : {}),
+          ...(family === "finger_lifted" ? { lost: false } : {}),
         },
       };
     }

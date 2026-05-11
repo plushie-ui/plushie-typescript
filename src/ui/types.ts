@@ -322,6 +322,9 @@ export function encodeColor(value: Color): string {
   // Already hex; normalize short forms
   if (value.startsWith("#")) {
     const h = value.slice(1);
+    if (!/^[0-9a-fA-F]+$/.test(h)) {
+      throw new Error(`invalid color: ${value}`);
+    }
     if (h.length === 3) {
       return `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}`;
     }
@@ -331,6 +334,7 @@ export function encodeColor(value: Color): string {
     if (h.length === 6 || h.length === 8) {
       return value.toLowerCase();
     }
+    throw new Error(`invalid color: ${value}`);
   }
 
   // Pass through unrecognized strings (renderer may handle them)

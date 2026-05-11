@@ -214,7 +214,10 @@ export function isPress(
 export function isRelease(
   event: Event,
   id?: string,
-): event is WidgetEvent & { readonly type: "release"; readonly data: PointerData } {
+): event is WidgetEvent & {
+  readonly type: "release";
+  readonly data: PointerData & { readonly lost: boolean };
+} {
   return (
     event.kind === "widget" &&
     (event as WidgetEvent).type === "release" &&

@@ -179,8 +179,8 @@ export interface PointerData {
   /** Whether the event was consumed by a widget before reaching the subscription layer. */
   readonly captured?: boolean;
   /**
-   * Present on touch release events when the release happened outside
-   * the widget's bounds. Absent for mouse / pen releases.
+   * On release events, true when the pointer was lost and false
+   * otherwise. Other pointer event types omit this field.
    */
   readonly lost?: boolean;
   readonly [key: string]: unknown;

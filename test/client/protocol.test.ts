@@ -615,6 +615,63 @@ describe("decodeEvent", () => {
     }
   });
 
+  test("widget press rejects unknown pointer type", () => {
+    expect(() =>
+      decodeEvent({
+        type: "event",
+        session: "",
+        family: "press",
+        id: "area",
+        window_id: "main",
+        value: { x: 1, y: 2, pointer: "stylus" },
+      }),
+    ).toThrow(/Unknown pointer type/);
+  });
+
+  test("widget press rejects unknown button", () => {
+    expect(() =>
+      decodeEvent({
+        type: "event",
+        session: "",
+        family: "press",
+        id: "area",
+        window_id: "main",
+        value: { x: 1, y: 2, button: "primary" },
+      }),
+    ).toThrow(/Unknown pointer button/);
+  });
+
+  test("widget release exposes lost false when absent", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "release",
+      id: "area",
+      window_id: "main",
+      value: { x: 1, y: 2, button: "left" },
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("release");
+      expect(event.data?.["lost"]).toBe(false);
+    }
+  });
+
+  test("widget release preserves lost true", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "release",
+      id: "area",
+      window_id: "main",
+      value: { x: 1, y: 2, button: "left", lost: true },
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.data?.["lost"]).toBe(true);
+    }
+  });
+
   // -- Key events --
 
   test("decodes key_press event", () => {
@@ -723,6 +780,52 @@ describe("decodeEvent", () => {
     }
   });
 
+  test("button_pressed subscription defaults missing button to left", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "button_pressed",
+      tag: "mouse",
+      captured: false,
+      window_id: "main",
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.data?.["button"]).toBe("left");
+    }
+  });
+
+  test("button_pressed subscription rejects unknown button", () => {
+    expect(() =>
+      decodeEvent({
+        type: "event",
+        session: "",
+        family: "button_pressed",
+        tag: "mouse",
+        value: "primary",
+        captured: false,
+        window_id: "main",
+      }),
+    ).toThrow(/Unknown pointer button/);
+  });
+
+  test("button_released subscription exposes lost false", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "button_released",
+      tag: "mouse",
+      value: "right",
+      captured: false,
+      window_id: "main",
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("release");
+      expect(event.data?.["lost"]).toBe(false);
+    }
+  });
+
   test("decodes wheel_scrolled subscription event as scroll WidgetEvent", () => {
     const event = decodeEvent({
       type: "event",
@@ -790,6 +893,22 @@ describe("decodeEvent", () => {
       expect(event.data?.["lost"]).toBe(true);
       expect(event.data?.["pointer"]).toBe("touch");
       expect(event.data?.["finger"]).toBe(2);
+    }
+  });
+
+  test("decodes finger_lifted as release with lost false", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "finger_lifted",
+      tag: "touch",
+      value: { id: 2, x: 0, y: 0 },
+      captured: false,
+    });
+    expect(event.kind).toBe("widget");
+    if (event.kind === "widget") {
+      expect(event.type).toBe("release");
+      expect(event.data?.["lost"]).toBe(false);
     }
   });
 
