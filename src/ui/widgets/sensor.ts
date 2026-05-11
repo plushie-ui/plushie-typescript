@@ -4,12 +4,17 @@
  * @module
  */
 
-import type { Handler, UINode } from "../../types.js";
+import type { Handler, ResizeData, UINode, WidgetEvent } from "../../types.js";
 import { autoId, containerNodeWithMeta, extractHandlers, putIf } from "../build.js";
 import type { A11y } from "../types.js";
 import { encodeA11y } from "../types.js";
 
 const _SENSOR_HANDLERS = { onResize: "resize" } as const;
+
+type ResizeEvent = WidgetEvent & {
+  readonly type: "resize";
+  readonly data: ResizeData;
+};
 
 /** Props for the Sensor widget. */
 export interface SensorProps {
@@ -23,8 +28,8 @@ export interface SensorProps {
   a11y?: A11y;
   /** Maximum events per second for this widget's coalescable events. */
   eventRate?: number;
-  /** Resize handler or boolean to enable resize events. Emits {width, height} data. */
-  onResize?: Handler<unknown> | boolean;
+  /** Resize handler or boolean to enable resize events. Emits {width, height} in event.data. */
+  onResize?: Handler<unknown, ResizeEvent> | boolean;
   /** Child widgets whose size changes are detected. */
   children?: UINode[];
 }

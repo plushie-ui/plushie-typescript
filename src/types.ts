@@ -53,9 +53,9 @@ export interface Subscription {
  * Handler function for widget events. Receives current state and
  * the event, returns new state or [state, command(s)].
  */
-export type Handler<S> = (
+export type Handler<S, E extends WidgetEvent = WidgetEvent> = (
   state: DeepReadonly<S>,
-  event: WidgetEvent,
+  event: E,
 ) => S | readonly [S, Command | Command[]];
 
 /**

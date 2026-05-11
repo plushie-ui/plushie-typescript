@@ -418,7 +418,7 @@ particular subtree.
 
 ```tsx
 <Sensor id="panel"
-  onResize={(s, e) => ({ ...s, width: e.width })}
+  onResize={(s, e) => ({ ...s, width: e.data.width })}
   onFocused={handleFocus}
   onBlurred={handleBlur}>
   <Column>...</Column>
