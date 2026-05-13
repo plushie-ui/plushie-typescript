@@ -189,6 +189,7 @@ export class Runtime<M> {
   private transport: Transport;
   private readonly transportFactory: TransportFactory | null;
   private readonly sessionId: string;
+  private readonly token: string | null;
   private readonly maxRestarts = 5;
   private readonly restartBaseMs = 100;
   private readonly restartMaxMs = 5000;
@@ -204,11 +205,12 @@ export class Runtime<M> {
     config: AppConfig<M>,
     transportOrFactory: Transport | TransportFactory,
     sessionId = "",
-    opts?: { readonly heartbeatInterval?: number | null },
+    opts?: { readonly heartbeatInterval?: number | null; readonly token?: string | null },
   ) {
     this.config = config;
     this.sessionId = sessionId;
     this.heartbeatIntervalMs = opts?.heartbeatInterval ?? 30_000;
+    this.token = opts?.token ?? null;
     if (typeof transportOrFactory === "function") {
       this.transportFactory = transportOrFactory;
       this.transport = transportOrFactory();
@@ -483,6 +485,7 @@ export class Runtime<M> {
   private buildSettings(): Record<string, unknown> {
     const s = this.config.settings ?? {};
     const result: Record<string, unknown> = {};
+    if (this.token !== null) result["token"] = this.token;
     if (s.defaultTextSize !== undefined) result["default_text_size"] = s.defaultTextSize;
     if (s.defaultFont !== undefined) {
       // Canonical wire shape is an object (`{family, ...}`); the renderer

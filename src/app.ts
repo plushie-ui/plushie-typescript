@@ -7,9 +7,11 @@
  * @module
  */
 
+import process from "node:process";
 import { resolveBinary } from "./client/binary.js";
+import { SocketTransport } from "./client/socket_transport.js";
 import type { WireFormat } from "./client/transport.js";
-import { SpawnTransport } from "./client/transport.js";
+import { SpawnTransport, StdioTransport } from "./client/transport.js";
 import type { NativeWidgetConfig } from "./native-widget.js";
 import { Runtime } from "./runtime.js";
 import type {
@@ -106,8 +108,12 @@ export interface RunOptions {
   args?: string[];
   /** Override RUST_LOG for the renderer. */
   rustLog?: string;
-  /** Transport mode: "spawn" (default) or "stdio". */
-  transport?: "spawn" | "stdio";
+  /** Transport mode: "spawn" (default), "stdio", or "socket". */
+  transport?: "spawn" | "stdio" | "socket";
+  /** Socket address for renderer-parent launch. Defaults to PLUSHIE_SOCKET. */
+  socket?: string;
+  /** Shared listen token. Defaults to PLUSHIE_TOKEN. */
+  token?: string | null;
 }
 
 /** Handle for a running app. */
@@ -154,12 +160,47 @@ export function app<M>(config: AppConfig<M>): AppDefinition<M> {
   return {
     config,
     async run(opts: RunOptions = {}): Promise<AppHandle<M>> {
-      const binary = opts.binary ?? resolveBinary();
-      const transportOpts: import("./client/transport.js").SpawnTransportOptions = { binary };
-      if (opts.format !== undefined) transportOpts.format = opts.format;
-      if (opts.args !== undefined) transportOpts.args = opts.args;
-      if (opts.rustLog !== undefined) transportOpts.rustLog = opts.rustLog;
-      const runtime = new Runtime(config, () => new SpawnTransport(transportOpts));
+      const transportMode =
+        opts.transport ??
+        (process.env["PLUSHIE_TRANSPORT"] === "socket" || process.env["PLUSHIE_SOCKET"]
+          ? "socket"
+          : process.env["PLUSHIE_TRANSPORT"] === "stdio"
+            ? "stdio"
+            : "spawn");
+      const token = opts.token === undefined ? process.env["PLUSHIE_TOKEN"] : opts.token;
+      const runtimeOpts: { token?: string | null } = {};
+      if (token !== undefined) runtimeOpts.token = token;
+
+      const runtime = new Runtime(
+        config,
+        () => {
+          if (transportMode === "socket") {
+            const address =
+              opts.socket ?? process.env["PLUSHIE_SOCKET"] ?? process.env["PLUSHIE_SOCKET_ADDRESS"];
+            if (!address) {
+              throw new Error("socket transport requires opts.socket or PLUSHIE_SOCKET");
+            }
+            const socketOpts: ConstructorParameters<typeof SocketTransport>[0] = { address };
+            if (opts.format !== undefined) socketOpts.format = opts.format;
+            return new SocketTransport(socketOpts);
+          }
+
+          if (transportMode === "stdio") {
+            const stdioOpts: ConstructorParameters<typeof StdioTransport>[0] = {};
+            if (opts.format !== undefined) stdioOpts.format = opts.format;
+            return new StdioTransport(stdioOpts);
+          }
+
+          const binary = opts.binary ?? resolveBinary();
+          const transportOpts: import("./client/transport.js").SpawnTransportOptions = { binary };
+          if (opts.format !== undefined) transportOpts.format = opts.format;
+          if (opts.args !== undefined) transportOpts.args = opts.args;
+          if (opts.rustLog !== undefined) transportOpts.rustLog = opts.rustLog;
+          return new SpawnTransport(transportOpts);
+        },
+        "",
+        runtimeOpts,
+      );
       await runtime.start();
 
       return {

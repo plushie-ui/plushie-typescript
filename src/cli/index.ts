@@ -609,7 +609,7 @@ async function handleConnect(
       env: {
         ...process.env,
         PLUSHIE_TRANSPORT: "socket",
-        PLUSHIE_SOCKET_ADDRESS: addr,
+        PLUSHIE_SOCKET: addr,
         ...(jsonFlag ? { PLUSHIE_FORMAT: "json" } : {}),
         ...(binaryOverride ? { PLUSHIE_BINARY_PATH: binaryOverride } : {}),
       },

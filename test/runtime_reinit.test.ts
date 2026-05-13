@@ -76,6 +76,21 @@ async function startRuntime(
 }
 
 describe("Runtime.reinit", () => {
+  test("includes listen token in initial settings when configured", async () => {
+    const transport = new FakeTransport();
+    const runtime = new Runtime(appConfig(), transport, "", { token: "listen-token" });
+    const started = runtime.start();
+    transport.emit(hello());
+    await started;
+
+    expect(transport.sent[0]).toMatchObject({
+      type: "settings",
+      settings: { token: "listen-token" },
+    });
+
+    runtime.stop();
+  });
+
   test("unregisters active effect stubs before sending the new snapshot", async () => {
     const { runtime, transport } = await startRuntime();
 
