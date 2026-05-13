@@ -168,7 +168,7 @@ Accepted values:
 |---|---|
 | `"valid"` | No a11y change. |
 | `"pending"` | Sets `a11y.busy`. |
-| `["invalid", message]` | Sets `a11y.invalid` and `a11y.errorMessage`. |
+| `["invalid", message]` | Encodes as `{ state: "invalid", message }` and sets `a11y.invalid` plus `a11y.errorMessage`. |
 | `{ state: "invalid", message }` | Same as the tuple form. |
 
 The projection happens in the renderer normaliser, so the SDK

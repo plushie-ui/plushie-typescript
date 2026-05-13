@@ -8,6 +8,7 @@ import type { Handler, UINode } from "../../types.js";
 import { applyA11yDefaults, autoId, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type {
   A11y,
+  Ellipsis,
   Font,
   Length,
   LineHeight,
@@ -59,7 +60,7 @@ export interface PickListProps {
   /** Custom dropdown handle icon configuration. */
   handle?: Record<string, unknown>;
   /** Text overflow mode for the selected value ("none", "start", "middle", "end"). */
-  ellipsis?: string;
+  ellipsis?: Ellipsis;
   /** StyleMap overrides applied to the dropdown menu. */
   menuStyle?: Record<string, unknown>;
   /** Style preset name or StyleMap overrides for the pick list itself. */

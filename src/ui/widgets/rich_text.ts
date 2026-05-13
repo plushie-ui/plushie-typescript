@@ -6,7 +6,17 @@
 
 import type { UINode } from "../../types.js";
 import { applyA11yDefaults, autoId, leafNode, putIf } from "../build.js";
-import type { A11y, Border, Color, Font, Length, LineHeight, Padding, Wrapping } from "../types.js";
+import type {
+  A11y,
+  Border,
+  Color,
+  Ellipsis,
+  Font,
+  Length,
+  LineHeight,
+  Padding,
+  Wrapping,
+} from "../types.js";
 import {
   encodeA11y,
   encodeBorder,
@@ -96,7 +106,7 @@ export interface RichTextProps {
   /** Text wrapping mode. */
   wrapping?: Wrapping;
   /** Text overflow mode ("none", "start", "middle", "end"). */
-  ellipsis?: string;
+  ellipsis?: Ellipsis;
   /** Accessibility properties. */
   a11y?: A11y;
 }

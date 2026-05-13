@@ -774,11 +774,10 @@ export function invalid(message: string): readonly ["invalid", string] {
 }
 
 /**
- * Encode a {@link ValidationState} for the wire. Passes through as-is;
- * the normalizer understands all accepted shapes.
+ * Encode a {@link ValidationState} for the wire.
  */
 export function encodeValidation(value: ValidationState): unknown {
-  if (Array.isArray(value)) return [...value];
+  if (Array.isArray(value)) return { state: "invalid", message: value[1] };
   if (typeof value === "object") return { ...value };
   return value;
 }
@@ -795,6 +794,12 @@ export type FilterMethod = "nearest" | "linear";
 
 /** Text wrapping mode. */
 export type Wrapping = "none" | "word" | "glyph" | "word_or_glyph";
+
+/** Logical text direction. */
+export type TextDirection = "auto" | "ltr" | "rtl";
+
+/** Text truncation ellipsis position. */
+export type Ellipsis = "none" | "start" | "middle" | "end";
 
 /** Text shaping mode. */
 export type Shaping = "basic" | "advanced";

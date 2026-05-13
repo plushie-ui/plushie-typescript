@@ -62,7 +62,7 @@ Full prop tables for layout containers are in the
 |---|---|---|
 | `Button` | `button` | `click` |
 | `TextInput` | `textInput` | `input`, `submit`, `paste` |
-| `TextEditor` | `textEditor` | `input` |
+| `TextEditor` | `textEditor` | `input`, `paste` |
 | `Checkbox` | `checkbox` | `toggle` |
 | `Toggler` | `toggler` | `toggle` |
 | `Radio` | `radio` | `select` |
@@ -117,7 +117,8 @@ and `a11y.error_message` automatically; see
 
 **TextEditor** is a multi-line editable area. It holds
 renderer-side state (cursor, selection, scroll), so the ID must
-be stable across renders.
+be stable across renders. `onPaste` works the same way as
+`TextInput`: pass a handler or `true` to emit `paste`.
 
 **Checkbox** and **Toggler** are boolean toggles. Both emit
 `toggle` with the new value. `Checkbox` shows a box; `Toggler`

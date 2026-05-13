@@ -11,7 +11,9 @@ import {
   column,
   container,
   drainHandlers,
+  encodeValidation,
   extractHandlers,
+  invalid,
   Row,
   registerHandler,
   Slider,
@@ -82,6 +84,12 @@ describe("Text", () => {
   test("encodes color prop", () => {
     const node = Text({ children: "Hi", color: "red" });
     expect(node.props["color"]).toBe("#ff0000");
+  });
+
+  test("encodes text direction and ellipsis props", () => {
+    const node = Text({ children: "Hi", textDirection: "rtl", ellipsis: "middle" });
+    expect(node.props["text_direction"]).toBe("rtl");
+    expect(node.props["ellipsis"]).toBe("middle");
   });
 
   test("function API: auto-id", () => {
@@ -238,6 +246,33 @@ describe("TextInput", () => {
     const node = TextInput({ id: "email", value: "", onSubmit: handler });
     expect(node.props["on_submit"]).toBe(true);
     expect(expectNodeHandler(node, "submit")).toBe(handler);
+  });
+
+  test("encodes text direction prop", () => {
+    const node = TextInput({ id: "email", value: "", textDirection: "rtl" });
+    expect(node.props["text_direction"]).toBe("rtl");
+  });
+
+  test("onPaste as boolean sets wire prop", () => {
+    const node = TextInput({ id: "email", value: "", onPaste: true });
+    expect(node.props["on_paste"]).toBe(true);
+    expect(drainHandlers()).toHaveLength(0);
+  });
+
+  test("onPaste as handler attaches metadata and sets wire prop", () => {
+    const handler = (s: unknown) => s;
+    const node = TextInput({ id: "email", value: "", onPaste: handler });
+    expect(node.props["on_paste"]).toBe(true);
+    expect(expectNodeHandler(node, "paste")).toBe(handler);
+  });
+});
+
+describe("ValidationState", () => {
+  test("invalid tuple encodes as renderer map shape", () => {
+    expect(encodeValidation(invalid("Required"))).toEqual({
+      state: "invalid",
+      message: "Required",
+    });
   });
 });
 

@@ -10,11 +10,13 @@ import type {
   A11y,
   Alignment,
   Color,
+  Ellipsis,
   Font,
   Length,
   LineHeight,
   Shaping,
   StyleMap,
+  TextDirection,
   Wrapping,
 } from "../types.js";
 import {
@@ -49,8 +51,10 @@ export interface TextProps {
   alignY?: Alignment;
   /** Text wrapping mode (e.g., "word", "glyph", "none"). */
   wrapping?: Wrapping;
+  /** Logical text direction ("auto", "ltr", "rtl"). */
+  textDirection?: TextDirection;
   /** Text overflow mode ("none", "start", "middle", "end"). */
-  ellipsis?: string;
+  ellipsis?: Ellipsis;
   /** Text shaping mode ("basic" or "advanced"). */
   shaping?: Shaping;
   /** Style preset name or StyleMap overrides. */
@@ -84,6 +88,7 @@ export function Text(props: TextProps): UINode {
   putIf(p, props.alignX, "align_x", encodeAlignment);
   putIf(p, props.alignY, "align_y", encodeAlignment);
   putIf(p, props.wrapping, "wrapping");
+  putIf(p, props.textDirection, "text_direction");
   putIf(p, props.ellipsis, "ellipsis");
   putIf(p, props.shaping, "shaping");
   putIf(p, props.style, "style", encodeStyleMap);

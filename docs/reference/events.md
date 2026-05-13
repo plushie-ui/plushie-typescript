@@ -70,7 +70,7 @@ Widget event types:
 | `double_click` | Canvas, interactive shapes | `PointerData` |
 | `input` | `TextInput`, `TextEditor`, `ComboBox` | `value`: current text |
 | `submit` | `TextInput` on Enter | `value`: text at submit |
-| `paste` | `TextInput` on paste | `value`: pasted text |
+| `paste` | `TextInput`, `TextEditor` on paste | `value`: pasted text |
 | `toggle` | `Checkbox`, `Toggler` | `value`: new boolean |
 | `select` | `Radio`, `PickList`, `ComboBox` | `value`: selected option |
 | `slide` | `Slider` during drag | `value`: current number |

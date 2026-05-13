@@ -15,6 +15,7 @@ import type {
   Length,
   LineHeight,
   StyleMap,
+  TextDirection,
   ValidationState,
   Wrapping,
 } from "../types.js";
@@ -31,6 +32,7 @@ import {
 const TEXT_EDITOR_HANDLERS = {
   onInput: "input",
   onKeyBinding: "key_binding",
+  onPaste: "paste",
 } as const;
 
 /** Props for the TextEditor widget. */
@@ -59,6 +61,8 @@ export interface TextEditorProps {
   padding?: number;
   /** Text wrapping mode (e.g., "word", "glyph", "none"). */
   wrapping?: Wrapping;
+  /** Logical text direction ("auto", "ltr", "rtl"). */
+  textDirection?: TextDirection;
   /** Custom key binding rules. Matched bindings emit key_binding events. */
   keyBindings?: Record<string, unknown>[];
   /** Style preset name or StyleMap overrides. */
@@ -88,11 +92,18 @@ export interface TextEditorProps {
   onInput?: Handler<unknown>;
   /** Key binding handler, called when a custom key binding rule matches. */
   onKeyBinding?: Handler<unknown>;
+  /** Paste handler or boolean to enable paste events. */
+  onPaste?: Handler<unknown> | boolean;
 }
 
 export function TextEditor(props: TextEditorProps): UINode {
   const { id } = props;
-  const { clean, meta } = extractHandlers(id, props, TEXT_EDITOR_HANDLERS);
+  const handlerProps: Record<string, string> = {
+    onInput: TEXT_EDITOR_HANDLERS.onInput,
+    onKeyBinding: TEXT_EDITOR_HANDLERS.onKeyBinding,
+  };
+  if (typeof props.onPaste === "function") handlerProps["onPaste"] = TEXT_EDITOR_HANDLERS.onPaste;
+  const { clean, meta } = extractHandlers(id, props, handlerProps);
   const p: Record<string, unknown> = {};
   putIf(p, clean.content, "content");
   putIf(p, clean.placeholder, "placeholder");
@@ -105,6 +116,7 @@ export function TextEditor(props: TextEditorProps): UINode {
   putIf(p, clean.lineHeight, "line_height", encodeLineHeight);
   putIf(p, clean.padding, "padding");
   putIf(p, clean.wrapping, "wrapping");
+  putIf(p, clean.textDirection, "text_direction");
   putIf(p, clean.keyBindings, "key_bindings");
   putIf(p, clean.style, "style", encodeStyleMap);
   putIf(p, clean.highlightSyntax, "highlight_syntax");
@@ -116,6 +128,8 @@ export function TextEditor(props: TextEditorProps): UINode {
   putIf(p, clean.validation, "validation", encodeValidation);
   applyA11yDefaults(p, clean.a11y, { role: "multiline_text_input" }, encodeA11y);
   putIf(p, clean.eventRate, "event_rate");
+  if (typeof props.onPaste === "boolean") putIf(p, props.onPaste, "on_paste");
+  else if (typeof props.onPaste === "function") p["on_paste"] = true;
   return leafNodeWithMeta(id, "text_editor", p, meta);
 }
 

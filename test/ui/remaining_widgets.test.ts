@@ -240,6 +240,24 @@ describe("TextEditor", () => {
     expect(node.props["onInput"]).toBeUndefined();
     expect(expectNodeHandler(node, "input")).toBe(handler);
   });
+
+  test("encodes text direction prop", () => {
+    const node = TextEditor({ id: "ed4", textDirection: "rtl" });
+    expect(node.props["text_direction"]).toBe("rtl");
+  });
+
+  test("onPaste as boolean sets wire prop", () => {
+    const node = TextEditor({ id: "ed5", onPaste: true });
+    expect(node.props["on_paste"]).toBe(true);
+    expect(drainHandlers()).toHaveLength(0);
+  });
+
+  test("onPaste as handler attaches metadata and sets wire prop", () => {
+    const handler = (s: unknown) => s;
+    const node = TextEditor({ id: "ed6", onPaste: handler });
+    expect(node.props["on_paste"]).toBe(true);
+    expect(expectNodeHandler(node, "paste")).toBe(handler);
+  });
 });
 
 // ---------------------------------------------------------------------------

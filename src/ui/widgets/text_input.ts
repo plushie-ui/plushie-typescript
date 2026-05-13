@@ -18,6 +18,7 @@ import type {
   LineHeight,
   Padding,
   StyleMap,
+  TextDirection,
   ValidationState,
 } from "../types.js";
 import {
@@ -68,6 +69,8 @@ export interface TextInputProps {
   lineHeight?: LineHeight;
   /** Horizontal text alignment within the input. */
   alignX?: Alignment;
+  /** Logical text direction ("auto", "ltr", "rtl"). */
+  textDirection?: TextDirection;
   /** Icon displayed inside the input field. */
   icon?: TextInputIcon;
   /** Submit handler or boolean to enable submit events on Enter. */
@@ -136,6 +139,7 @@ export function TextInput(props: TextInputProps): UINode {
   putIf(p, clean.font, "font", encodeFont);
   putIf(p, clean.lineHeight, "line_height", encodeLineHeight);
   putIf(p, clean.alignX, "align_x", encodeAlignment);
+  putIf(p, clean.textDirection, "text_direction");
   putIf(p, clean.icon, "icon", encodeIcon);
   // onSubmit/onPaste can be boolean flags (enable the event) or handler functions
   if (typeof props.onSubmit === "boolean") putIf(p, props.onSubmit, "on_submit");

@@ -8,6 +8,7 @@ import type { Handler, UINode } from "../../types.js";
 import { applyA11yDefaults, extractHandlers, leafNodeWithMeta, putIf } from "../build.js";
 import type {
   A11y,
+  Ellipsis,
   Font,
   Length,
   LineHeight,
@@ -61,7 +62,7 @@ export interface ComboBoxProps {
   /** Icon displayed inside the input field. */
   icon?: Record<string, unknown>;
   /** Text overflow mode for the selected value ("none", "start", "middle", "end"). */
-  ellipsis?: string;
+  ellipsis?: Ellipsis;
   /** StyleMap overrides applied to the dropdown menu. */
   menuStyle?: Record<string, unknown>;
   /** Style preset name or StyleMap overrides. */
