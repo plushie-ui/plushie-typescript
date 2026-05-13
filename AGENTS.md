@@ -72,12 +72,12 @@ protected (typed event decoding rejects unknown variants, no
 opaque-blob path, effect/query response correlation by wire ID, no
 `new Function`/eval on incoming data, type guards parse against
 closed enumerations). Host-to-renderer = broad by design (file
-paths, fonts, images, screenshots, effects, `--exec`); bounding it
-is the capability-manifest roadmap in plushie-rust. Wire =
-byte-stream agnostic; confidentiality and integrity delegated to
-outer transport. Browser-via-WASM supported as a deployment shape
-but not a hardened trust boundary; the page itself is not in our
-threat model. Same-access (user attacking themselves) out of scope.
+paths, fonts, images, screenshots, effects, structured renderer exec
+args); bounding it is the capability-manifest roadmap in plushie-rust.
+Wire = byte-stream agnostic; confidentiality and integrity delegated
+to outer transport. Browser-via-WASM supported as a deployment shape
+but not a hardened trust boundary; the page itself is not in our threat
+model. Same-access (user attacking themselves) out of scope.
 
 ### Resilience
 
@@ -498,7 +498,7 @@ interface Transport {
 ```
 
 - **SpawnTransport**: standalone binary child process (production)
-- **StdioTransport**: for `plushie --exec` mode (inherits stdio)
+- **StdioTransport**: renderer-parent stdio mode (inherits stdio)
 - **PooledTransport**: multiplexed session in a shared binary (testing)
 
 Same runtime code runs in both modes.

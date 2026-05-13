@@ -10,7 +10,7 @@
  *   plushie build --wasm    :  build WASM renderer via wasm-pack
  *   plushie dev <app>       :  run an app with file watching
  *   plushie run <app>       :  run an app
- *   plushie stdio <app>     :  run in stdio transport mode (for plushie --exec)
+ *   plushie stdio <app>     :  run in renderer-parent stdio mode
  *   plushie inspect <app>   :  print the initial view tree as JSON
  *   plushie connect <addr>  :  connect to a plushie --listen instance
  *   plushie script          :  run .plushie test scripts
@@ -88,7 +88,7 @@ Commands:
   build --release   Build with optimizations
   dev <app>         Run an app with file watching (hot reload)
   run <app>         Run an app
-  stdio <app>       Run an app in stdio transport mode (for plushie --exec)
+  stdio <app>       Run an app in renderer-parent stdio mode
   inspect <app>     Print the initial view tree as formatted JSON
   connect <addr>    Connect to a plushie --listen instance
   script [files]    Run .plushie test scripts
