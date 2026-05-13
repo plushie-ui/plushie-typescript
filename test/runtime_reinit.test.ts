@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import type { AppConfig } from "../src/app.js";
 import { PROTOCOL_VERSION } from "../src/client/protocol.js";
@@ -76,7 +77,7 @@ async function startRuntime(
 }
 
 describe("Runtime.reinit", () => {
-  test("includes listen token in initial settings when configured", async () => {
+  test("includes listen token digest in initial settings when configured", async () => {
     const transport = new FakeTransport();
     const runtime = new Runtime(appConfig(), transport, "", { token: "listen-token" });
     const started = runtime.start();
@@ -85,7 +86,7 @@ describe("Runtime.reinit", () => {
 
     expect(transport.sent[0]).toMatchObject({
       type: "settings",
-      settings: { token: "listen-token" },
+      settings: { token_sha256: createHash("sha256").update("listen-token").digest("hex") },
     });
 
     runtime.stop();

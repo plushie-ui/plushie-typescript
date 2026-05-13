@@ -13,6 +13,7 @@
  * @module
  */
 
+import { createHash } from "node:crypto";
 import type { AppConfig, AppView } from "./app.js";
 import type {
   DecodedResponse,
@@ -485,7 +486,7 @@ export class Runtime<M> {
   private buildSettings(): Record<string, unknown> {
     const s = this.config.settings ?? {};
     const result: Record<string, unknown> = {};
-    if (this.token !== null) result["token"] = this.token;
+    if (this.token !== null) result["token_sha256"] = tokenSha256(this.token);
     if (s.defaultTextSize !== undefined) result["default_text_size"] = s.defaultTextSize;
     if (s.defaultFont !== undefined) {
       // Canonical wire shape is an object (`{family, ...}`); the renderer
@@ -1863,6 +1864,10 @@ export class Runtime<M> {
       this.transport.send(msg as Record<string, unknown>);
     }
   }
+}
+
+function tokenSha256(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 function omitPayloadKeys(
