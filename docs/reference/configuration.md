@@ -256,7 +256,7 @@ visible. Options: `binary`, `format`, `args`, `rustLog`.
 ### StdioTransport
 
 Uses the host process's own stdin and stdout. This is the target
-of `plushie --exec`: the renderer spawns the Node app as a
+of renderer-parent exec: the renderer spawns the Node app as a
 subprocess and they communicate over the app's stdio. `binary` is
 ignored.
 

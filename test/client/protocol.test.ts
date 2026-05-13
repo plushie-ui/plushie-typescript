@@ -112,6 +112,10 @@ describe("encodeSettings", () => {
     expect(settings["protocol_version"]).toBe(PROTOCOL_VERSION);
     expect(settings["default_text_size"]).toBe(14);
   });
+
+  test("rejects plaintext token fields", () => {
+    expect(() => encodeSettings("", { token: "secret" })).toThrow(/token_sha256/);
+  });
 });
 
 describe("encodeSnapshot", () => {

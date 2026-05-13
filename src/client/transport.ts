@@ -3,7 +3,7 @@
  *
  * Provides the `Transport` interface and implementations:
  * - `SpawnTransport`: spawns the binary as a child process (production)
- * - `StdioTransport`: uses process stdin/stdout (for --exec mode)
+ * - `StdioTransport`: uses process stdin/stdout for renderer-parent stdio mode
  * - `PooledTransport`: multiplexed session in a shared binary (testing)
  *
  * @module
@@ -220,7 +220,7 @@ export interface StdioTransportOptions {
 /**
  * Transport that reads from process.stdin and writes to process.stdout.
  *
- * Used when the renderer spawns the TypeScript process via `plushie --exec`.
+ * Used when the renderer spawns the TypeScript process via structured exec args.
  * Same framing logic as SpawnTransport but on the process's own stdio
  * streams instead of a child process.
  */

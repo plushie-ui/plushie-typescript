@@ -176,8 +176,20 @@ export function encodeSettings(session: string, settings: Record<string, unknown
   return {
     type: "settings",
     session,
-    settings: { protocol_version: PROTOCOL_VERSION, ...settings },
+    settings: buildSettingsPayload(settings),
   };
+}
+
+export function buildSettingsPayload(settings: Record<string, unknown>): Record<string, unknown> {
+  if (Object.hasOwn(settings, "token")) {
+    throw new Error("settings token is not supported; use token_sha256");
+  }
+
+  const payload: Record<string, unknown> = { protocol_version: PROTOCOL_VERSION };
+  for (const [key, value] of Object.entries(settings)) {
+    payload[key] = value;
+  }
+  return payload;
 }
 
 /** Encode a Snapshot message (full tree replacement). */

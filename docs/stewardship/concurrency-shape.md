@@ -172,7 +172,7 @@ Implementations:
 - `SpawnTransport`: forks the binary as a child process. The
   standard production transport.
 - `StdioTransport`: uses `process.stdin`/`process.stdout` for
-  `plushie --exec` mode where the parent process is the
+  renderer-parent exec mode where the parent process is the
   renderer.
 - `PooledTransport`: multiplexed session in a shared
   `plushie --mock --max-sessions N` process. Used by the test

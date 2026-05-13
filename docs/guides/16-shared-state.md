@@ -94,10 +94,14 @@ ports, no firewall changes, no TLS story needed: SSH is already
 the secure channel.
 
 Two CLI shapes carry this. First, the renderer spawns the app
-remotely with `--exec`:
+remotely with structured exec args:
 
 ```bash
-plushie --exec "ssh pad.example.com plushie-pad stdio"
+plushie \
+  --exec-bin ssh \
+  --exec-arg pad.example.com \
+  --exec-arg plushie-pad \
+  --exec-arg stdio
 ```
 
 The renderer runs locally. `ssh pad.example.com plushie-pad

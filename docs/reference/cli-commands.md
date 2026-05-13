@@ -213,7 +213,8 @@ Shells out to `tsx <app>` with `PLUSHIE_TRANSPORT=stdio` in the
 environment. The SDK picks up the env var at startup and wires
 the runtime to a `StdioTransport` instead of spawning a child
 renderer. Use this when the renderer runs elsewhere and calls
-`plushie --exec <app-command>` to launch the TypeScript process.
+`plushie --exec-bin <program> --exec-arg <arg> ...` to launch the
+TypeScript process.
 
 ## inspect
 
@@ -253,9 +254,10 @@ Two modes:
   renderer name and version, and idles until Ctrl+C. Used for
   probing a running renderer.
 - **App mode** (with an `<app>` argument): spawns `tsx <app>` with
-  `PLUSHIE_TRANSPORT=socket` and `PLUSHIE_SOCKET_ADDRESS=<addr>`
-  in the environment. The SDK's socket transport picks up the env
-  vars and connects automatically.
+  `PLUSHIE_TRANSPORT=socket`, `PLUSHIE_SOCKET=<addr>`, and
+  `PLUSHIE_TOKEN` when a token is available. The SDK's socket
+  transport picks up the env vars and connects automatically. The
+  Settings message carries `token_sha256`, not the plaintext token.
 
 ### Address formats
 
@@ -307,7 +309,8 @@ and visual QA. On a headless host, run behind a display server.
 | `PLUSHIE_RUST_SOURCE_PATH` | Path to a local plushie-rust checkout. Switches `build` to source mode, pins `cargo-plushie` to the checkout, and unlocks WASM builds. |
 | `PLUSHIE_FORMAT` | Wire format (`msgpack` or `json`). Set automatically by `--json`. |
 | `PLUSHIE_TRANSPORT` | Transport kind (`stdio`, `socket`, or unset for spawn). Set automatically by `stdio` and `connect`. |
-| `PLUSHIE_SOCKET_ADDRESS` | Socket address consumed by the SDK's socket transport. Set automatically by `connect <addr> <app>`. |
+| `PLUSHIE_SOCKET` | Socket address consumed by the SDK's socket transport. Set automatically by `connect <addr> <app>`. |
+| `PLUSHIE_TOKEN` | Fallback authentication token for socket connect. The SDK sends `settings.token_sha256`. |
 
 `--binary <path>` on the CLI is exported as `PLUSHIE_BINARY_PATH`
 in the child process for `dev`, `run`, `stdio`, `inspect`, and

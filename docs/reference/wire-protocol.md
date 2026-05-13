@@ -114,6 +114,8 @@ The SDK and renderer follow a fixed sequence:
    settings merged in. `encodeSettings(session, settings)` wraps
    user settings under the outer `settings` key:
    `{ type: "settings", session, settings: { protocol_version, ... } }`.
+   Socket-auth tokens are represented as `settings.token_sha256`,
+   not as plaintext `token`.
    If the app passes `requiredWidgets`, the native widget keys are
    forwarded under `settings.required_widgets` for the renderer to
    validate against its registry.

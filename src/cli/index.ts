@@ -22,6 +22,7 @@
  */
 
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   copyFileSync,
@@ -100,6 +101,7 @@ Options:
   --binary <path>   Override binary path
   --bin-file <path> Override binary destination (download/build)
   --wasm-dir <dir>  Override WASM output directory (download --wasm / build --wasm)
+  --token <value>   Shared token for socket connect, sent as settings.token_sha256
   --bin             Download/build the native binary
   --wasm            Download/build the WASM renderer
   --no-watch        Disable file watching in dev mode
@@ -582,6 +584,7 @@ async function handleConnect(
   positional: string[],
   flags: string[],
   binaryOverride: string | undefined,
+  tokenOverride: string | undefined,
 ): Promise<void> {
   const addr = positional[0];
   const appFile = positional[1];
@@ -595,6 +598,7 @@ async function handleConnect(
 
   const jsonFlag = flags.includes("--json");
   const format = jsonFlag ? ("json" as const) : ("msgpack" as const);
+  const token = tokenOverride ?? process.env["PLUSHIE_TOKEN"];
 
   if (appFile) {
     // App file provided: spawn it with tsx and socket env vars
@@ -610,6 +614,7 @@ async function handleConnect(
         ...process.env,
         PLUSHIE_TRANSPORT: "socket",
         PLUSHIE_SOCKET: addr,
+        ...(token !== undefined ? { PLUSHIE_TOKEN: token } : {}),
         ...(jsonFlag ? { PLUSHIE_FORMAT: "json" } : {}),
         ...(binaryOverride ? { PLUSHIE_BINARY_PATH: binaryOverride } : {}),
       },
@@ -627,7 +632,11 @@ async function handleConnect(
     const session = new Session(transport);
 
     try {
-      const hello = await session.connect({ timeout: 10_000 });
+      const settings =
+        token === undefined
+          ? {}
+          : { token_sha256: createHash("sha256").update(token).digest("hex") };
+      const hello = await session.connect({ timeout: 10_000, settings });
       console.log(`Connected to ${hello.name} v${hello.version} (${hello.mode}, ${hello.backend})`);
       console.log("Session active. Press Ctrl+C to disconnect.");
 
@@ -942,10 +951,10 @@ async function main(argv: string[]): Promise<void> {
   }
 
   // Parse flags from the remaining args (after the command).
-  // Value flags (--binary <path>, --bin-file <path>, --wasm-dir <dir>)
+  // Value flags (--binary <path>, --bin-file <path>, --wasm-dir <dir>, --token <value>)
   // consume the next arg. Other --flags are boolean.
   const rest = args.slice(1);
-  const VALUE_FLAGS = new Set(["--binary", "--bin-file", "--wasm-dir"]);
+  const VALUE_FLAGS = new Set(["--binary", "--bin-file", "--wasm-dir", "--token"]);
   const flags: string[] = [];
   const positional: string[] = [];
   const valueFlags = new Map<string, string>();
@@ -966,6 +975,7 @@ async function main(argv: string[]): Promise<void> {
   const binaryOverride = valueFlags.get("--binary");
   const binFileOverride = valueFlags.get("--bin-file");
   const wasmDirOverride = valueFlags.get("--wasm-dir");
+  const tokenOverride = valueFlags.get("--token");
 
   // Read project config (plushie.extensions.json)
   const projectConfig = readProjectConfig();
@@ -983,7 +993,7 @@ async function main(argv: string[]): Promise<void> {
       await handleBuild(flags, wasmDirOverride, projectConfig);
       break;
     case "connect":
-      await handleConnect(positional, flags, binaryOverride);
+      await handleConnect(positional, flags, binaryOverride, tokenOverride);
       break;
     case "script":
       await handleScript(positional, flags, binaryOverride);

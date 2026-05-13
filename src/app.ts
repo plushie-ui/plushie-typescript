@@ -175,8 +175,7 @@ export function app<M>(config: AppConfig<M>): AppDefinition<M> {
         config,
         () => {
           if (transportMode === "socket") {
-            const address =
-              opts.socket ?? process.env["PLUSHIE_SOCKET"] ?? process.env["PLUSHIE_SOCKET_ADDRESS"];
+            const address = opts.socket ?? process.env["PLUSHIE_SOCKET"];
             if (!address) {
               throw new Error("socket transport requires opts.socket or PLUSHIE_SOCKET");
             }

@@ -71,8 +71,9 @@ function platformArch() {
 }
 
 let configBinFile
+const projectRoot = process.env.INIT_CWD ? resolve(process.env.INIT_CWD) : process.cwd()
 try {
-  const configPath = resolve("plushie.extensions.json")
+  const configPath = resolve(projectRoot, "plushie.extensions.json")
   if (existsSync(configPath)) {
     const raw = JSON.parse(readFileSync(configPath, "utf-8"))
     configBinFile = raw.bin_file
@@ -81,8 +82,10 @@ try {
 
 const ext = platformOs() === "windows" ? ".exe" : ""
 const binaryName = `plushie-renderer-${platformOs()}-${platformArch()}${ext}`
-const destDir = configBinFile ? resolve(configBinFile, "..") : resolve("node_modules", ".plushie", "bin")
-const destPath = configBinFile ? resolve(configBinFile) : join(destDir, binaryName)
+const destDir = configBinFile
+  ? resolve(projectRoot, configBinFile, "..")
+  : resolve(projectRoot, "node_modules", ".plushie", "bin")
+const destPath = configBinFile ? resolve(projectRoot, configBinFile) : join(destDir, binaryName)
 
 if (existsSync(destPath)) {
   process.exit(0)

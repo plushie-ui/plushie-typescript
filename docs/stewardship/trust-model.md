@@ -20,7 +20,7 @@ Plushie's wire boundary is asymmetric:
 - **Host-to-renderer.** Broader by design. The host asks the
   renderer to load fonts and images by path, render screenshots,
   exercise effects (clipboard, file dialogs, notifications), spawn
-  subprocesses in `--exec` mode. A compromised host can drive the
+  subprocesses through structured renderer exec args. A compromised host can drive the
   full operation set against the user's machine wherever the
   renderer runs. Bounding this is the capability-manifest direction
   in plushie-rust's roadmap, not current work.
@@ -90,7 +90,7 @@ renderer.
   configurable `defaultEventRate`; a host SDK still has to handle
   the firehose gracefully (see `resilience.md`).
 - **Host-to-renderer surface.** Effect dispatch, file path inputs,
-  and `--exec` spawn are full-trust today. Bounding them is the
+  and renderer-owned child process spawn are full-trust today. Bounding them is the
   capability-manifest direction.
 - **Same-access channels.** A user with shell access on the
   machine running the host can read its memory and files
@@ -107,7 +107,8 @@ the wire format are misframed; that responsibility belongs with the
 outer transport.
 
 The session token at the wire boundary binds a host to a particular
-renderer instance. It is not a confidentiality mechanism.
+renderer instance. Settings carry `token_sha256`, not the plaintext
+token. It is not a confidentiality mechanism.
 
 ## Implications
 

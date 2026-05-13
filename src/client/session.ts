@@ -13,7 +13,7 @@
 import { type NativeWidgetConfig, nativeWidgetConfigKey } from "../native-widget.js";
 import { PLUSHIE_RUST_VERSION } from "./binary.js";
 import type { DecodedResponse, HelloInfo, WireMessage } from "./protocol.js";
-import { decodeMessage, PROTOCOL_VERSION } from "./protocol.js";
+import { buildSettingsPayload, decodeMessage, PROTOCOL_VERSION } from "./protocol.js";
 import type { Transport } from "./transport.js";
 
 /**
@@ -150,10 +150,7 @@ export class Session {
       // Send settings. Forward `required_widgets` so the renderer
       // can validate against its widget registry and emit a
       // `required_widgets_missing` diagnostic on mismatch.
-      const settingsPayload: Record<string, unknown> = {
-        protocol_version: PROTOCOL_VERSION,
-        ...settings,
-      };
+      const settingsPayload = buildSettingsPayload(settings);
       if (requiredWidgets.length > 0) {
         settingsPayload["required_widgets"] = requiredWidgets;
       }
