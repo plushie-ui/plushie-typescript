@@ -212,6 +212,32 @@ describe("requiredWidgets and the outgoing Settings message", () => {
     runtime.stop();
   });
 
+  test("Settings payload carries native widget config under widget_config", async () => {
+    const transport = new FakeTransport();
+    const runtime = new Runtime(
+      {
+        ...appConfig(),
+        settings: {
+          nativeWidgetConfig: {
+            gauge: { tickCount: 10 },
+          },
+        },
+      },
+      transport,
+    );
+
+    const started = runtime.start();
+    transport.emit(hello({ nativeWidgets: ["gauge"] }));
+    await started;
+
+    const settingsMsg = transport.sent.find((m) => m["type"] === "settings");
+    expect(settingsMsg).toBeDefined();
+    const settingsPayload = (settingsMsg as { settings: Record<string, unknown> }).settings;
+    expect(settingsPayload["widget_config"]).toEqual({ gauge: { tickCount: 10 } });
+    expect(settingsPayload).not.toHaveProperty("extension_config");
+    runtime.stop();
+  });
+
   test("Settings payload omits required_widgets when the list is empty", async () => {
     const transport = new FakeTransport();
     const runtime = new Runtime(appConfig(), transport);

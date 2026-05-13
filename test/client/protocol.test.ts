@@ -1271,13 +1271,31 @@ describe("decodeEvent", () => {
 
   // -- Strict decode --
 
-  test("unrecognized family throws", () => {
+  test("unrecognized widget-scoped family decodes as widget event", () => {
+    const event = decodeEvent({
+      type: "event",
+      session: "",
+      family: "value_changed",
+      id: "gauge",
+      window_id: "main",
+      value: { value: 42 },
+    });
+
+    expect(event).toMatchObject({
+      kind: "widget",
+      type: "value_changed",
+      id: "gauge",
+      data: { value: 42 },
+    });
+  });
+
+  test("unrecognized unscoped family throws", () => {
     expect(() =>
       decodeEvent({
         type: "event",
         session: "",
         family: "completely_unknown_event",
-        id: "widget_1",
+        id: "",
         window_id: "main",
       }),
     ).toThrow(/Unknown event family "completely_unknown_event"/);

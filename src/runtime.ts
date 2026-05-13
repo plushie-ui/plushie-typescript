@@ -501,7 +501,7 @@ export class Runtime<M> {
     if (s.theme !== undefined) result["theme"] = s.theme;
     if (s.fonts !== undefined) result["fonts"] = s.fonts;
     if (s.defaultEventRate !== undefined) result["default_event_rate"] = s.defaultEventRate;
-    if (s.nativeWidgetConfig !== undefined) result["extension_config"] = s.nativeWidgetConfig;
+    if (s.nativeWidgetConfig !== undefined) result["widget_config"] = s.nativeWidgetConfig;
     if (s.validateProps !== undefined) result["validate_props"] = s.validateProps;
     // Surface required_widgets to the renderer's widget registry. The
     // renderer validates against its registered widgets and emits a

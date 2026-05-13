@@ -924,6 +924,13 @@ export function decodeEvent(raw: WireMessage): Event {
     return decodeSubscriptionPointerEvent(raw, family, value);
   }
 
+  // Native widgets can emit app-declared widget events whose family is not
+  // part of the built-in renderer event set. They are still scoped widget
+  // events, so preserve the family and payload instead of rejecting them.
+  if (str(raw, "id") !== "") {
+    return decodeWidgetEvent(raw, family, value);
+  }
+
   // The renderer and SDK are lock-step; an unrecognized family is a protocol
   // bug. Throwing here surfaces the issue immediately instead of silently
   // producing malformed events that cause confusing failures downstream.
