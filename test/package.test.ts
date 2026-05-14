@@ -1,7 +1,15 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve as resolvePath } from "node:path";
+import { dirname, join, resolve as resolvePath } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { PLUSHIE_RUST_VERSION } from "../src/client/binary.js";
 import {
@@ -9,6 +17,7 @@ import {
   normalizePackageTarget,
   prepareNodePackagePayload,
   renderPackageManifest,
+  resolvePackageRenderer,
 } from "../src/package.js";
 
 const repoRoot = resolvePath(import.meta.dirname, "..");
@@ -127,5 +136,49 @@ describe("prepareNodePackagePayload", () => {
     expect(list.status).toBe(0);
     expect(list.stdout).toContain("./bin/test-host");
     expect(list.stdout).toContain("./bin/plushie-renderer");
+  });
+});
+
+describe("resolvePackageRenderer", () => {
+  test("records explicit renderer paths as local paths", () => {
+    const dir = tempDir();
+    const renderer = join(dir, "plushie-renderer");
+    writeExecutable(renderer);
+
+    const result = resolvePackageRenderer({
+      rendererBin: renderer,
+      env: {},
+    });
+
+    expect(result.source).toBe("local-path");
+    expect(result.sourcePath).toBe(renderer);
+  });
+
+  test("records source-built renderers as local builds", () => {
+    const dir = tempDir();
+    const source = join(dir, "plushie-rust");
+    const renderer = join(source, "target", "release", "plushie-renderer");
+    const binDir = join(dir, "bin");
+    mkdirSync(dirname(renderer), { recursive: true });
+    mkdirSync(binDir);
+    writeFileSync(join(source, "Cargo.toml"), "[workspace]\n", "utf-8");
+    writeExecutable(renderer);
+    writeExecutable(join(binDir, "cargo"));
+
+    const oldPath = process.env["PATH"];
+    process.env["PATH"] = `${binDir}:${oldPath ?? ""}`;
+
+    let result: ReturnType<typeof resolvePackageRenderer> | undefined;
+    try {
+      result = resolvePackageRenderer({
+        env: { PLUSHIE_RUST_SOURCE_PATH: source },
+        log: () => {},
+      });
+    } finally {
+      process.env["PATH"] = oldPath;
+    }
+
+    expect(result?.source).toBe("local-build");
+    expect(result?.sourcePath).toBe(renderer);
   });
 });

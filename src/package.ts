@@ -291,10 +291,10 @@ export function buildSEAExecutable(opts: BuildSEAExecutableOptions): void {
 export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): ResolvedRenderer {
   const env = opts.env ?? process.env;
   const kind = opts.rendererKind ?? "stock";
-  const source = opts.rendererSource ?? (opts.rendererBin ? "local-path" : "local-resolve");
   const explicitPath = opts.rendererBin ?? env["PLUSHIE_BINARY_PATH"];
 
   if (explicitPath !== undefined && explicitPath !== "") {
+    const source = opts.rendererSource ?? "local-path";
     const sourcePath = resolve(explicitPath);
     validateExecutable(sourcePath, "renderer binary");
     return {
@@ -307,6 +307,7 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
 
   const rustSourcePath = env["PLUSHIE_RUST_SOURCE_PATH"];
   if (rustSourcePath !== undefined && rustSourcePath !== "") {
+    const source = opts.rendererSource ?? "local-build";
     const manifestPath = join(rustSourcePath, "Cargo.toml");
     if (!existsSync(manifestPath)) {
       throw new Error(
@@ -334,6 +335,7 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
 
   const downloadedPath = resolve("node_modules", ".plushie", "bin", platformBinaryName());
   if (existsSync(downloadedPath)) {
+    const source = opts.rendererSource ?? "local-resolve";
     validateExecutable(downloadedPath, "renderer binary");
     return {
       kind,
