@@ -84,6 +84,7 @@ Each resolves to both ESM (`.js` + `.d.ts`) and CJS
 | `plushie/canvas` | Canvas primitives (`rect`, `path`, `layer`, ...). |
 | `plushie/testing` | `testWith`, session helpers, backend selection. |
 | `plushie/client` | Transports, `resolveBinary`, `PROTOCOL_VERSION`, wire codec. Rarely imported directly. |
+| `plushie/package` | Standalone package manifest, payload archive, and Node host helpers. |
 
 Keep imports on the highest-level subpath that exposes the name
 you need. `plushie/ui` is the right place for widgets;

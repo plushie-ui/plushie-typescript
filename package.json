@@ -77,6 +77,16 @@
         "types": "./dist/canvas/index.d.cts",
         "default": "./dist/canvas/index.cjs"
       }
+    },
+    "./package": {
+      "import": {
+        "types": "./dist/package.d.ts",
+        "default": "./dist/package.js"
+      },
+      "require": {
+        "types": "./dist/package.d.cts",
+        "default": "./dist/package.cjs"
+      }
     }
   },
   "main": "./dist/index.cjs",

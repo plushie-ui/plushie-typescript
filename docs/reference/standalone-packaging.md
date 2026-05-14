@@ -48,17 +48,53 @@ renderer ownership:
 This avoids nested renderer extraction and keeps TypeScript aligned
 with the other wire SDKs.
 
-## Demo Proof
+## SDK Command
 
-The current proof lives in:
+The SDK owns the TypeScript package preparation step:
 
-```text
-plushie-demos/typescript/data-explorer
+```sh
+npx plushie package \
+  --app-id dev.example.my_app \
+  --app-name "My App" \
+  --main dist/app.cjs \
+  --sea-output dist/my-app \
+  --output dist/shared-launcher
 ```
 
-The demo package script builds the SEA host payload, adds the
-payload-local renderer, writes `plushie-package.toml`, and lets
-`cargo plushie package` build the outer launcher.
+The command expects `--main` to point at a bundled CommonJS host file.
+App-specific bundling stays with the app because the SDK does not know
+which bundler or asset graph the app uses. From there the command
+builds the optional renderer-embedded SEA, builds the host-only SEA
+for the shared launcher, copies the renderer into the payload, writes
+`payload.tar.zst`, and writes `plushie-package.toml`.
+
+For apps that prepare a Node host executable themselves, pass
+`--host-bin` instead of `--main`. The SDK still owns the renderer copy,
+payload archive, and manifest generation.
+
+Renderer resolution preserves the normal SDK order used by the demo
+proof: `--renderer-bin`, `PLUSHIE_BINARY_PATH`,
+`PLUSHIE_RUST_SOURCE_PATH` with a release renderer build, then the
+downloaded binary under `node_modules/.plushie/bin/`.
+
+Build the final launcher with cargo-plushie:
+
+```sh
+cargo plushie package --manifest dist/shared-launcher/plushie-package.toml --release
+```
+
+## Manifest
+
+The generated manifest records the fields the shared launcher needs to
+validate and run the payload:
+
+- `host_sdk = "typescript"`
+- `host_sdk_version`
+- `plushie_rust_version`
+- `protocol_version`
+- `target`
+- `[payload]` archive, hash, and size
+- `[renderer]` kind and source
 
 Strict artifact smoke runs the generated launcher from a temporary
 working directory with a narrowed runtime `PATH`. The smoke requires

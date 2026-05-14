@@ -15,6 +15,7 @@
  *   plushie connect <addr>  :  connect to a plushie --listen instance
  *   plushie script          :  run .plushie test scripts
  *   plushie replay <file>   :  replay a .plushie script with real windows
+ *   plushie package         :  prepare a shared-launcher package payload
  *   plushie --help          :  print usage
  *   plushie --version       :  print version
  *
@@ -33,7 +34,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import {
   RELEASE_BASE_URL as BASE_URL,
   downloadFileWithChecksum,
@@ -42,6 +43,7 @@ import {
   platformBinaryName,
 } from "../client/binary.js";
 import { DevServer } from "../dev-server.js";
+import { prepareNodePackagePayload, type RendererKind } from "../package.js";
 import { DEFAULT_WASM_DIR, WASM_BG_FILE, WASM_JS_FILE } from "../wasm.js";
 import { resolveCargoPlushie } from "./cargo-plushie.js";
 
@@ -51,7 +53,7 @@ function readVersion(): string {
   return pkg.version;
 }
 
-// -- Project config -----------------------------------------------------------
+// Project config
 
 /** Project-level plushie config from plushie.extensions.json. */
 interface ProjectConfig {
@@ -93,6 +95,7 @@ Commands:
   connect <addr>    Connect to a plushie --listen instance
   script [files]    Run .plushie test scripts
   replay <file>     Replay a .plushie script with real windows
+  package           Prepare a standalone package payload
 
 Options:
   --help            Show this help message
@@ -102,6 +105,18 @@ Options:
   --bin-file <path> Override binary destination (download/build)
   --wasm-dir <dir>  Override WASM output directory (download --wasm / build --wasm)
   --token <value>   Shared token for socket connect, sent as settings.token_sha256
+  --app-id <id>     Package app identifier (package)
+  --app-name <name> Package display name (package)
+  --app-version <v> Package app version (package)
+  --main <path>     Bundled CommonJS host entry for SEA packaging (package)
+  --host-bin <path> Prepared host executable to copy into the payload (package)
+  --host-name <name> Payload-local host executable name (package)
+  --output <dir>    Package output directory (package)
+  --sea-output <p>  Optional SEA executable with an embedded renderer (package)
+  --renderer <kind> Renderer kind: stock or custom (package)
+  --renderer-bin <p> Use an existing renderer binary (package)
+  --renderer-source <s> Renderer provenance string (package)
+  --target <target> Override package target (package)
   --bin             Download/build the native binary
   --wasm            Download/build the WASM renderer
   --no-watch        Disable file watching in dev mode
@@ -795,6 +810,90 @@ async function handleReplay(
 }
 
 // =========================================================================
+// Package
+// =========================================================================
+
+interface LocalPackageJson {
+  readonly name?: string;
+  readonly version?: string;
+}
+
+function readLocalPackageJson(): LocalPackageJson {
+  try {
+    return JSON.parse(readFileSync(resolve("package.json"), "utf-8")) as LocalPackageJson;
+  } catch {
+    return {};
+  }
+}
+
+function parseRendererKind(value: string | undefined): RendererKind | undefined {
+  if (value === undefined) return undefined;
+  if (value === "stock" || value === "custom") return value;
+  throw new Error(`Invalid --renderer value: ${value}`);
+}
+
+function defaultHostName(pkg: LocalPackageJson, hostBin: string | undefined): string {
+  if (hostBin !== undefined) {
+    return basename(hostBin);
+  }
+  const base = (pkg.name ?? "app").replaceAll(/[^A-Za-z0-9._-]/g, "-");
+  const ext = process.platform === "win32" ? ".exe" : "";
+  return `${base}-host${ext}`;
+}
+
+async function handlePackage(valueFlags: Map<string, string>): Promise<void> {
+  const appId = valueFlags.get("--app-id");
+  const main = valueFlags.get("--main");
+  const hostBin = valueFlags.get("--host-bin");
+  if (appId === undefined) {
+    console.error("Error: --app-id is required");
+    process.exitCode = 1;
+    return;
+  }
+  if (main === undefined && hostBin === undefined) {
+    console.error("Error: --main or --host-bin is required");
+    process.exitCode = 1;
+    return;
+  }
+
+  const pkg = readLocalPackageJson();
+  const hostName = valueFlags.get("--host-name") ?? defaultHostName(pkg, hostBin);
+  const outputDir = valueFlags.get("--output") ?? resolve("dist", "shared-launcher");
+  const appVersion = valueFlags.get("--app-version") ?? pkg.version ?? "0.1.0";
+  const rendererKind = valueFlags.has("--renderer")
+    ? parseRendererKind(valueFlags.get("--renderer"))
+    : undefined;
+
+  const result = prepareNodePackagePayload({
+    appId,
+    ...(valueFlags.has("--app-name") ? { appName: valueFlags.get("--app-name")! } : {}),
+    appVersion,
+    ...(main !== undefined ? { main } : {}),
+    ...(hostBin !== undefined ? { hostBin } : {}),
+    hostName,
+    outputDir,
+    ...(valueFlags.has("--renderer-bin") ? { rendererBin: valueFlags.get("--renderer-bin")! } : {}),
+    ...(rendererKind !== undefined ? { rendererKind } : {}),
+    ...(valueFlags.has("--renderer-source")
+      ? { rendererSource: valueFlags.get("--renderer-source")! }
+      : {}),
+    ...(valueFlags.has("--sea-output") ? { seaOutput: valueFlags.get("--sea-output")! } : {}),
+    ...(valueFlags.has("--target") ? { target: valueFlags.get("--target")! } : {}),
+    log: console.log,
+  });
+
+  console.log();
+  if (result.seaOutput !== undefined) {
+    console.log(`Standalone executable: ${result.seaOutput}`);
+  }
+  console.log(`Shared launcher payload: ${result.payloadArchivePath}`);
+  console.log(`Shared launcher manifest: ${result.manifestPath}`);
+  console.log();
+  console.log("Build shared launcher:");
+  console.log(`  cargo plushie package --manifest ${result.manifestPath} --release`);
+}
+
+// =========================================================================
 // tsx resolution
 // =========================================================================
 
@@ -951,10 +1050,26 @@ async function main(argv: string[]): Promise<void> {
   }
 
   // Parse flags from the remaining args (after the command).
-  // Value flags (--binary <path>, --bin-file <path>, --wasm-dir <dir>, --token <value>)
-  // consume the next arg. Other --flags are boolean.
+  // Value flags consume the next arg. Other --flags are boolean.
   const rest = args.slice(1);
-  const VALUE_FLAGS = new Set(["--binary", "--bin-file", "--wasm-dir", "--token"]);
+  const VALUE_FLAGS = new Set([
+    "--binary",
+    "--bin-file",
+    "--wasm-dir",
+    "--token",
+    "--app-id",
+    "--app-name",
+    "--app-version",
+    "--main",
+    "--host-bin",
+    "--host-name",
+    "--output",
+    "--sea-output",
+    "--renderer",
+    "--renderer-bin",
+    "--renderer-source",
+    "--target",
+  ]);
   const flags: string[] = [];
   const positional: string[] = [];
   const valueFlags = new Map<string, string>();
@@ -1000,6 +1115,9 @@ async function main(argv: string[]): Promise<void> {
       break;
     case "replay":
       await handleReplay(positional, flags, binaryOverride);
+      break;
+    case "package":
+      await handlePackage(valueFlags);
       break;
     case "dev": {
       if (positional[0] === undefined) {
