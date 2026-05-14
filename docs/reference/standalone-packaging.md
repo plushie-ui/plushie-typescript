@@ -96,9 +96,9 @@ validate and run the payload:
 - `[payload]` archive, hash, and size
 - `[renderer]` kind and source
 
-Strict artifact smoke runs the generated launcher from a temporary
+The demo artifact smoke runs the generated launcher from a temporary
 working directory with a narrowed runtime `PATH`. The smoke requires
-the shared renderer-parent ready marker and writes a report next to
-the generated launcher recording payload size, launcher size, target,
-host SDK, runtime path, exit status, and the renderer path reported by
+the shared renderer-parent ready marker and writes a report next to the
+generated launcher recording payload size, launcher size, target, host
+SDK, runtime path, exit status, and the renderer path reported by
 launcher diagnostics.
