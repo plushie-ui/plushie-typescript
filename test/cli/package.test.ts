@@ -57,8 +57,10 @@ describe("plushie package", () => {
 
     const host = join(binDir, "host");
     const renderer = join(binDir, "plushie-renderer");
+    const icon = join(binDir, "icon.png");
     writeExecutable(host);
     writeExecutable(renderer);
+    writeFileSync(icon, "icon", "utf-8");
     writeFileSync(
       join(projectDir, "package.json"),
       JSON.stringify({ name: "package-test", version: "0.2.0" }),
@@ -76,6 +78,8 @@ describe("plushie package", () => {
         host,
         "--renderer-bin",
         renderer,
+        "--icon",
+        icon,
         "--target",
         "linux-x86_64",
       ],
@@ -96,5 +100,6 @@ describe("plushie package", () => {
     expect(manifest).toContain('app_version = "0.2.0"');
     expect(manifest).toContain('renderer_path = "bin/plushie-renderer"');
     expect(manifest).toContain('host_command = ["bin/host"]');
+    expect(manifest).toContain('icon = "assets/icon.png"');
   });
 });

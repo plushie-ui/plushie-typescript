@@ -116,6 +116,8 @@ Options:
   --renderer <kind> Renderer kind: stock or custom (package)
   --renderer-bin <p> Use an existing renderer binary (package)
   --renderer-source <s> Renderer provenance string (package)
+  --icon <path>     App icon copied into the package payload (package)
+  --default-icon    Use Plushie's bundled default app icon (package)
   --target <target> Override package target (package)
   --bin             Download/build the native binary
   --wasm            Download/build the WASM renderer
@@ -841,7 +843,10 @@ function defaultHostName(pkg: LocalPackageJson, hostBin: string | undefined): st
   return `${base}-host${ext}`;
 }
 
-async function handlePackage(valueFlags: Map<string, string>): Promise<void> {
+async function handlePackage(
+  valueFlags: Map<string, string>,
+  flags: readonly string[],
+): Promise<void> {
   const appId = valueFlags.get("--app-id");
   const main = valueFlags.get("--main");
   const hostBin = valueFlags.get("--host-bin");
@@ -877,6 +882,8 @@ async function handlePackage(valueFlags: Map<string, string>): Promise<void> {
     ...(valueFlags.has("--renderer-source")
       ? { rendererSource: valueFlags.get("--renderer-source")! }
       : {}),
+    ...(valueFlags.has("--icon") ? { icon: valueFlags.get("--icon")! } : {}),
+    defaultIcon: flags.includes("--default-icon"),
     ...(valueFlags.has("--sea-output") ? { seaOutput: valueFlags.get("--sea-output")! } : {}),
     ...(valueFlags.has("--target") ? { target: valueFlags.get("--target")! } : {}),
     log: console.log,
@@ -1068,6 +1075,7 @@ async function main(argv: string[]): Promise<void> {
     "--renderer",
     "--renderer-bin",
     "--renderer-source",
+    "--icon",
     "--target",
   ]);
   const flags: string[] = [];
@@ -1117,7 +1125,7 @@ async function main(argv: string[]): Promise<void> {
       await handleReplay(positional, flags, binaryOverride);
       break;
     case "package":
-      await handlePackage(valueFlags);
+      await handlePackage(valueFlags, flags);
       break;
     case "dev": {
       if (positional[0] === undefined) {

@@ -58,7 +58,8 @@ npx plushie package \
   --app-name "My App" \
   --main dist/app.cjs \
   --sea-output dist/my-app \
-  --output dist/shared-launcher
+  --output dist/shared-launcher \
+  --default-icon
 ```
 
 The command expects `--main` to point at a bundled CommonJS host file.
@@ -66,7 +67,13 @@ App-specific bundling stays with the app because the SDK does not know
 which bundler or asset graph the app uses. From there the command
 builds the optional renderer-embedded SEA, builds the host-only SEA
 for the shared launcher, copies the renderer into the payload, writes
-`payload.tar.zst`, and writes `plushie-package.toml`.
+optional app icon assets, writes `payload.tar.zst`, and writes
+`plushie-package.toml`.
+
+Use `--icon path/to/icon.png` to copy an app-provided icon into the
+payload. Use `--default-icon` to export Plushie's bundled default icon
+set through `cargo-plushie` and record the 512px PNG in
+`[platform].icon`.
 
 For apps that prepare a Node host executable themselves, pass
 `--host-bin` instead of `--main`. The SDK still owns the renderer copy,

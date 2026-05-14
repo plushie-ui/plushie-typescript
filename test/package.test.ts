@@ -77,6 +77,7 @@ describe("package manifest", () => {
       rendererSource: "local-build",
       rendererPath: "bin/plushie-renderer",
       hostCommand: ["bin/host", "--flag"],
+      platformIcon: "assets/icon.png",
       payloadArchive: archive,
     });
 
@@ -93,6 +94,8 @@ describe("package manifest", () => {
     expect(toml).toContain('host_command = ["bin/host", "--flag"]');
     expect(toml).toContain('kind = "custom"');
     expect(toml).toContain('source = "local-build"');
+    expect(toml).toContain("[platform]");
+    expect(toml).toContain('icon = "assets/icon.png"');
   });
 });
 
@@ -102,8 +105,10 @@ describe("prepareNodePackagePayload", () => {
     const outputDir = join(dir, "dist", "shared-launcher");
     const host = join(dir, "host");
     const renderer = join(dir, "plushie-renderer");
+    const icon = join(dir, "icon.png");
     writeExecutable(host);
     writeExecutable(renderer);
+    writeFileSync(icon, "icon");
 
     const result = prepareNodePackagePayload({
       appId: "dev.plushie.test",
@@ -119,6 +124,7 @@ describe("prepareNodePackagePayload", () => {
         sourcePath: renderer,
         payloadPath: "bin/plushie-renderer",
       },
+      icon,
     });
 
     expect(existsSync(result.payloadArchivePath)).toBe(true);
@@ -129,6 +135,7 @@ describe("prepareNodePackagePayload", () => {
     expect(manifest).toContain('app_id = "dev.plushie.test"');
     expect(manifest).toContain('renderer_path = "bin/plushie-renderer"');
     expect(manifest).toContain('host_command = ["bin/test-host"]');
+    expect(manifest).toContain('icon = "assets/icon.png"');
 
     const list = spawnSync("tar", ["--zstd", "-tf", result.payloadArchivePath], {
       encoding: "utf-8",
@@ -136,6 +143,7 @@ describe("prepareNodePackagePayload", () => {
     expect(list.status).toBe(0);
     expect(list.stdout).toContain("./bin/test-host");
     expect(list.stdout).toContain("./bin/plushie-renderer");
+    expect(list.stdout).toContain("./assets/icon.png");
   });
 });
 

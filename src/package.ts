@@ -44,11 +44,16 @@ export interface PackageManifest {
   readonly appVersion: string;
   readonly target: string;
   readonly renderer: RendererManifest;
+  readonly platform?: PackagePlatformManifest;
   readonly hostCommand: readonly string[];
   readonly workingDir: string;
   readonly payloadArchive: string;
   readonly payloadHash: string;
   readonly payloadSize: number;
+}
+
+export interface PackagePlatformManifest {
+  readonly icon?: string;
 }
 
 export interface ResolvedRenderer {
@@ -86,6 +91,8 @@ export interface PrepareNodePackagePayloadOptions {
   readonly rendererBin?: string;
   readonly rendererKind?: RendererKind;
   readonly rendererSource?: RendererSource;
+  readonly icon?: string;
+  readonly defaultIcon?: boolean;
   readonly seaOutput?: string;
   readonly target?: string;
   readonly env?: NodeJS.ProcessEnv;
@@ -156,6 +163,7 @@ export function manifestForPayload(opts: {
   target?: string;
   rendererKind?: RendererKind;
   rendererSource?: RendererSource;
+  platformIcon?: string;
   workingDir?: string;
 }): PackageManifest {
   const archivePath = resolve(opts.payloadArchive);
@@ -169,6 +177,7 @@ export function manifestForPayload(opts: {
       source: opts.rendererSource ?? "local-resolve",
       path: opts.rendererPath,
     },
+    ...(opts.platformIcon !== undefined ? { platform: { icon: opts.platformIcon } } : {}),
     hostCommand: opts.hostCommand,
     workingDir: opts.workingDir ?? ".",
     payloadArchive: basename(archivePath),
@@ -198,6 +207,11 @@ export function renderPackageManifest(manifest: PackageManifest): string {
     `kind = ${tomlString(manifest.renderer.kind)}`,
     `source = ${tomlString(manifest.renderer.source)}`,
     "",
+  );
+  if (manifest.platform?.icon !== undefined) {
+    lines.push("[platform]", `icon = ${tomlString(manifest.platform.icon)}`, "");
+  }
+  lines.push(
     "[payload]",
     `archive = ${tomlString(manifest.payloadArchive)}`,
     `hash = ${tomlString(`sha256:${manifest.payloadHash}`)}`,
@@ -398,6 +412,8 @@ export function prepareNodePackagePayload(
   copyFileSync(renderer.sourcePath, rendererPayloadPath);
   makeExecutable(rendererPayloadPath);
 
+  const platformIcon = preparePlatformIcon(payloadRoot, opts);
+
   log("Compressing shared launcher payload...");
   archivePayload(payloadRoot, archivePath);
 
@@ -411,6 +427,7 @@ export function prepareNodePackagePayload(
     rendererPath: renderer.payloadPath,
     hostCommand: [join("bin", opts.hostName)],
     workingDir: ".",
+    ...(platformIcon !== undefined ? { platformIcon } : {}),
     payloadArchive: archivePath,
   });
   writePackageManifest(manifestPath, manifest);
@@ -429,6 +446,53 @@ function readSdkVersion(): string {
   const require = createRequire(import.meta.url);
   const pkg = require("../package.json") as { version: string };
   return pkg.version;
+}
+
+function preparePlatformIcon(
+  payloadRoot: string,
+  opts: PrepareNodePackagePayloadOptions,
+): string | undefined {
+  if (opts.icon !== undefined && opts.defaultIcon === true) {
+    throw new Error("icon and defaultIcon cannot both be set");
+  }
+
+  if (opts.icon !== undefined) {
+    const iconPath = resolve(opts.icon);
+    const payloadPath = join("assets", basename(iconPath));
+    const dest = join(payloadRoot, payloadPath);
+    mkdirSync(dirname(dest), { recursive: true });
+    copyFileSync(iconPath, dest);
+    return payloadPath;
+  }
+
+  if (opts.defaultIcon === true) {
+    const assetsDir = join(payloadRoot, "assets");
+    writeDefaultIcons(assetsDir, opts.env);
+    return join("assets", "plushie-checkbox-512x512.png");
+  }
+
+  return undefined;
+}
+
+function writeDefaultIcons(outDir: string, env: NodeJS.ProcessEnv | undefined): void {
+  const rustSourcePath =
+    env?.["PLUSHIE_RUST_SOURCE_PATH"] ?? process.env["PLUSHIE_RUST_SOURCE_PATH"];
+  if (rustSourcePath !== undefined && rustSourcePath !== "") {
+    runCommand("cargo", [
+      "run",
+      "--manifest-path",
+      join(rustSourcePath, "Cargo.toml"),
+      "-p",
+      "cargo-plushie",
+      "--",
+      "default-icons",
+      "--out",
+      outDir,
+    ]);
+    return;
+  }
+
+  runCommand("cargo-plushie", ["default-icons", "--out", outDir]);
 }
 
 function validatePayloadArchiveInputs(payloadDir: string): void {
