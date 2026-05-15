@@ -248,6 +248,11 @@ describe("package start config", () => {
       'forward_env = ["PLUSHIE_PACKAGE_DIR"]',
       /cannot include reserved name/,
     ],
+    [
+      "reserved package readiness env",
+      'forward_env = ["PLUSHIE_PACKAGE_READY_FILE"]',
+      /cannot include reserved name/,
+    ],
   ])("rejects invalid source package config: %s", (_name, replacement, error) => {
     const dir = tempDir();
     const configPath = join(dir, "plushie-package.config.toml");

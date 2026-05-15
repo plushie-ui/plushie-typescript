@@ -26,6 +26,7 @@ import { createRequire } from "node:module";
 import { basename, dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { arch, execPath, platform } from "node:process";
 import { installedBinaryName, PLUSHIE_RUST_VERSION } from "./client/binary.js";
+import { PACKAGE_READY_FILE_ENV } from "./client/package_ready.js";
 import { PROTOCOL_VERSION } from "./client/protocol.js";
 import { generateSEAConfig } from "./sea.js";
 
@@ -41,7 +42,11 @@ const DEFAULT_FORWARD_ENV = [
   "DISPLAY",
 ] as const;
 const DEFAULT_PACKAGE_CONFIG = "plushie-package.config.toml";
-const RESERVED_FORWARD_ENV = new Set(["PLUSHIE_BINARY_PATH", "PLUSHIE_PACKAGE_DIR"]);
+const RESERVED_FORWARD_ENV = new Set([
+  "PLUSHIE_BINARY_PATH",
+  "PLUSHIE_PACKAGE_DIR",
+  PACKAGE_READY_FILE_ENV,
+]);
 
 export interface RendererManifest {
   readonly kind: RendererKind;

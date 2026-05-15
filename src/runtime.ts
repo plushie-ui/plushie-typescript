@@ -15,6 +15,7 @@
 
 import { createHash } from "node:crypto";
 import type { AppConfig, AppView } from "./app.js";
+import { writePackageReadyFileFromEnv } from "./client/package_ready.js";
 import type {
   DecodedResponse,
   DiagnosticMessage,
@@ -427,6 +428,7 @@ export class Runtime<M> {
 
     // Wait for hello
     await this.awaitHello();
+    writePackageReadyFileFromEnv();
 
     // Start heartbeat watchdog
     this.resetHeartbeat();

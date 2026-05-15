@@ -1,9 +1,26 @@
 import { createHash } from "node:crypto";
-import { describe, expect, test } from "vitest";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import type { AppConfig } from "../src/app.js";
 import { PROTOCOL_VERSION } from "../src/client/protocol.js";
 import type { Transport, WireFormat } from "../src/client/transport.js";
 import { Runtime } from "../src/runtime.js";
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function tempDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "plushie-runtime-"));
+  tempDirs.push(dir);
+  return dir;
+}
 
 class FakeTransport implements Transport {
   readonly format: WireFormat = "msgpack";
@@ -77,6 +94,34 @@ async function startRuntime(
 }
 
 describe("Runtime.reinit", () => {
+  test("writes package readiness file after initial hello handshake", async () => {
+    const dir = tempDir();
+    const readyFile = join(dir, "ready");
+    const previous = process.env["PLUSHIE_PACKAGE_READY_FILE"];
+    process.env["PLUSHIE_PACKAGE_READY_FILE"] = readyFile;
+
+    const transport = new FakeTransport();
+    const runtime = new Runtime(appConfig(), transport);
+
+    try {
+      const started = runtime.start();
+      expect(existsSync(readyFile)).toBe(false);
+
+      transport.emit(hello());
+      await started;
+
+      expect(readFileSync(readyFile, "utf-8")).toBe("ready\n");
+      expect(readdirSync(dir)).toEqual(["ready"]);
+    } finally {
+      runtime.stop();
+      if (previous === undefined) {
+        delete process.env["PLUSHIE_PACKAGE_READY_FILE"];
+      } else {
+        process.env["PLUSHIE_PACKAGE_READY_FILE"] = previous;
+      }
+    }
+  });
+
   test("includes listen token digest in initial settings when configured", async () => {
     const transport = new FakeTransport();
     const runtime = new Runtime(appConfig(), transport, "", { token: "listen-token" });
@@ -156,19 +201,23 @@ describe("Runtime.reinit", () => {
   test("resets consecutiveErrors to zero on reinit", async () => {
     const { runtime } = await startRuntime({ throwOnUpdate: true });
     const state = runtime as unknown as { state: { consecutiveErrors: number } };
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    runtime.injectEvent({
-      kind: "system",
-      type: "theme_changed",
-      value: "dark",
-    } as never);
+    try {
+      runtime.injectEvent({
+        kind: "system",
+        type: "theme_changed",
+        value: "dark",
+      } as never);
 
-    expect(state.state.consecutiveErrors).toBe(1);
+      expect(state.state.consecutiveErrors).toBe(1);
 
-    runtime.reinit();
+      runtime.reinit();
 
-    expect(state.state.consecutiveErrors).toBe(0);
-
-    runtime.stop();
+      expect(state.state.consecutiveErrors).toBe(0);
+    } finally {
+      consoleError.mockRestore();
+      runtime.stop();
+    }
   });
 });
