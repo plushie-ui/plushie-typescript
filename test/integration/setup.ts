@@ -16,14 +16,8 @@ export const binaryPath: string | null = (() => {
 
   // 2. Downloaded binary
   const { resolve } = require("node:path") as typeof import("node:path");
-  const { platform, arch } = require("node:process") as typeof import("node:process");
-
-  const os = platform === "darwin" ? "darwin" : platform === "win32" ? "windows" : "linux";
-  const cpu = arch === "x64" ? "x86_64" : arch === "arm64" ? "aarch64" : arch;
-  const ext = os === "windows" ? ".exe" : "";
-  const name = `plushie-renderer-${os}-${cpu}${ext}`;
-
-  const downloadPath = resolve("node_modules", ".plushie", "bin", name);
+  const ext = process.platform === "win32" ? ".exe" : "";
+  const downloadPath = resolve("bin", `plushie-renderer${ext}`);
   if (existsSync(downloadPath)) return downloadPath;
 
   // 3. Local build paths

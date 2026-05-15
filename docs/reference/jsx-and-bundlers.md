@@ -311,7 +311,7 @@ import { writeFileSync } from "node:fs"
 const config = generateSEAConfig({
   main: "dist/app.cjs",
   output: "build/app.blob",
-  binaryPath: "node_modules/.plushie/bin/plushie-renderer-linux-x64",
+  binaryPath: "bin/plushie-renderer",
   wasmDir: "node_modules/.plushie/wasm",
 })
 

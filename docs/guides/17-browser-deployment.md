@@ -343,7 +343,7 @@ import { writeFileSync } from "node:fs"
 const config = generateSEAConfig({
   main: "dist/app.js",
   output: "build/app.blob",
-  binaryPath: "node_modules/.plushie/bin/plushie-renderer",
+  binaryPath: "bin/plushie-renderer",
   wasmDir: "node_modules/.plushie/wasm",
 })
 
@@ -384,7 +384,7 @@ await counter.run({ binary })
 
 When `binary` is `undefined`, `.run()` falls back to the normal
 resolution chain (`PLUSHIE_BINARY_PATH`,
-`node_modules/.plushie/bin/`, and so on). `extractBinaryFromSEA`
+`bin/`, and so on). `extractBinaryFromSEA`
 takes an optional asset key; pass it if you used something other
 than the default `"plushie-binary"` in your SEA config.
 

@@ -25,7 +25,7 @@ import {
 import { createRequire } from "node:module";
 import { basename, dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { arch, execPath, platform } from "node:process";
-import { PLUSHIE_RUST_VERSION, platformBinaryName } from "./client/binary.js";
+import { installedBinaryName, PLUSHIE_RUST_VERSION } from "./client/binary.js";
 import { PROTOCOL_VERSION } from "./client/protocol.js";
 import { generateSEAConfig } from "./sea.js";
 
@@ -430,7 +430,7 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
     };
   }
 
-  const downloadedPath = resolve("node_modules", ".plushie", "bin", platformBinaryName());
+  const downloadedPath = resolve("bin", installedBinaryName());
   if (existsSync(downloadedPath)) {
     const source = opts.rendererSource ?? "local-resolve";
     validateExecutable(downloadedPath, "renderer binary");

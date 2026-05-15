@@ -61,9 +61,8 @@ and returns the first match:
 1. `PLUSHIE_BINARY_PATH`.
 2. A SEA-bundled binary when the SDK is running inside a Node.js
    Single Executable Application.
-3. `node_modules/.plushie/bin/plushie-renderer-<os>-<arch>`, which
-   is where both `npx plushie download` and `npx plushie build`
-   place their output.
+3. `bin/plushie-renderer`, which is where both `npx plushie download`
+   and `npx plushie build` place their output.
 4. `./plushie-renderer`, then
    `../plushie-rust/target/release/plushie-renderer`, then
    `../plushie-rust/target/debug/plushie-renderer` for local
@@ -98,7 +97,7 @@ by `plushie download`, `plushie build`, and the dev loop.
 | Field | Type | Description |
 |---|---|---|
 | `artifacts` | `("bin" \| "wasm")[]` | What to download or build. Defaults to `["bin"]`. Set to `["bin", "wasm"]` for projects that ship a browser renderer too. |
-| `bin_file` | `string` | Override destination for the native binary. Default is `node_modules/.plushie/bin/<platform-name>`. |
+| `bin_file` | `string` | Override destination for the native binary. Default is `bin/plushie-renderer`. |
 | `wasm_dir` | `string` | Override destination directory for WASM output. Default is `node_modules/.plushie/wasm`. |
 | `source_path` | `string` | Path to plushie-rust for source builds. Overridden by `PLUSHIE_RUST_SOURCE_PATH`. |
 | `extensions` | `NativeWidgetConfig[]` | Declared native widget extensions. Entries with `rustCrate` trigger a custom renderer build and block precompiled downloads. |

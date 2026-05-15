@@ -59,7 +59,16 @@ describe("plushie build", () => {
 
     writeExecutable(join(binDir, "rustc"), "#!/bin/sh\necho 'rustc 1.92.0 (fake)'\n");
     writeExecutable(join(binDir, "wasm-pack"), "#!/bin/sh\nsleep 0.05\nexit 9\n");
-    writeExecutable(join(binDir, "cargo"), '#!/bin/sh\nsleep 0.2\n: > "$PLUSHIE_CARGO_MARKER"\n');
+    writeExecutable(
+      join(binDir, "cargo"),
+      [
+        "#!/bin/sh",
+        "sleep 0.2",
+        ': > "$PLUSHIE_CARGO_MARKER"',
+        "mkdir -p target/debug",
+        "echo bin > target/debug/plushie-renderer",
+      ].join("\n"),
+    );
 
     const code = await runCli(["build"], projectDir, {
       ...process.env,
@@ -142,5 +151,56 @@ describe("plushie build", () => {
     expect(existsSync(cargoMarker)).toBe(true);
     expect(existsSync(join(projectDir, "static", "plushie_renderer_wasm.js"))).toBe(true);
     expect(existsSync(join(projectDir, "static", "plushie_renderer_wasm_bg.wasm"))).toBe(true);
+    expect(existsSync(join(projectDir, "bin", "plushie-renderer"))).toBe(true);
+  });
+
+  test("honors configured binary destination for stock source builds", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "plushie-cli-build-"));
+    tempDirs.push(dir);
+
+    const binDir = join(dir, "bin");
+    const projectDir = join(dir, "project");
+    const rustDir = join(dir, "plushie-rust");
+    const customDest = join(projectDir, "vendor", "renderer");
+    mkdirSync(join(rustDir, "target", "debug"), { recursive: true });
+    mkdirSync(projectDir, { recursive: true });
+    mkdirSync(binDir, { recursive: true });
+
+    writeFileSync(
+      join(projectDir, "plushie.extensions.json"),
+      JSON.stringify({
+        artifacts: ["bin"],
+        source_path: rustDir,
+        bin_file: "vendor/renderer",
+      }),
+      "utf-8",
+    );
+
+    writeExecutable(join(binDir, "rustc"), "#!/bin/sh\necho 'rustc 1.92.0 (fake)'\n");
+    writeExecutable(
+      join(binDir, "cargo"),
+      [
+        "#!/bin/sh",
+        'case "$*" in',
+        '  *"build -p plushie-renderer"*)',
+        "    mkdir -p target/debug",
+        "    echo bin > target/debug/plushie-renderer",
+        "    ;;",
+        "  *)",
+        '    echo "unexpected cargo command: $*" >&2',
+        "    exit 65",
+        "    ;;",
+        "esac",
+      ].join("\n"),
+    );
+
+    const code = await runCli(["build"], projectDir, {
+      ...process.env,
+      PATH: `${binDir}${delimiter}${process.env["PATH"] ?? ""}`,
+    });
+
+    expect(code).toBe(0);
+    expect(existsSync(customDest)).toBe(true);
+    expect(existsSync(join(projectDir, "bin", "plushie-renderer"))).toBe(false);
   });
 });

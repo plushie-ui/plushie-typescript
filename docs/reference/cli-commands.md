@@ -78,9 +78,8 @@ and `--wasm` can be combined.
 
 ### Destinations
 
-- Native binary: `node_modules/.plushie/bin/<platformBinaryName>`
-  by default, or the path given by `--bin-file` / `bin_file` in
-  the project config.
+- Native binary: `bin/plushie-renderer` by default, or the path given
+  by `--bin-file` / `bin_file` in the project config.
 - WASM tarball: extracted to `node_modules/.plushie/wasm/` by
   default, producing `plushie_renderer_wasm.js` and
   `plushie_renderer_wasm_bg.wasm`. Override with `--wasm-dir` or
@@ -126,7 +125,7 @@ widget as a path dependency, then delegates to `cargo plushie
 build`. `cargo-plushie` walks the dep graph via `cargo metadata`,
 reads each widget crate's `[package.metadata.plushie.widget]`
 table, and generates the renderer workspace. The compiled binary
-is copied back to `node_modules/.plushie/bin/` under the platform
+is copied back to `bin/` under the platform
 binary name.
 
 ### cargo-plushie resolution
@@ -149,7 +148,7 @@ renderer via `cargo build -p plushie-renderer` in the directory
 given by `PLUSHIE_RUST_SOURCE_PATH` or `source_path` in the
 project config. The binary ends up at
 `<source>/target/<profile>/plushie-renderer`; it is not copied to
-`node_modules/.plushie/bin/` in this path. Use `--binary <path>`
+`bin/` in this path. Use `--binary <path>`
 at runtime or set `PLUSHIE_BINARY_PATH` to point at it.
 
 ### WASM builds
@@ -216,7 +215,7 @@ Renderer flags:
 
 Stock renderer resolution uses `--renderer-bin`, then
 `PLUSHIE_BINARY_PATH`, then `PLUSHIE_RUST_SOURCE_PATH` with a release
-build, then the downloaded binary under `node_modules/.plushie/bin/`.
+build, then the downloaded binary under `bin/`.
 Custom renderer packaging requires an explicit binary path so a stock
 renderer is not mislabeled as custom.
 

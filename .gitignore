@@ -3,3 +3,5 @@ dist/
 *.tsbuildinfo
 .DS_Store
 api-docs/
+bin/plushie-renderer
+bin/plushie-renderer.exe

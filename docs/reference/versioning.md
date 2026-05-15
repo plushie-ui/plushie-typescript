@@ -111,7 +111,7 @@ npx plushie download
 This fetches
 `plushie-renderer-<os>-<arch>` from the plushie-rust GitHub
 release tagged `v<PLUSHIE_RUST_VERSION>` and writes it to
-`node_modules/.plushie/bin/`. `npx plushie download --wasm`
+`bin/`. `npx plushie download --wasm`
 fetches the WASM renderer for browser apps.
 
 Building from source is the path for local development against a

@@ -83,14 +83,14 @@ payload archive, and manifest generation.
 Renderer resolution for stock packages uses `--renderer-bin`,
 `PLUSHIE_BINARY_PATH`, `PLUSHIE_RUST_SOURCE_PATH` with a release
 renderer build, then the downloaded binary under
-`node_modules/.plushie/bin/`. Custom packages must pass
+`bin/`. Custom packages must pass
 `--renderer custom` with `--renderer-bin` or `PLUSHIE_BINARY_PATH` so
 the payload cannot silently package stock renderer bits as custom.
 
 Build the final launcher with cargo-plushie:
 
 ```sh
-cargo plushie package --manifest dist/shared-launcher/plushie-package.toml --release
+cargo plushie package portable --manifest dist/shared-launcher/plushie-package.toml --release
 ```
 
 ## Manifest

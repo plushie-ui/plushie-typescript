@@ -10,7 +10,7 @@
  *
  * 1. `PLUSHIE_BINARY_PATH` env var (must exist, error if file missing)
  * 2. SEA-bundled binary (if running in Node.js Single Executable context)
- * 3. Downloaded binary at `node_modules/.plushie/bin/<name>`
+ * 3. Downloaded binary at `bin/plushie-renderer`
  * 4. Common local paths: `./plushie-renderer`, `../plushie-rust/target/release/plushie-renderer`
  * 5. Error with guidance to download
  *
@@ -71,14 +71,22 @@ class DownloadFailure extends Error {
 /**
  * Map Node.js platform/arch to plushie binary naming convention.
  *
- * @returns Platform-specific binary name (e.g., "plushie-renderer-linux-x86_64").
+ * @returns Platform-specific release asset name (e.g., "plushie-renderer-linux-x86_64").
  */
-export function platformBinaryName(): string {
+export function releaseBinaryName(): string {
   const os = platformOs();
   const cpu = platformArch();
   const ext = os === "windows" ? ".exe" : "";
   return `plushie-renderer-${os}-${cpu}${ext}`;
 }
+
+/** Return the stable project-local renderer filename. */
+export function installedBinaryName(): string {
+  const ext = platformOs() === "windows" ? ".exe" : "";
+  return `plushie-renderer${ext}`;
+}
+
+export const platformBinaryName = releaseBinaryName;
 
 function platformOs(): string {
   switch (platform) {
@@ -137,11 +145,11 @@ export function resolveBinary(): string {
     }
   }
 
-  // 3. Downloaded or cargo-plushie-installed binary in node_modules.
+  // 3. Downloaded or cargo-plushie-installed binary in project-root bin/.
   //    `npx plushie build` copies its output here, so stock downloads
   //    and custom renderers share the same resolution step.
-  const downloadDir = resolve("node_modules", ".plushie", "bin");
-  const downloadPath = join(downloadDir, platformBinaryName());
+  const downloadDir = resolve("bin");
+  const downloadPath = join(downloadDir, installedBinaryName());
   if (existsSync(downloadPath)) {
     validateArchitecture(downloadPath);
     return downloadPath;
@@ -166,7 +174,7 @@ export function resolveBinary(): string {
       `To fix this, either:\n` +
       `  - Set PLUSHIE_BINARY_PATH to point to a local build\n` +
       `  - Run: npx plushie download\n\n` +
-      `Expected binary name: ${platformBinaryName()}\n` +
+      `Expected binary name: ${installedBinaryName()}\n` +
       `Checked: ${downloadPath}`,
   );
 }
@@ -191,13 +199,13 @@ export function validateArchitecture(binaryPath: string): void {
     if (systemArch === "x64" && isArm && !is64) {
       throw new Error(
         `Architecture mismatch: binary is ARM64 but system is x86_64.\n` +
-          `Download the correct binary: ${platformBinaryName()}`,
+          `Download the correct binary: ${releaseBinaryName()}`,
       );
     }
     if (systemArch === "arm64" && is64 && !isArm) {
       throw new Error(
         `Architecture mismatch: binary is x86_64 but system is ARM64.\n` +
-          `Download the correct binary: ${platformBinaryName()}`,
+          `Download the correct binary: ${releaseBinaryName()}`,
       );
     }
   } catch (err) {
@@ -210,7 +218,7 @@ export function validateArchitecture(binaryPath: string): void {
 /**
  * Download the precompiled plushie binary for the current platform.
  *
- * @param opts.destDir - Destination directory. Defaults to node_modules/.plushie/bin/
+ * @param opts.destDir - Destination directory. Defaults to bin/
  * @param opts.force - Re-download even if binary already exists.
  * @returns Path to the downloaded binary.
  */
@@ -218,9 +226,9 @@ export async function downloadBinary(opts?: {
   destDir?: string;
   force?: boolean;
 }): Promise<string> {
-  const name = platformBinaryName();
-  const destDir = opts?.destDir ?? resolve("node_modules", ".plushie", "bin");
-  const destPath = join(destDir, name);
+  const name = releaseBinaryName();
+  const destDir = opts?.destDir ?? resolve("bin");
+  const destPath = join(destDir, installedBinaryName());
   return downloadReleaseBinary({
     binaryName: name,
     destPath,

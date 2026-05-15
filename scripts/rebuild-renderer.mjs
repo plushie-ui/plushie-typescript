@@ -2,19 +2,19 @@
 
 /**
  * Rebuild the plushie-renderer binary from a local plushie-rust
- * checkout, then drop it into node_modules/.plushie/bin/ where
+ * checkout, then drop it into project-root bin/ where
  * resolveBinary picks it up. Run as the first preflight step so
  * tests exercise the current renderer rather than a stale cached
  * artifact.
  *
  * Behaviour:
  *   - PLUSHIE_RUST_SOURCE_PATH unset: no-op (falls back to whatever
- *     postinstall already put in node_modules).
+ *     postinstall already put in bin/).
  *   - PLUSHIE_RUST_SOURCE_PATH set: runs `cargo build --release -p
  *     plushie-renderer` with cwd at the workspace, so its
  *     `[patch.crates-io]` overrides for plushie-iced apply, then
- *     copies the resulting binary into node_modules/.plushie/bin/
- *     under the platform-specific name resolveBinary expects.
+ *     copies the resulting binary into bin/ under the stable name
+ *     resolveBinary expects.
  *
  * Exits non-zero if the cargo build fails or the binary is missing
  * after a reportedly-successful build.
@@ -57,33 +57,8 @@ if (!existsSync(builtBinary)) {
   process.exit(1)
 }
 
-const platformOs = (() => {
-  switch (process.platform) {
-    case "darwin":
-      return "darwin"
-    case "linux":
-      return "linux"
-    case "win32":
-      return "windows"
-    default:
-      return process.platform
-  }
-})()
-
-const platformArch = (() => {
-  switch (process.arch) {
-    case "x64":
-      return "x86_64"
-    case "arm64":
-      return "aarch64"
-    default:
-      return process.arch
-  }
-})()
-
-const ext = platformOs === "windows" ? ".exe" : ""
-const destName = `plushie-renderer-${platformOs}-${platformArch}${ext}`
-const destDir = resolve("node_modules", ".plushie", "bin")
+const destName = process.platform === "win32" ? "plushie-renderer.exe" : "plushie-renderer"
+const destDir = resolve("bin")
 const destPath = join(destDir, destName)
 
 mkdirSync(dirname(destPath), { recursive: true })

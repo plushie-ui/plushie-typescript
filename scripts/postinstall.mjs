@@ -82,10 +82,11 @@ try {
 
 const ext = platformOs() === "windows" ? ".exe" : ""
 const binaryName = `plushie-renderer-${platformOs()}-${platformArch()}${ext}`
+const installedName = `plushie-renderer${ext}`
 const destDir = configBinFile
   ? resolve(projectRoot, configBinFile, "..")
-  : resolve(projectRoot, "node_modules", ".plushie", "bin")
-const destPath = configBinFile ? resolve(projectRoot, configBinFile) : join(destDir, binaryName)
+  : resolve(projectRoot, "bin")
+const destPath = configBinFile ? resolve(projectRoot, configBinFile) : join(destDir, installedName)
 
 if (existsSync(destPath)) {
   process.exit(0)

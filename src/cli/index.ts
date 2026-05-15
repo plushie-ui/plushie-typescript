@@ -39,8 +39,9 @@ import {
   RELEASE_BASE_URL as BASE_URL,
   downloadFileWithChecksum,
   downloadReleaseBinary,
+  installedBinaryName,
   PLUSHIE_RUST_VERSION,
-  platformBinaryName,
+  releaseBinaryName,
 } from "../client/binary.js";
 import { DevServer } from "../dev-server.js";
 import {
@@ -207,9 +208,9 @@ async function handleDownload(
 }
 
 async function handleDownloadBinary(force: boolean, binFile?: string): Promise<void> {
-  const binaryName = platformBinaryName();
-  const destDir = binFile ? dirname(resolve(binFile)) : resolve("node_modules", ".plushie", "bin");
-  const destPath = binFile ? resolve(binFile) : join(destDir, binaryName);
+  const binaryName = releaseBinaryName();
+  const destDir = binFile ? dirname(resolve(binFile)) : resolve("bin");
+  const destPath = binFile ? resolve(binFile) : join(destDir, installedBinaryName());
   const url = `${BASE_URL}/v${PLUSHIE_RUST_VERSION}/${binaryName}`;
 
   if (!force && existsSync(destPath)) {
@@ -295,6 +296,7 @@ function recordBuildExitCode(code: number): void {
 
 async function handleBuild(
   flags: string[],
+  binDestFile?: string,
   wasmDestDir?: string,
   config?: ProjectConfig,
 ): Promise<void> {
@@ -316,6 +318,7 @@ async function handleBuild(
 
   // Resolve WASM dest: CLI flag > config > default
   const resolvedWasmDir = wasmDestDir ?? config?.wasm_dir;
+  const resolvedBinFile = binDestFile ?? config?.bin_file;
 
   if (wantWasm) {
     if (!sourcePath) {
@@ -367,7 +370,7 @@ async function handleBuild(
     const extConfigPath = resolve("plushie.extensions.json");
     if (
       existsSync(extConfigPath) &&
-      (await handleNativeWidgetBuild(extConfigPath, isRelease, sourcePath))
+      (await handleNativeWidgetBuild(extConfigPath, isRelease, sourcePath, resolvedBinFile))
     ) {
       return;
     }
@@ -418,8 +421,10 @@ async function handleBuild(
     recordBuildExitCode(code);
     if (code === 0) {
       const profile = isRelease ? "release" : "debug";
-      const binPath = resolve(sourcePath, "target", profile, "plushie-renderer");
-      console.log(`\nBinary built at: ${binPath}`);
+      const ext = process.platform === "win32" ? ".exe" : "";
+      const binPath = resolve(sourcePath, "target", profile, "plushie-renderer" + ext);
+      const installedPath = installRendererBinary(binPath, resolvedBinFile);
+      console.log(`\nBinary installed at: ${installedPath}`);
     }
   }
 }
@@ -429,6 +434,7 @@ async function handleNativeWidgetBuild(
   configPath: string,
   release: boolean,
   sourcePath: string | undefined,
+  binDestFile: string | undefined,
 ): Promise<boolean> {
   let parsed: {
     extensions?: Array<import("../native-widget.js").NativeWidgetConfig>;
@@ -499,7 +505,7 @@ async function handleNativeWidgetBuild(
     return true;
   }
   try {
-    const installedPath = installBuiltBinary(scratchDir, binaryName, release);
+    const installedPath = installBuiltBinary(scratchDir, binaryName, release, binDestFile);
     console.log(`\nCustom renderer installed at ${installedPath}`);
   } catch (err) {
     console.error(String(err instanceof Error ? err.message : err));
@@ -569,8 +575,8 @@ function relativePath(from: string, to: string): string {
 
 /**
  * Copy the freshly-built renderer binary from the cargo-plushie
- * workspace into `node_modules/.plushie/bin/` using the platform
- * naming convention the SDK's binary resolver expects.
+ * workspace into project-root `bin/` using the stable renderer name the SDK's
+ * binary resolver expects.
  *
  * cargo-plushie writes to `{scratch}/target/plushie-renderer/target/{profile}/{bin}`.
  */
@@ -578,6 +584,7 @@ function installBuiltBinary(
   scratchDir: string,
   binaryName: string | undefined,
   release: boolean,
+  binDestFile: string | undefined,
 ): string {
   const profile = release ? "release" : "debug";
   // cargo-plushie defaults binary_name to `<app>-renderer`. Our
@@ -589,10 +596,17 @@ function installBuiltBinary(
   if (!existsSync(src)) {
     throw new Error(`cargo plushie build succeeded but the expected binary is missing:\n  ${src}`);
   }
-  const destDir = resolve("node_modules", ".plushie", "bin");
+  return installRendererBinary(src, binDestFile);
+}
+
+function installRendererBinary(src: string, binDestFile: string | undefined): string {
+  if (!existsSync(src)) {
+    throw new Error(`renderer build succeeded but the expected binary is missing:\n  ${src}`);
+  }
+  const dest =
+    binDestFile === undefined ? resolve("bin", installedBinaryName()) : resolve(binDestFile);
+  const destDir = dirname(dest);
   mkdirSync(destDir, { recursive: true });
-  const destName = platformBinaryName();
-  const dest = join(destDir, destName);
   copyFileSync(src, dest);
   if (process.platform !== "win32") {
     chmodSync(dest, 0o755);
@@ -913,7 +927,7 @@ async function handlePackage(
   console.log(`Shared launcher manifest: ${result.manifestPath}`);
   console.log();
   console.log("Build shared launcher:");
-  console.log(`  cargo plushie package --manifest ${result.manifestPath} --release`);
+  console.log(`  cargo plushie package portable --manifest ${result.manifestPath} --release`);
 }
 
 // =========================================================================
@@ -1130,7 +1144,7 @@ async function main(argv: string[]): Promise<void> {
       await handleDownload(flags, binFileOverride, wasmDirOverride, projectConfig);
       break;
     case "build":
-      await handleBuild(flags, wasmDirOverride, projectConfig);
+      await handleBuild(flags, binFileOverride, wasmDirOverride, projectConfig);
       break;
     case "connect":
       await handleConnect(positional, flags, binaryOverride, tokenOverride);

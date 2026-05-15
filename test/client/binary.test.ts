@@ -7,6 +7,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import {
   downloadFileWithChecksum,
   downloadReleaseBinary,
+  installedBinaryName,
   platformBinaryName,
 } from "../../src/client/binary.js";
 
@@ -28,6 +29,12 @@ afterEach(async () => {
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+describe("installedBinaryName", () => {
+  test("returns the stable project-local renderer name", () => {
+    expect(["plushie-renderer", "plushie-renderer.exe"]).toContain(installedBinaryName());
+  });
 });
 
 describe("platformBinaryName", () => {

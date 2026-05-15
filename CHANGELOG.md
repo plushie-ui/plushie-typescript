@@ -149,9 +149,8 @@ Targets plushie-rust 0.7.1 (up from plushie-renderer 0.5.0).
   generating its own Cargo workspace. Two install paths: `cargo install
   cargo-plushie --version <pin>` or `PLUSHIE_RUST_SOURCE_PATH` pointing
   at a plushie-rust checkout.
-- Custom renderer binaries land in `node_modules/.plushie/bin/` using the
-  platform naming convention, unifying resolution for stock downloads and
-  custom builds.
+- Custom renderer binaries land in `bin/plushie-renderer`, unifying
+  resolution for stock downloads and custom builds.
 
 ## [0.5.0] - 2026-03-23
 

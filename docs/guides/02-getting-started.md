@@ -47,7 +47,7 @@ hand:
 npx plushie download
 ```
 
-The binary lands at `node_modules/.plushie/bin/` and the SDK
+The binary lands at `bin/` and the SDK
 resolves it at runtime. The download is pinned to the SDK
 version so the binary and the SDK always match.
 
@@ -292,14 +292,13 @@ plushie_pad/
     widgets/
   test/
     hello.test.ts
-  node_modules/
-    .plushie/
-      bin/plushie-renderer-<os>-<arch>
+  bin/
+    plushie-renderer
 ```
 
 `src/` holds your app code. Custom widgets live under
 `src/widgets/`. Tests sit under `test/`. The renderer binary
-is cached in `node_modules/.plushie/bin/`; it is regenerated
+is cached in `bin/`; it is regenerated
 on `pnpm install` via the postinstall script.
 
 Wire the CLI commands into `package.json` so teammates get
