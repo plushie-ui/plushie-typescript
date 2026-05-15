@@ -229,8 +229,8 @@ Renderer flags:
 | `--renderer-source <s>` | Record a provenance string in `[renderer].source`. |
 
 Stock renderer resolution uses `--renderer-bin`, then
-`PLUSHIE_BINARY_PATH`, then `PLUSHIE_RUST_SOURCE_PATH` with a release
-build, then the downloaded binary under `bin/`.
+`PLUSHIE_BINARY_PATH`, then `PLUSHIE_RUST_SOURCE_PATH` with
+`bin/plushie tools sync`, then the downloaded binary under `bin/`.
 Custom renderer packaging requires an explicit binary path so a stock
 renderer is not mislabeled as custom.
 

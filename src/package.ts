@@ -399,7 +399,7 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
     const source = opts.rendererSource ?? "local-path";
     const sourcePath = resolve(explicitPath);
     validateExecutable(sourcePath, "renderer binary");
-    ensureManagedPackageToolsAvailable();
+    ensurePortablePackageToolsAvailable();
     return {
       kind,
       source,
@@ -418,28 +418,8 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
   const rustSourcePath = env["PLUSHIE_RUST_SOURCE_PATH"];
   if (rustSourcePath !== undefined && rustSourcePath !== "") {
     const source = opts.rendererSource ?? "local-build";
-    const manifestPath = join(rustSourcePath, "Cargo.toml");
-    if (!existsSync(manifestPath)) {
-      throw new Error(
-        `PLUSHIE_RUST_SOURCE_PATH does not look like a Rust workspace: ${rustSourcePath}`,
-      );
-    }
-    opts.log?.(`Building plushie-renderer from ${rustSourcePath}`);
-    const targetDir = resolve("node_modules", ".plushie", "package-renderer-target");
-    runCommand(
-      "cargo",
-      ["build", "--release", "-p", "plushie-renderer", "--target-dir", targetDir],
-      {
-        cwd: rustSourcePath,
-      },
-    );
-    const sourcePath = join(
-      targetDir,
-      "release",
-      process.platform === "win32" ? "plushie-renderer.exe" : "plushie-renderer",
-    );
+    const sourcePath = syncManagedPackageToolsFromSource(rustSourcePath, env, opts.log);
     validateExecutable(sourcePath, "renderer binary");
-    ensureManagedPackageToolsAvailable();
     return {
       kind,
       source,
@@ -467,7 +447,7 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
   );
 }
 
-function ensureManagedPackageToolsAvailable(): void {
+function ensurePortablePackageToolsAvailable(): void {
   const missing = [
     resolve("bin", installedToolName()),
     resolve("bin", installedLauncherName()),
@@ -478,7 +458,42 @@ function ensureManagedPackageToolsAvailable(): void {
         `Missing: ${missing.join(", ")}. Run 'npx plushie download'.`,
     );
   }
-  checkManagedPackageTools();
+}
+
+function syncManagedPackageToolsFromSource(
+  rustSourcePath: string,
+  env: NodeJS.ProcessEnv,
+  log: ((message: string) => void) | undefined,
+): string {
+  const manifestPath = join(rustSourcePath, "Cargo.toml");
+  if (!existsSync(manifestPath)) {
+    throw new Error(
+      `PLUSHIE_RUST_SOURCE_PATH does not look like a Rust workspace: ${rustSourcePath}`,
+    );
+  }
+
+  log?.(`Syncing Plushie native tools from ${rustSourcePath}`);
+  runCommand(
+    "cargo",
+    [
+      "run",
+      "--manifest-path",
+      manifestPath,
+      "-p",
+      "cargo-plushie",
+      "--bin",
+      "plushie",
+      "--release",
+      "--quiet",
+      "--",
+      "tools",
+      "sync",
+      "--required-version",
+      PLUSHIE_RUST_VERSION,
+    ],
+    { env: { ...process.env, ...env } },
+  );
+  return verifyManagedPackageTools(env);
 }
 
 function syncManagedPackageTools(
@@ -486,7 +501,6 @@ function syncManagedPackageTools(
   log: ((message: string) => void) | undefined,
 ): string | undefined {
   const rendererPath = resolve("bin", installedBinaryName());
-  const launcherPath = resolve("bin", installedLauncherName());
   const toolPath = resolve("bin", installedToolName());
   if (!existsSync(toolPath)) {
     if (existsSync(rendererPath)) {
@@ -502,6 +516,13 @@ function syncManagedPackageTools(
   runCommand(toolPath, ["tools", "sync", "--required-version", PLUSHIE_RUST_VERSION], {
     env,
   });
+  return verifyManagedPackageTools(env);
+}
+
+function verifyManagedPackageTools(env: NodeJS.ProcessEnv = process.env): string {
+  const rendererPath = resolve("bin", installedBinaryName());
+  const launcherPath = resolve("bin", installedLauncherName());
+  const toolPath = resolve("bin", installedToolName());
   for (const path of [toolPath, rendererPath, launcherPath]) {
     if (!existsSync(path)) {
       throw new Error(`bin/plushie tools sync did not install ${path}`);
@@ -957,7 +978,11 @@ function writeDefaultIcons(outDir: string, env: NodeJS.ProcessEnv | undefined): 
     return;
   }
 
-  runCommand(resolve("bin", installedToolName()), ["default-icons", "--out", outDir], { env });
+  runCommand(
+    resolve("bin", installedToolName()),
+    ["default-icons", "--out", outDir],
+    env === undefined ? {} : { env },
+  );
 }
 
 function validatePayloadArchiveInputs(payloadDir: string): void {

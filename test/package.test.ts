@@ -9,9 +9,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve as resolvePath } from "node:path";
+import { join, resolve as resolvePath } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import {
+  installedBinaryName,
   installedLauncherName,
   installedToolName,
   PLUSHIE_RUST_VERSION,
@@ -401,25 +402,29 @@ describe("resolvePackageRenderer", () => {
     }
   });
 
-  test("records source-built renderers as local builds", () => {
+  test("syncs managed native tools from source for stock packages", () => {
     const dir = tempDir();
     const oldCwd = process.cwd();
     const source = join(dir, "plushie-rust");
-    const renderer = join(
-      dir,
-      "node_modules",
-      ".plushie",
-      "package-renderer-target",
-      "release",
-      "plushie-renderer",
-    );
+    const renderer = join(dir, "bin", installedBinaryName());
     const binDir = join(dir, "bin");
-    mkdirSync(dirname(renderer), { recursive: true });
     mkdirSync(source, { recursive: true });
     mkdirSync(binDir);
     writeFileSync(join(source, "Cargo.toml"), "[workspace]\n", "utf-8");
-    writeExecutable(renderer);
-    writeExecutable(join(binDir, "cargo"));
+    writeExecutable(
+      join(binDir, "cargo"),
+      [
+        "#!/bin/sh",
+        `printf renderer > bin/${installedBinaryName()}`,
+        `cat > bin/${installedToolName()} <<'EOF'`,
+        "#!/bin/sh",
+        "exit 0",
+        "EOF",
+        `chmod +x bin/${installedToolName()}`,
+        `printf launcher > bin/${installedLauncherName()}`,
+        "",
+      ].join("\n"),
+    );
     writePackageTools(dir);
 
     const oldPath = process.env["PATH"];
