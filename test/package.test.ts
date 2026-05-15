@@ -76,7 +76,7 @@ describe("package manifest", () => {
       rendererKind: "custom",
       rendererSource: "local-build",
       rendererPath: "bin/plushie-renderer",
-      hostCommand: ["bin/host", "--flag"],
+      startCommand: ["bin/host", "--flag"],
       platformIcon: "assets/icon.png",
       payloadArchive: archive,
     });
@@ -90,8 +90,13 @@ describe("package manifest", () => {
     expect(toml).toContain(`host_sdk_version = "${sdkVersion()}"`);
     expect(toml).toContain(`plushie_rust_version = "${PLUSHIE_RUST_VERSION}"`);
     expect(toml).toContain("protocol_version = 1");
-    expect(toml).toContain('renderer_path = "bin/plushie-renderer"');
-    expect(toml).toContain('host_command = ["bin/host", "--flag"]');
+    expect(toml).toContain("[start]");
+    expect(toml).toContain('working_dir = "."');
+    expect(toml).toContain('command = ["bin/host", "--flag"]');
+    expect(toml).toContain(
+      'forward_env = ["PATH", "HOME", "LANG", "LC_ALL", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "DISPLAY"]',
+    );
+    expect(toml).toContain('[renderer]\npath = "bin/plushie-renderer"');
     expect(toml).toContain('kind = "custom"');
     expect(toml).toContain('source = "local-build"');
     expect(toml).toContain("[platform]");
@@ -133,8 +138,8 @@ describe("prepareNodePackagePayload", () => {
 
     const manifest = readFileSync(result.manifestPath, "utf-8");
     expect(manifest).toContain('app_id = "dev.plushie.test"');
-    expect(manifest).toContain('renderer_path = "bin/plushie-renderer"');
-    expect(manifest).toContain('host_command = ["bin/test-host"]');
+    expect(manifest).toContain('[renderer]\npath = "bin/plushie-renderer"');
+    expect(manifest).toContain('command = ["bin/test-host"]');
     expect(manifest).toContain('icon = "assets/icon.png"');
 
     const list = spawnSync("tar", ["--zstd", "-tf", result.payloadArchivePath], {

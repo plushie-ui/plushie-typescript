@@ -31,6 +31,15 @@ import { generateSEAConfig } from "./sea.js";
 
 export type RendererKind = "stock" | "custom";
 export type RendererSource = "local-resolve" | "local-build" | "local-path" | string;
+const DEFAULT_FORWARD_ENV = [
+  "PATH",
+  "HOME",
+  "LANG",
+  "LC_ALL",
+  "XDG_RUNTIME_DIR",
+  "WAYLAND_DISPLAY",
+  "DISPLAY",
+] as const;
 
 export interface RendererManifest {
   readonly kind: RendererKind;
@@ -45,8 +54,9 @@ export interface PackageManifest {
   readonly target: string;
   readonly renderer: RendererManifest;
   readonly platform?: PackagePlatformManifest;
-  readonly hostCommand: readonly string[];
+  readonly startCommand: readonly string[];
   readonly workingDir: string;
+  readonly forwardEnv: readonly string[];
   readonly payloadArchive: string;
   readonly payloadHash: string;
   readonly payloadSize: number;
@@ -158,13 +168,14 @@ export function manifestForPayload(opts: {
   appName?: string;
   appVersion: string;
   rendererPath: string;
-  hostCommand: readonly string[];
+  startCommand: readonly string[];
   payloadArchive: string;
   target?: string;
   rendererKind?: RendererKind;
   rendererSource?: RendererSource;
   platformIcon?: string;
   workingDir?: string;
+  forwardEnv?: readonly string[];
 }): PackageManifest {
   const archivePath = resolve(opts.payloadArchive);
   return {
@@ -178,8 +189,9 @@ export function manifestForPayload(opts: {
       path: opts.rendererPath,
     },
     ...(opts.platformIcon !== undefined ? { platform: { icon: opts.platformIcon } } : {}),
-    hostCommand: opts.hostCommand,
+    startCommand: opts.startCommand,
     workingDir: opts.workingDir ?? ".",
+    forwardEnv: opts.forwardEnv ?? DEFAULT_FORWARD_ENV,
     payloadArchive: basename(archivePath),
     payloadHash: sha256File(archivePath),
     payloadSize: fileSize(archivePath),
@@ -198,12 +210,14 @@ export function renderPackageManifest(manifest: PackageManifest): string {
     `host_sdk_version = ${tomlString(readSdkVersion())}`,
     `plushie_rust_version = ${tomlString(PLUSHIE_RUST_VERSION)}`,
     `protocol_version = ${String(PROTOCOL_VERSION)}`,
-    `renderer_path = ${tomlString(manifest.renderer.path)}`,
-    `host_command = ${tomlArray(manifest.hostCommand)}`,
+    "",
+    "[start]",
     `working_dir = ${tomlString(manifest.workingDir)}`,
-    "exec_env = []",
+    `command = ${tomlArray(manifest.startCommand)}`,
+    `forward_env = ${tomlArray(manifest.forwardEnv)}`,
     "",
     "[renderer]",
+    `path = ${tomlString(manifest.renderer.path)}`,
     `kind = ${tomlString(manifest.renderer.kind)}`,
     `source = ${tomlString(manifest.renderer.source)}`,
     "",
@@ -425,7 +439,7 @@ export function prepareNodePackagePayload(
     rendererKind: renderer.kind,
     rendererSource: renderer.source,
     rendererPath: renderer.payloadPath,
-    hostCommand: [join("bin", opts.hostName)],
+    startCommand: [join("bin", opts.hostName)],
     workingDir: ".",
     ...(platformIcon !== undefined ? { platformIcon } : {}),
     payloadArchive: archivePath,

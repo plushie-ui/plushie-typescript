@@ -98,8 +98,8 @@ describe("plushie package", () => {
     expect(manifest).toContain('app_id = "dev.plushie.test"');
     expect(manifest).toContain('app_name = "Test App"');
     expect(manifest).toContain('app_version = "0.2.0"');
-    expect(manifest).toContain('renderer_path = "bin/plushie-renderer"');
-    expect(manifest).toContain('host_command = ["bin/host"]');
+    expect(manifest).toContain('[renderer]\npath = "bin/plushie-renderer"');
+    expect(manifest).toContain('command = ["bin/host"]');
     expect(manifest).toContain('icon = "assets/icon.png"');
   });
 });
