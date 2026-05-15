@@ -213,7 +213,7 @@ async function handleDownloadBinary(force: boolean, binFile?: string): Promise<v
     console.log(`Downloading plushie tool v${PLUSHIE_RUST_VERSION}`);
     const toolPath = await downloadTool({ force });
     console.log(`Tool installed to ${toolPath}`);
-    const args = ["download", "--required-version", PLUSHIE_RUST_VERSION];
+    const args = ["tools", "sync", "--required-version", PLUSHIE_RUST_VERSION];
     if (force) args.push("--force");
     const result = spawnSync(toolPath, args, { stdio: "inherit" });
     if (result.error) {
