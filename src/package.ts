@@ -335,6 +335,12 @@ export function archivePayload(payloadDir: string, archivePath: string): void {
   }
 
   if (commandExists("zstd")) {
+    if (process.platform === "win32") {
+      throw new Error(
+        "tar does not support --zstd and the fallback archive pipeline requires a Unix shell. " +
+          "Install GNU tar with --zstd support for Windows package assembly.",
+      );
+    }
     runCommand("sh", [
       "-c",
       `${shellQuote(tar)} ${commonArgs.map(shellQuote).join(" ")} -cf - . | zstd -q -o ${shellQuote(resolvedArchivePath)}`,
