@@ -393,6 +393,7 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
     const source = opts.rendererSource ?? "local-path";
     const sourcePath = resolve(explicitPath);
     validateExecutable(sourcePath, "renderer binary");
+    ensureManagedPackageToolsAvailable();
     return {
       kind,
       source,
@@ -432,6 +433,7 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
       process.platform === "win32" ? "plushie-renderer.exe" : "plushie-renderer",
     );
     validateExecutable(sourcePath, "renderer binary");
+    ensureManagedPackageToolsAvailable();
     return {
       kind,
       source,
@@ -457,6 +459,19 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
       `Run 'npx plushie download' or set PLUSHIE_BINARY_PATH.\n` +
       `Expected: ${resolve("bin", installedBinaryName())}`,
   );
+}
+
+function ensureManagedPackageToolsAvailable(): void {
+  const missing = [
+    resolve("bin", installedToolName()),
+    resolve("bin", installedLauncherName()),
+  ].filter((path) => !existsSync(path));
+  if (missing.length > 0) {
+    throw new Error(
+      "Portable packaging requires the managed Plushie tool set. " +
+        `Missing: ${missing.join(", ")}. Run 'npx plushie download'.`,
+    );
+  }
 }
 
 function syncManagedPackageTools(

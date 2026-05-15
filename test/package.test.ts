@@ -11,7 +11,11 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
-import { PLUSHIE_RUST_VERSION } from "../src/client/binary.js";
+import {
+  installedLauncherName,
+  installedToolName,
+  PLUSHIE_RUST_VERSION,
+} from "../src/client/binary.js";
 import {
   manifestForPayload,
   normalizePackageTarget,
@@ -41,6 +45,13 @@ function tempDir(): string {
 function writeExecutable(path: string, contents = "#!/bin/sh\nexit 0\n"): void {
   writeFileSync(path, contents, "utf-8");
   chmodSync(path, 0o755);
+}
+
+function writePackageTools(dir: string): void {
+  const binDir = join(dir, "bin");
+  mkdirSync(binDir, { recursive: true });
+  writeExecutable(join(binDir, installedToolName()));
+  writeExecutable(join(binDir, installedLauncherName()));
 }
 
 function sdkVersion(): string {
@@ -371,23 +382,31 @@ describe("prepareNodePackagePayload", () => {
 describe("resolvePackageRenderer", () => {
   test("records explicit renderer paths as local paths", () => {
     const dir = tempDir();
+    const oldCwd = process.cwd();
     const renderer = join(dir, "plushie-renderer");
     writeExecutable(renderer);
+    writePackageTools(dir);
 
-    const result = resolvePackageRenderer({
-      rendererBin: renderer,
-      env: {},
-    });
+    try {
+      process.chdir(dir);
+      const result = resolvePackageRenderer({
+        rendererBin: renderer,
+        env: {},
+      });
 
-    expect(result.source).toBe("local-path");
-    expect(result.sourcePath).toBe(renderer);
+      expect(result.source).toBe("local-path");
+      expect(result.sourcePath).toBe(renderer);
+    } finally {
+      process.chdir(oldCwd);
+    }
   });
 
   test("records source-built renderers as local builds", () => {
     const dir = tempDir();
+    const oldCwd = process.cwd();
     const source = join(dir, "plushie-rust");
     const renderer = join(
-      process.cwd(),
+      dir,
       "node_modules",
       ".plushie",
       "package-renderer-target",
@@ -401,17 +420,20 @@ describe("resolvePackageRenderer", () => {
     writeFileSync(join(source, "Cargo.toml"), "[workspace]\n", "utf-8");
     writeExecutable(renderer);
     writeExecutable(join(binDir, "cargo"));
+    writePackageTools(dir);
 
     const oldPath = process.env["PATH"];
     process.env["PATH"] = `${binDir}:${oldPath ?? ""}`;
 
     let result: ReturnType<typeof resolvePackageRenderer> | undefined;
     try {
+      process.chdir(dir);
       result = resolvePackageRenderer({
         env: { PLUSHIE_RUST_SOURCE_PATH: source },
         log: () => {},
       });
     } finally {
+      process.chdir(oldCwd);
       process.env["PATH"] = oldPath;
     }
 
@@ -424,12 +446,12 @@ describe("resolvePackageRenderer", () => {
     const binDir = join(dir, "bin");
     mkdirSync(binDir);
     writeExecutable(
-      join(binDir, "plushie"),
+      join(binDir, installedToolName()),
       [
         "#!/bin/sh",
         "mkdir -p bin",
-        "printf renderer > bin/plushie-renderer",
-        "printf launcher > bin/plushie-launcher",
+        `printf renderer > bin/${process.platform === "win32" ? "plushie-renderer.exe" : "plushie-renderer"}`,
+        `printf launcher > bin/${installedLauncherName()}`,
         "exit 0",
         "",
       ].join("\n"),
@@ -461,17 +483,44 @@ describe("resolvePackageRenderer", () => {
 
   test("allows custom renderer packaging with an explicit binary path", () => {
     const dir = tempDir();
+    const oldCwd = process.cwd();
+    const renderer = join(dir, "custom-renderer");
+    writeExecutable(renderer);
+    writePackageTools(dir);
+
+    try {
+      process.chdir(dir);
+      const result = resolvePackageRenderer({
+        rendererKind: "custom",
+        rendererBin: renderer,
+        env: {},
+      });
+
+      expect(result.kind).toBe("custom");
+      expect(result.source).toBe("local-path");
+      expect(result.sourcePath).toBe(renderer);
+    } finally {
+      process.chdir(oldCwd);
+    }
+  });
+
+  test("requires managed package tools with an explicit renderer path", () => {
+    const dir = tempDir();
+    const oldCwd = process.cwd();
     const renderer = join(dir, "custom-renderer");
     writeExecutable(renderer);
 
-    const result = resolvePackageRenderer({
-      rendererKind: "custom",
-      rendererBin: renderer,
-      env: {},
-    });
-
-    expect(result.kind).toBe("custom");
-    expect(result.source).toBe("local-path");
-    expect(result.sourcePath).toBe(renderer);
+    try {
+      process.chdir(dir);
+      expect(() =>
+        resolvePackageRenderer({
+          rendererKind: "custom",
+          rendererBin: renderer,
+          env: {},
+        }),
+      ).toThrow(/managed Plushie tool set/);
+    } finally {
+      process.chdir(oldCwd);
+    }
   });
 });
