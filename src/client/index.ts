@@ -20,11 +20,14 @@ export type {
 export { normalize } from "../tree/normalize.js";
 export {
   downloadBinary,
+  downloadTool,
   installedBinaryName,
+  installedToolName,
   PLUSHIE_RUST_VERSION,
   platformBinaryName,
-  releaseBinaryName,
   RELEASE_BASE_URL,
+  releaseBinaryName,
+  releaseToolName,
   resolveBinary,
   validateArchitecture,
 } from "./binary.js";

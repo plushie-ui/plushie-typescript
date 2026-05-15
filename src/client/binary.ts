@@ -80,10 +80,24 @@ export function releaseBinaryName(): string {
   return `plushie-renderer-${os}-${cpu}${ext}`;
 }
 
+/** Return the platform-specific standalone plushie tool release asset name. */
+export function releaseToolName(): string {
+  const os = platformOs();
+  const cpu = platformArch();
+  const ext = os === "windows" ? ".exe" : "";
+  return `plushie-${os}-${cpu}${ext}`;
+}
+
 /** Return the stable project-local renderer filename. */
 export function installedBinaryName(): string {
   const ext = platformOs() === "windows" ? ".exe" : "";
   return `plushie-renderer${ext}`;
+}
+
+/** Return the stable project-local standalone plushie tool filename. */
+export function installedToolName(): string {
+  const ext = platformOs() === "windows" ? ".exe" : "";
+  return `plushie${ext}`;
 }
 
 export const platformBinaryName = releaseBinaryName;
@@ -229,6 +243,18 @@ export async function downloadBinary(opts?: {
   const name = releaseBinaryName();
   const destDir = opts?.destDir ?? resolve("bin");
   const destPath = join(destDir, installedBinaryName());
+  return downloadReleaseBinary({
+    binaryName: name,
+    destPath,
+    force: opts?.force ?? false,
+  });
+}
+
+/** Download the standalone plushie tool for the current platform. */
+export async function downloadTool(opts?: { destDir?: string; force?: boolean }): Promise<string> {
+  const name = releaseToolName();
+  const destDir = opts?.destDir ?? resolve("bin");
+  const destPath = join(destDir, installedToolName());
   return downloadReleaseBinary({
     binaryName: name,
     destPath,

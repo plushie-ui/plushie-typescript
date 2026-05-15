@@ -39,6 +39,7 @@ import {
   RELEASE_BASE_URL as BASE_URL,
   downloadFileWithChecksum,
   downloadReleaseBinary,
+  downloadTool,
   installedBinaryName,
   PLUSHIE_RUST_VERSION,
   releaseBinaryName,
@@ -208,9 +209,24 @@ async function handleDownload(
 }
 
 async function handleDownloadBinary(force: boolean, binFile?: string): Promise<void> {
+  if (binFile === undefined) {
+    console.log(`Downloading plushie tool v${PLUSHIE_RUST_VERSION}`);
+    const toolPath = await downloadTool({ force });
+    console.log(`Tool installed to ${toolPath}`);
+    const args = ["download", "--required-version", PLUSHIE_RUST_VERSION];
+    if (force) args.push("--force");
+    const result = spawnSync(toolPath, args, { stdio: "inherit" });
+    if (result.error) {
+      throw result.error;
+    }
+    if (result.status !== 0) {
+      throw new Error(`bin/plushie download failed with status ${result.status ?? "unknown"}`);
+    }
+    return;
+  }
+
   const binaryName = releaseBinaryName();
-  const destDir = binFile ? dirname(resolve(binFile)) : resolve("bin");
-  const destPath = binFile ? resolve(binFile) : join(destDir, installedBinaryName());
+  const destPath = resolve(binFile);
   const url = `${BASE_URL}/v${PLUSHIE_RUST_VERSION}/${binaryName}`;
 
   if (!force && existsSync(destPath)) {

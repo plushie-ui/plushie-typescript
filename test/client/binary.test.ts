@@ -8,7 +8,9 @@ import {
   downloadFileWithChecksum,
   downloadReleaseBinary,
   installedBinaryName,
+  installedToolName,
   platformBinaryName,
+  releaseToolName,
 } from "../../src/client/binary.js";
 
 const tempDirs: string[] = [];
@@ -37,6 +39,12 @@ describe("installedBinaryName", () => {
   });
 });
 
+describe("installedToolName", () => {
+  test("returns the stable project-local plushie tool name", () => {
+    expect(["plushie", "plushie.exe"]).toContain(installedToolName());
+  });
+});
+
 describe("platformBinaryName", () => {
   test("returns a string with platform and arch", () => {
     const name = platformBinaryName();
@@ -48,6 +56,14 @@ describe("platformBinaryName", () => {
     if (process.platform !== "win32") {
       expect(platformBinaryName()).not.toContain(".exe");
     }
+  });
+});
+
+describe("releaseToolName", () => {
+  test("returns a string with platform and arch", () => {
+    const name = releaseToolName();
+    expect(name).toMatch(/^plushie-(darwin|linux|windows)-(x86_64|aarch64)/);
+    expect(name).not.toMatch(/^plushie-renderer-/);
   });
 });
 
