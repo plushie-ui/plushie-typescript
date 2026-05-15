@@ -201,15 +201,52 @@ async function handleDownload(
         // Config exists but can't be parsed; let it through, build will catch it
       }
     }
-    await handleDownloadBinary(force, resolvedBinFile);
+    const sourcePath = process.env["PLUSHIE_RUST_SOURCE_PATH"] ?? config?.source_path;
+    await handleDownloadBinary(force, resolvedBinFile, sourcePath);
   }
   if (artifacts.includes("wasm")) {
     await downloadWasm(force, resolvedWasmDir);
   }
 }
 
-async function handleDownloadBinary(force: boolean, binFile?: string): Promise<void> {
+async function handleDownloadBinary(
+  force: boolean,
+  binFile?: string,
+  sourcePath?: string,
+): Promise<void> {
   if (binFile === undefined) {
+    if (sourcePath !== undefined && sourcePath.trim() !== "") {
+      const manifestPath = resolve(sourcePath, "Cargo.toml");
+      if (!existsSync(manifestPath)) {
+        throw new Error(`PLUSHIE_RUST_SOURCE_PATH does not contain Cargo.toml: ${sourcePath}`);
+      }
+      const args = [
+        "run",
+        "--manifest-path",
+        manifestPath,
+        "-p",
+        "cargo-plushie",
+        "--bin",
+        "plushie",
+        "--release",
+        "--quiet",
+        "--",
+        "tools",
+        "sync",
+        "--required-version",
+        PLUSHIE_RUST_VERSION,
+      ];
+      if (force) args.push("--force");
+      const result = spawnSync("cargo", args, { stdio: "inherit" });
+      if (result.error) {
+        throw result.error;
+      }
+      if (result.status !== 0) {
+        throw new Error(`bin/plushie download failed with status ${result.status ?? "unknown"}`);
+      }
+      return;
+    }
+
     console.log(`Downloading plushie tool v${PLUSHIE_RUST_VERSION}`);
     const toolPath = await downloadTool({ force });
     console.log(`Tool installed to ${toolPath}`);

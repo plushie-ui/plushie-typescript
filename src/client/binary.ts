@@ -38,7 +38,7 @@ import { extractBinaryFromSEA, isSEA } from "../sea.js";
 export const PLUSHIE_RUST_VERSION = "0.7.1";
 
 /** GitHub release base URL. */
-export const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-renderer/releases/download";
+export const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-rust/releases/download";
 
 const DOWNLOAD_ATTEMPTS = 3;
 const DOWNLOAD_RETRY_DELAY_MS = 100;

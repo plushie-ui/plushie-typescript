@@ -10,6 +10,7 @@ import {
   installedBinaryName,
   installedToolName,
   platformBinaryName,
+  RELEASE_BASE_URL,
   releaseToolName,
 } from "../../src/client/binary.js";
 
@@ -36,6 +37,12 @@ afterEach(async () => {
 describe("installedBinaryName", () => {
   test("returns the stable project-local renderer name", () => {
     expect(["plushie-renderer", "plushie-renderer.exe"]).toContain(installedBinaryName());
+  });
+});
+
+describe("RELEASE_BASE_URL", () => {
+  test("uses plushie-rust releases for native tool artifacts", () => {
+    expect(RELEASE_BASE_URL).toBe("https://github.com/plushie-ui/plushie-rust/releases/download");
   });
 });
 
