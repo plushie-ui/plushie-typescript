@@ -169,6 +169,82 @@ files are copied to the resolved WASM directory.
   version, or `PLUSHIE_RUST_SOURCE_PATH` pointing at a checkout.
 - For WASM: `wasm-pack` on `PATH` and a local checkout.
 
+## package
+
+Prepare the payload archive and manifest consumed by
+`cargo plushie package`.
+
+```bash
+plushie package \
+  --app-id dev.example.my_app \
+  --app-name "My App" \
+  --app-version 0.1.0 \
+  --main dist/app.cjs \
+  --output dist/shared-launcher \
+  --default-icon
+```
+
+Choose a host input, and do not pass both:
+
+| Flag | Description |
+|---|---|
+| `--main <path>` | Bundled CommonJS host entry. The SDK turns it into a host-only Node SEA executable. |
+| `--host-bin <path>` | Prepared host executable copied into the payload. |
+
+Package metadata and output flags:
+
+| Flag | Description |
+|---|---|
+| `--app-id <id>` | Required package app identifier. |
+| `--app-name <name>` | Optional display name. |
+| `--app-version <v>` | App version. Defaults to local `package.json` version, then `0.1.0`. |
+| `--host-name <name>` | Payload-local host executable name. |
+| `--output <dir>` | Package payload output directory. Defaults to `dist/shared-launcher`. |
+| `--target <target>` | Override package target such as `linux-x86_64`. |
+| `--sea-output <path>` | Also write a renderer-embedded SEA executable for compatibility proofs. |
+| `--icon <path>` | Copy an app icon into the payload. |
+| `--default-icon` | Export Plushie's default icon set and use the 512px PNG. |
+
+Renderer flags:
+
+| Flag | Description |
+|---|---|
+| `--renderer stock` | Package a stock renderer. This is the default. |
+| `--renderer custom` | Package a custom renderer. Requires `--renderer-bin` or `PLUSHIE_BINARY_PATH`. |
+| `--renderer-bin <path>` | Copy this renderer binary into the payload. |
+| `--renderer-source <s>` | Record a provenance string in `[renderer].source`. |
+
+Stock renderer resolution uses `--renderer-bin`, then
+`PLUSHIE_BINARY_PATH`, then `PLUSHIE_RUST_SOURCE_PATH` with a release
+build, then the downloaded binary under `node_modules/.plushie/bin/`.
+Custom renderer packaging requires an explicit binary path so a stock
+renderer is not mislabeled as custom.
+
+Package start config:
+
+```bash
+plushie package --write-package-config
+plushie package --write-package-config --package-config config/package.toml
+```
+
+The generated `plushie-package.config.toml` lets the app commit a
+shared TOML package start config:
+
+```toml
+config_version = 1
+
+[start]
+working_dir = "."
+command = ["bin/my-app-host"]
+forward_env = [
+  "PATH",
+  "HOME",
+]
+```
+
+`forward_env = []` is valid when the packaged host should inherit no
+parent environment names.
+
 ## dev
 
 Run an app with file watching and hot reload.

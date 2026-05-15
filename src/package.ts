@@ -391,6 +391,13 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
     };
   }
 
+  if (kind === "custom") {
+    throw new Error(
+      "custom renderer packaging requires an explicit renderer binary path. " +
+        "Pass --renderer-bin or set PLUSHIE_BINARY_PATH to a renderer built for this app.",
+    );
+  }
+
   const rustSourcePath = env["PLUSHIE_RUST_SOURCE_PATH"];
   if (rustSourcePath !== undefined && rustSourcePath !== "") {
     const source = opts.rendererSource ?? "local-build";
@@ -537,34 +544,31 @@ function parsePackageStartConfig(source: string, path: string): PackageStartConf
     forwardEnv: readonly string[];
   }> = {};
 
-  for (const [index, rawLine] of source.split(/\r?\n/).entries()) {
-    const lineNumber = index + 1;
-    const line = stripTomlComment(rawLine).trim();
-    if (line === "") continue;
-
+  for (const statement of packageConfigStatements(source, path)) {
+    const line = statement.text;
     const tableMatch = line.match(/^\[([A-Za-z0-9_-]+)\]$/);
     if (tableMatch !== null) {
       table = tableMatch[1]!;
       continue;
     }
 
-    const match = line.match(/^([A-Za-z0-9_-]+)\s*=\s*(.+)$/);
+    const match = line.match(/^([A-Za-z0-9_-]+)\s*=\s*([\s\S]+)$/);
     if (match === null) {
-      throw new Error(`${path}:${lineNumber}: unsupported package config syntax`);
+      throw new Error(`${path}:${String(statement.line)}: unsupported package config syntax`);
     }
 
     const key = match[1]!;
     const value = match[2]!.trim();
     if (table === "" && key === "config_version") {
-      configVersion = parseConfigVersion(value, path, lineNumber);
+      configVersion = parseConfigVersion(value, path, statement.line);
     } else if (table === "start" && key === "working_dir") {
-      start.workingDir = parseTomlString(value, path, lineNumber);
+      start.workingDir = parseTomlString(value, path, statement.line);
     } else if (table === "start" && key === "command") {
-      start.command = parseTomlStringArray(value, path, lineNumber);
+      start.command = parseTomlStringArray(value, path, statement.line);
     } else if (table === "start" && key === "forward_env") {
-      start.forwardEnv = parseTomlStringArray(value, path, lineNumber);
+      start.forwardEnv = parseTomlStringArray(value, path, statement.line);
     } else {
-      throw new Error(`${path}:${lineNumber}: unsupported package config key: ${key}`);
+      throw new Error(`${path}:${String(statement.line)}: unsupported package config key: ${key}`);
     }
   }
 
@@ -586,6 +590,42 @@ function parsePackageStartConfig(source: string, path: string): PackageStartConf
     command: start.command,
     forwardEnv: start.forwardEnv,
   };
+}
+
+function packageConfigStatements(
+  source: string,
+  path: string,
+): Array<{ readonly line: number; readonly text: string }> {
+  const statements: Array<{ readonly line: number; readonly text: string }> = [];
+  let pending: { line: number; parts: string[] } | undefined;
+
+  for (const [index, rawLine] of source.split(/\r?\n/).entries()) {
+    const lineNumber = index + 1;
+    const line = stripTomlComment(rawLine).trim();
+    if (line === "" && pending === undefined) continue;
+
+    if (pending !== undefined) {
+      if (line !== "") pending.parts.push(line);
+      const text = pending.parts.join("\n");
+      if (tomlBracketDepth(text) <= 0) {
+        statements.push({ line: pending.line, text });
+        pending = undefined;
+      }
+      continue;
+    }
+
+    if (line.match(/^\[([A-Za-z0-9_-]+)\]$/) !== null || tomlBracketDepth(line) <= 0) {
+      statements.push({ line: lineNumber, text: line });
+    } else {
+      pending = { line: lineNumber, parts: [line] };
+    }
+  }
+
+  if (pending !== undefined) {
+    throw new Error(`${path}:${String(pending.line)}: unterminated package config value`);
+  }
+
+  return statements;
 }
 
 function stripTomlComment(line: string): string {
@@ -610,6 +650,31 @@ function stripTomlComment(line: string): string {
   return line;
 }
 
+function tomlBracketDepth(value: string): number {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i]!;
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+    } else if (char === '"') {
+      inString = true;
+    } else if (char === "[") {
+      depth += 1;
+    } else if (char === "]") {
+      depth -= 1;
+    }
+  }
+  return depth;
+}
+
 function parseConfigVersion(value: string, path: string, lineNumber: number): number {
   if (!/^[0-9]+$/.test(value)) {
     throw new Error(`${path}:${lineNumber}: config_version must be an integer`);
@@ -618,7 +683,7 @@ function parseConfigVersion(value: string, path: string, lineNumber: number): nu
 }
 
 function parseTomlString(value: string, path: string, lineNumber: number): string {
-  const parsed = parseTomlJsonValue(value, path, lineNumber);
+  const parsed = parseTomlValue(value, path, lineNumber);
   if (typeof parsed !== "string") {
     throw new Error(`${path}:${lineNumber}: expected string value`);
   }
@@ -626,19 +691,117 @@ function parseTomlString(value: string, path: string, lineNumber: number): strin
 }
 
 function parseTomlStringArray(value: string, path: string, lineNumber: number): readonly string[] {
-  const parsed = parseTomlJsonValue(value, path, lineNumber);
+  const parsed = parseTomlValue(value, path, lineNumber);
   if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === "string")) {
     throw new Error(`${path}:${lineNumber}: expected string array value`);
   }
   return parsed as string[];
 }
 
-function parseTomlJsonValue(value: string, path: string, lineNumber: number): unknown {
+function parseTomlValue(value: string, path: string, lineNumber: number): unknown {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("[") || trimmed.endsWith("]")) {
+    return parseTomlArray(trimmed, path, lineNumber);
+  }
+  return parseTomlScalar(trimmed, path, lineNumber);
+}
+
+function parseTomlArray(value: string, path: string, lineNumber: number): unknown[] {
+  if (!value.startsWith("[") || !value.endsWith("]")) {
+    throw new Error(`${path}:${lineNumber}: unsupported package config value`);
+  }
+
+  const items: unknown[] = [];
+  let index = 1;
+  let expectingValue = true;
+  while (index < value.length - 1) {
+    index = skipTomlWhitespace(value, index);
+    if (index >= value.length - 1) break;
+
+    const char = value[index]!;
+    if (char === ",") {
+      if (expectingValue) {
+        throw new Error(`${path}:${lineNumber}: unsupported package config value`);
+      }
+      expectingValue = true;
+      index += 1;
+      continue;
+    }
+    if (!expectingValue) {
+      throw new Error(`${path}:${lineNumber}: unsupported package config value`);
+    }
+
+    const parsed = parseTomlArrayItem(value, index, path, lineNumber);
+    items.push(parsed.value);
+    index = parsed.next;
+    expectingValue = false;
+  }
+
+  return items;
+}
+
+function parseTomlArrayItem(
+  value: string,
+  start: number,
+  path: string,
+  lineNumber: number,
+): { readonly value: unknown; readonly next: number } {
+  if (value[start] === '"') {
+    const end = findTomlStringEnd(value, start, path, lineNumber);
+    return {
+      value: parseTomlBasicString(value.slice(start, end + 1), path, lineNumber),
+      next: end + 1,
+    };
+  }
+
+  let end = start;
+  while (end < value.length - 1 && value[end] !== "," && value[end] !== "]") {
+    end += 1;
+  }
+  return {
+    value: parseTomlScalar(value.slice(start, end).trim(), path, lineNumber),
+    next: end,
+  };
+}
+
+function skipTomlWhitespace(value: string, start: number): number {
+  let index = start;
+  while (index < value.length && /\s/.test(value[index]!)) {
+    index += 1;
+  }
+  return index;
+}
+
+function parseTomlScalar(value: string, path: string, lineNumber: number): unknown {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  if (/^[+-]?[0-9]+$/.test(value)) return Number(value);
+  if (/^[+-]?[0-9]+\.[0-9]+$/.test(value)) return Number(value);
+  if (value.startsWith('"')) return parseTomlBasicString(value, path, lineNumber);
+  throw new Error(`${path}:${lineNumber}: unsupported package config value`);
+}
+
+function parseTomlBasicString(value: string, path: string, lineNumber: number): string {
   try {
-    return JSON.parse(value);
+    return JSON.parse(value) as string;
   } catch {
     throw new Error(`${path}:${lineNumber}: unsupported package config value`);
   }
+}
+
+function findTomlStringEnd(value: string, start: number, path: string, lineNumber: number): number {
+  let escaped = false;
+  for (let index = start + 1; index < value.length; index++) {
+    const char = value[index]!;
+    if (escaped) {
+      escaped = false;
+    } else if (char === "\\") {
+      escaped = true;
+    } else if (char === '"') {
+      return index;
+    }
+  }
+  throw new Error(`${path}:${lineNumber}: unsupported package config value`);
 }
 
 function validatePackageStartConfig(config: PackageStartConfig, path: string): void {
@@ -652,9 +815,6 @@ function validatePackageStartConfig(config: PackageStartConfig, path: string): v
     }
   }
   validateRelativePackagePath(config.command[0]!, "command[0]", path);
-  if (config.forwardEnv.length === 0) {
-    throw new Error(`${path}: [start].forward_env must not be empty`);
-  }
   for (const name of config.forwardEnv) {
     if (name === "" || name.includes(",") || name.includes("=")) {
       throw new Error(`${path}: invalid [start].forward_env name: ${name}`);

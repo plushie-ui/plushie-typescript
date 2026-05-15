@@ -4,8 +4,7 @@ The first supported standalone shape for TypeScript apps is a
 host-only Node SEA executable wrapped by the shared Rust package
 launcher. SEA owns bundling the TypeScript host into a Node
 executable. The Rust launcher owns the outer executable, payload
-extraction, cache lifecycle, renderer-parent startup, and future
-update hooks.
+extraction, cache lifecycle, host startup, and future update hooks.
 
 ## Shape
 
@@ -24,26 +23,28 @@ the archived payload. A packaged app must not depend on a renderer in
 
 ## Startup
 
-The launcher starts the payload-local renderer with renderer-parent
-socket mode, then starts the SEA host through structured exec args.
-When `PLUSHIE_SOCKET` is present, `app.run()` selects socket mode and
-connects to that renderer instead of spawning or resolving another
-renderer. `PLUSHIE_TOKEN` is sent as `token_sha256` in settings.
+The shared package default is host-first. The launcher extracts the
+payload, sets package environment for the host, then starts the
+structured `[start].command` from `plushie-package.toml`. The host SDK
+uses the payload-local renderer path from the package environment, so
+`app.run()` owns renderer startup the same way it does outside a
+package.
 
-This keeps the shared Rust launcher responsible for renderer
-ownership, update cache behavior, and process lifecycle.
+Renderer-parent remains useful for explicit embedding and debugging
+flows where an already-running renderer launches the host over stdio
+or provides a socket address. It is not the shared package startup
+default.
 
 ## SEA Payload
 
-SEA is the TypeScript host payload format, not the final owner of
-renderer startup. Earlier host-parent proofs embedded the renderer as
-a SEA asset, but the shared-launcher path should avoid duplicate
-renderer ownership:
+SEA is the TypeScript host payload format, not the final launcher.
+Earlier host-parent proofs embedded the renderer as a SEA asset, but
+the shared-launcher path should avoid duplicate renderer ownership:
 
 - the Rust launcher embeds and extracts the payload
 - the payload contains a host-only SEA executable
 - the renderer is a separate payload-local binary
-- `app.run()` connects through `PLUSHIE_SOCKET`
+- `app.run()` starts the payload-local renderer
 
 This avoids nested renderer extraction and keeps TypeScript aligned
 with the other wire SDKs.
@@ -79,10 +80,12 @@ For apps that prepare a Node host executable themselves, pass
 `--host-bin` instead of `--main`. The SDK still owns the renderer copy,
 payload archive, and manifest generation.
 
-Renderer resolution preserves the normal SDK order used by the demo
-proof: `--renderer-bin`, `PLUSHIE_BINARY_PATH`,
-`PLUSHIE_RUST_SOURCE_PATH` with a release renderer build, then the
-downloaded binary under `node_modules/.plushie/bin/`.
+Renderer resolution for stock packages uses `--renderer-bin`,
+`PLUSHIE_BINARY_PATH`, `PLUSHIE_RUST_SOURCE_PATH` with a release
+renderer build, then the downloaded binary under
+`node_modules/.plushie/bin/`. Custom packages must pass
+`--renderer custom` with `--renderer-bin` or `PLUSHIE_BINARY_PATH` so
+the payload cannot silently package stock renderer bits as custom.
 
 Build the final launcher with cargo-plushie:
 
@@ -103,9 +106,8 @@ validate and run the payload:
 - `[payload]` archive, hash, and size
 - `[renderer]` kind and source
 
-The demo artifact postcheck runs the generated launcher from a temporary
-working directory with a narrowed runtime `PATH`. The artifact
-postcheck requires the shared renderer-parent ready marker and writes a
+The demo artifact postcheck runs the generated launcher from a
+temporary working directory with a narrowed runtime `PATH`. It writes a
 report next to the generated launcher recording payload size, launcher
-size, target, host SDK, runtime path, exit status, and the renderer path
-reported by launcher diagnostics.
+size, target, host SDK, runtime path, exit status, and the renderer
+path reported by launcher diagnostics.

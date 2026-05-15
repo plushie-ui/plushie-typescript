@@ -132,6 +132,57 @@ describe("package start config", () => {
     });
   });
 
+  test("reads multiline TOML arrays", () => {
+    const dir = tempDir();
+    const configPath = join(dir, "plushie-package.config.toml");
+    writeFileSync(
+      configPath,
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        'working_dir = "app"',
+        "command = [",
+        '  "bin/host",',
+        '  "--mode",',
+        '  "standalone",',
+        "]",
+        "forward_env = [",
+        '  "PATH",',
+        '  "HOME",',
+        "]",
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    expect(readPackageStartConfig(configPath)).toEqual({
+      workingDir: "app",
+      command: ["bin/host", "--mode", "standalone"],
+      forwardEnv: ["PATH", "HOME"],
+    });
+  });
+
+  test("allows an empty forwarded environment", () => {
+    const dir = tempDir();
+    const configPath = join(dir, "plushie-package.config.toml");
+    writeFileSync(
+      configPath,
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        'working_dir = "."',
+        'command = ["bin/host"]',
+        "forward_env = []",
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    expect(readPackageStartConfig(configPath)?.forwardEnv).toEqual([]);
+  });
+
   test("renders package config template with real start values", () => {
     const text = renderPackageStartConfig();
 
@@ -163,9 +214,10 @@ describe("package start config", () => {
     ["parent command path", 'command = ["bin/../host"]', /command\[0\] must not contain parent/],
     ["empty command", "command = []", /command must not be empty/],
     ["empty command arg", 'command = ["bin/host", ""]', /command\[1\] must not be empty/],
-    ["empty env list", "forward_env = []", /forward_env must not be empty/],
     ["env with comma", 'forward_env = ["PATH,HOME"]', /invalid .*forward_env name/],
     ["env with equals", 'forward_env = ["PATH=HOME"]', /invalid .*forward_env name/],
+    ["non-string command arg", 'command = ["bin/host", 1]', /expected string array value/],
+    ["non-string env", 'forward_env = ["PATH", 1]', /expected string array value/],
     [
       "reserved binary env",
       'forward_env = ["PLUSHIE_BINARY_PATH"]',
@@ -332,5 +384,30 @@ describe("resolvePackageRenderer", () => {
 
     expect(result?.source).toBe("local-build");
     expect(result?.sourcePath).toBe(renderer);
+  });
+
+  test("rejects custom renderer packaging without an explicit binary path", () => {
+    expect(() =>
+      resolvePackageRenderer({
+        rendererKind: "custom",
+        env: {},
+      }),
+    ).toThrow(/custom renderer packaging requires/);
+  });
+
+  test("allows custom renderer packaging with an explicit binary path", () => {
+    const dir = tempDir();
+    const renderer = join(dir, "custom-renderer");
+    writeExecutable(renderer);
+
+    const result = resolvePackageRenderer({
+      rendererKind: "custom",
+      rendererBin: renderer,
+      env: {},
+    });
+
+    expect(result.kind).toBe("custom");
+    expect(result.source).toBe("local-path");
+    expect(result.sourcePath).toBe(renderer);
   });
 });
