@@ -1,8 +1,17 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer, type Server, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, test } from "vitest";
 import {
   downloadFileWithChecksum,
@@ -288,6 +297,41 @@ describe("downloadBinary", () => {
     await downloadFileWithChecksum(`${origin}/renderer.tar.gz`, destPath, {
       retryDelayMs: 1,
     });
+
+    expect(readFileSync(destPath)).toEqual(body);
+  });
+
+  test("uses alternate file release base URL from the environment", async () => {
+    const dir = tempDir();
+    const releaseDir = join(dir, "release");
+    const versionDir = join(releaseDir, "v0.0.0");
+    mkdirSync(versionDir, { recursive: true });
+    const body = Buffer.from("renderer");
+    const hash = sha256(body);
+    writeFileSync(join(versionDir, "plushie-renderer-test"), body);
+    writeFileSync(
+      join(versionDir, "plushie-renderer-test.sha256"),
+      `${hash}  plushie-renderer-test\n`,
+    );
+    const destPath = join(dir, "bin", "plushie-renderer-test");
+    const previous = process.env["PLUSHIE_RELEASE_BASE_URL"];
+    process.env["PLUSHIE_RELEASE_BASE_URL"] = pathToFileURL(releaseDir).toString();
+
+    try {
+      await downloadReleaseBinary({
+        binaryName: "plushie-renderer-test",
+        destPath,
+        version: "0.0.0",
+        force: true,
+        retryDelayMs: 1,
+      });
+    } finally {
+      if (previous === undefined) {
+        delete process.env["PLUSHIE_RELEASE_BASE_URL"];
+      } else {
+        process.env["PLUSHIE_RELEASE_BASE_URL"] = previous;
+      }
+    }
 
     expect(readFileSync(destPath)).toEqual(body);
   });

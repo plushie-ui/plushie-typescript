@@ -36,12 +36,12 @@ import {
 import { createRequire } from "node:module";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import {
-  RELEASE_BASE_URL as BASE_URL,
   downloadFileWithChecksum,
   downloadReleaseBinary,
   downloadTool,
   installedBinaryName,
   PLUSHIE_RUST_VERSION,
+  releaseBaseUrl,
   releaseBinaryName,
 } from "../client/binary.js";
 import { DevServer } from "../dev-server.js";
@@ -264,7 +264,7 @@ async function handleDownloadBinary(
 
   const binaryName = releaseBinaryName();
   const destPath = resolve(binFile);
-  const url = `${BASE_URL}/v${PLUSHIE_RUST_VERSION}/${binaryName}`;
+  const url = `${releaseBaseUrl()}/v${PLUSHIE_RUST_VERSION}/${binaryName}`;
 
   if (!force && existsSync(destPath)) {
     console.log(`Binary already exists at ${destPath}`);
@@ -289,7 +289,7 @@ async function handleDownloadBinary(
 
 async function downloadWasm(force: boolean, wasmDir?: string): Promise<void> {
   const destDir = wasmDir ? resolve(wasmDir) : resolve(DEFAULT_WASM_DIR);
-  const tarUrl = `${BASE_URL}/v${PLUSHIE_RUST_VERSION}/plushie-renderer-wasm.tar.gz`;
+  const tarUrl = `${releaseBaseUrl()}/v${PLUSHIE_RUST_VERSION}/plushie-renderer-wasm.tar.gz`;
   const tarPath = join(destDir, "plushie-renderer-wasm.tar.gz");
 
   if (

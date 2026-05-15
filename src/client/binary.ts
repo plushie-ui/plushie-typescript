@@ -26,12 +26,14 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import type { IncomingMessage } from "node:http";
 import { get as httpGet } from "node:http";
 import { get as httpsGet } from "node:https";
 import { basename, dirname, join, resolve } from "node:path";
 import { arch, platform } from "node:process";
+import { fileURLToPath } from "node:url";
 import { extractBinaryFromSEA, isSEA } from "../sea.js";
 
 /** plushie-rust release version matching this SDK release. */
@@ -39,6 +41,7 @@ export const PLUSHIE_RUST_VERSION = "0.7.1";
 
 /** GitHub release base URL. */
 export const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-rust/releases/download";
+export const RELEASE_BASE_URL_ENV = "PLUSHIE_RELEASE_BASE_URL";
 
 const DOWNLOAD_ATTEMPTS = 3;
 const DOWNLOAD_RETRY_DELAY_MS = 100;
@@ -265,9 +268,9 @@ export async function downloadTool(opts?: { destDir?: string; force?: boolean })
 export async function downloadReleaseBinary(opts: DownloadReleaseBinaryOptions): Promise<string> {
   const binaryName = opts.binaryName ?? platformBinaryName();
   const version = opts.version ?? PLUSHIE_RUST_VERSION;
-  const releaseBaseUrl = trimTrailingSlash(opts.releaseBaseUrl ?? RELEASE_BASE_URL);
+  const baseUrl = releaseBaseUrl(opts.releaseBaseUrl);
   const destPath = resolve(opts.destPath);
-  const url = `${releaseBaseUrl}/v${version}/${binaryName}`;
+  const url = `${baseUrl}/v${version}/${binaryName}`;
 
   if (!opts.force && existsSync(destPath)) return destPath;
 
@@ -363,6 +366,16 @@ function downloadOnceFollow(
     const protocolError = validateDownloadProtocol(parsed, previousProtocol);
     if (protocolError !== undefined) {
       reject(new DownloadFailure(protocolError, false));
+      return;
+    }
+
+    if (parsed.protocol === "file:") {
+      try {
+        writeFileSync(tempPath, readFileSync(fileURLToPath(parsed)), { flag: "wx" });
+        resolve();
+      } catch (err) {
+        reject(toDownloadFailure(err));
+      }
       return;
     }
 
@@ -490,5 +503,27 @@ function sleep(ms: number): Promise<void> {
 }
 
 function trimTrailingSlash(value: string): string {
-  return value.endsWith("/") ? value.slice(0, -1) : value;
+  let trimmed = value.trim();
+  while (trimmed.endsWith("/")) {
+    trimmed = trimmed.slice(0, -1);
+  }
+  return trimmed;
+}
+
+export function releaseBaseUrl(override?: string): string {
+  const value = trimTrailingSlash(
+    override ?? process.env[RELEASE_BASE_URL_ENV] ?? RELEASE_BASE_URL,
+  );
+  if (value === "") {
+    throw new Error(`${RELEASE_BASE_URL_ENV} must not be empty`);
+  }
+  const parsed = new URL(value);
+  const protocolError = validateDownloadProtocol(parsed, undefined);
+  if (protocolError !== undefined) {
+    throw new Error(protocolError);
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:" && parsed.protocol !== "file:") {
+    throw new Error(`${RELEASE_BASE_URL_ENV} must use https://, file://, or loopback http://`);
+  }
+  return value;
 }

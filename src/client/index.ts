@@ -26,6 +26,8 @@ export {
   PLUSHIE_RUST_VERSION,
   platformBinaryName,
   RELEASE_BASE_URL,
+  RELEASE_BASE_URL_ENV,
+  releaseBaseUrl,
   releaseBinaryName,
   releaseToolName,
   resolveBinary,
