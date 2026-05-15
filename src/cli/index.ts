@@ -37,13 +37,12 @@ import { createRequire } from "node:module";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import {
   downloadFileWithChecksum,
-  downloadReleaseBinary,
   downloadTool,
   installedBinaryName,
+  installedLauncherName,
   installedToolName,
   PLUSHIE_RUST_VERSION,
   releaseBaseUrl,
-  releaseBinaryName,
 } from "../client/binary.js";
 import { DevServer } from "../dev-server.js";
 import {
@@ -218,77 +217,97 @@ async function handleDownloadBinary(
   binFile?: string,
   sourcePath?: string,
 ): Promise<void> {
-  if (binFile === undefined) {
-    if (sourcePath !== undefined && sourcePath.trim() !== "") {
-      const manifestPath = resolve(sourcePath, "Cargo.toml");
-      if (!existsSync(manifestPath)) {
-        throw new Error(`PLUSHIE_RUST_SOURCE_PATH does not contain Cargo.toml: ${sourcePath}`);
-      }
-      const args = [
-        "run",
-        "--manifest-path",
-        manifestPath,
-        "-p",
-        "cargo-plushie",
-        "--bin",
-        "plushie",
-        "--release",
-        "--quiet",
-        "--",
-        "tools",
-        "sync",
-        "--required-version",
-        PLUSHIE_RUST_VERSION,
-      ];
-      if (force) args.push("--force");
-      const result = spawnSync("cargo", args, { stdio: "inherit" });
-      if (result.error) {
-        throw result.error;
-      }
-      if (result.status !== 0) {
-        throw new Error(`bin/plushie download failed with status ${result.status ?? "unknown"}`);
-      }
+  const rendererPath =
+    sourcePath !== undefined && sourcePath.trim() !== ""
+      ? syncManagedToolsFromSource(sourcePath, force)
+      : await syncManagedToolsFromRelease(force);
+
+  if (binFile !== undefined) {
+    const destPath = resolve(binFile);
+    if (!force && existsSync(destPath)) {
+      console.log(`Binary already exists at ${destPath}`);
+      console.log("Use --force to re-download.");
       return;
     }
+    mkdirSync(dirname(destPath), { recursive: true });
+    copyFileSync(rendererPath, destPath);
+    if (process.platform !== "win32") {
+      chmodSync(destPath, 0o755);
+    }
+    console.log();
+    console.log(`Binary installed to ${destPath}`);
+  }
+}
 
-    console.log(`Downloading plushie tool v${PLUSHIE_RUST_VERSION}`);
-    const toolPath = await downloadTool({ force });
-    console.log(`Tool installed to ${toolPath}`);
-    const args = ["tools", "sync", "--required-version", PLUSHIE_RUST_VERSION];
-    if (force) args.push("--force");
-    const result = spawnSync(toolPath, args, { stdio: "inherit" });
-    if (result.error) {
-      throw result.error;
+function syncManagedToolsFromSource(sourcePath: string, force: boolean): string {
+  const manifestPath = resolve(sourcePath, "Cargo.toml");
+  if (!existsSync(manifestPath)) {
+    throw new Error(`PLUSHIE_RUST_SOURCE_PATH does not contain Cargo.toml: ${sourcePath}`);
+  }
+  const args = [
+    "run",
+    "--manifest-path",
+    manifestPath,
+    "-p",
+    "cargo-plushie",
+    "--bin",
+    "plushie",
+    "--release",
+    "--quiet",
+    "--",
+    "tools",
+    "sync",
+    "--required-version",
+    PLUSHIE_RUST_VERSION,
+  ];
+  if (force) args.push("--force");
+  const result = spawnSync("cargo", args, { stdio: "inherit" });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`bin/plushie tools sync failed with status ${result.status ?? "unknown"}`);
+  }
+  return verifyManagedNativeTools();
+}
+
+async function syncManagedToolsFromRelease(force: boolean): Promise<string> {
+  console.log(`Downloading plushie tool v${PLUSHIE_RUST_VERSION}`);
+  const toolPath = await downloadTool({ force });
+  console.log(`Tool installed to ${toolPath}`);
+  const args = ["tools", "sync", "--required-version", PLUSHIE_RUST_VERSION];
+  if (force) args.push("--force");
+  const result = spawnSync(toolPath, args, { stdio: "inherit" });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`bin/plushie tools sync failed with status ${result.status ?? "unknown"}`);
+  }
+  return verifyManagedNativeTools(toolPath);
+}
+
+function verifyManagedNativeTools(toolPath = resolve("bin", installedToolName())): string {
+  const rendererPath = resolve("bin", installedBinaryName());
+  const launcherPath = resolve("bin", installedLauncherName());
+  for (const path of [toolPath, rendererPath, launcherPath]) {
+    if (!existsSync(path)) {
+      throw new Error(`managed Plushie tool sync did not install ${path}`);
     }
-    if (result.status !== 0) {
-      throw new Error(`bin/plushie download failed with status ${result.status ?? "unknown"}`);
-    }
-    return;
   }
 
-  const binaryName = releaseBinaryName();
-  const destPath = resolve(binFile);
-  const url = `${releaseBaseUrl()}/v${PLUSHIE_RUST_VERSION}/${binaryName}`;
-
-  if (!force && existsSync(destPath)) {
-    console.log(`Binary already exists at ${destPath}`);
-    console.log("Use --force to re-download.");
-    return;
+  const result = spawnSync(
+    toolPath,
+    ["tools", "check", "--required-version", PLUSHIE_RUST_VERSION],
+    { stdio: "inherit" },
+  );
+  if (result.error) {
+    throw result.error;
   }
-
-  console.log(`Downloading plushie binary v${PLUSHIE_RUST_VERSION}`);
-  console.log(`  Platform: ${binaryName}`);
-  console.log(`  From: ${url}`);
-  console.log();
-
-  const resultPath = await downloadReleaseBinary({
-    binaryName,
-    destPath,
-    force: true,
-  });
-
-  console.log();
-  console.log(`Binary installed to ${resultPath}`);
+  if (result.status !== 0) {
+    throw new Error(`bin/plushie tools check failed with status ${result.status ?? "unknown"}`);
+  }
+  return rendererPath;
 }
 
 async function downloadWasm(force: boolean, wasmDir?: string): Promise<void> {

@@ -62,7 +62,7 @@ usage and exit with status 1.
 
 ## download
 
-Download a precompiled renderer from GitHub releases.
+Download and verify the managed native tool set from GitHub releases.
 
 ```bash
 plushie download                        # native binary (default)
@@ -89,12 +89,11 @@ and `--wasm` can be combined.
 
 ### Checksum verification
 
-Every download fetches a sibling `.sha256` file and compares the
-hash. A mismatch prints a warning but does not delete the
-artifact; a missing checksum prints a notice and proceeds. The
-native binary path runs through the SDK's programmatic
-`downloadBinary` and is then re-verified with the CLI's own
-checksum check.
+Every release download fetches a sibling `.sha256` file and compares
+the hash before installing the artifact. The native path first fetches
+the standalone `plushie` tool, then delegates renderer and launcher
+sync plus final version verification to `bin/plushie tools sync` and
+`bin/plushie tools check`.
 
 ### Release mirrors
 

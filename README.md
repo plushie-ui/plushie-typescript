@@ -20,7 +20,7 @@ SDKs are also available for
 
 ```sh
 npm install plushie
-npx plushie download    # download the renderer binary
+npx plushie download    # sync bin/plushie, bin/plushie-renderer, and bin/plushie-launcher
 ```
 
 Create `counter.tsx`:

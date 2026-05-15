@@ -478,6 +478,7 @@ function ensureManagedPackageToolsAvailable(): void {
         `Missing: ${missing.join(", ")}. Run 'npx plushie download'.`,
     );
   }
+  checkManagedPackageTools();
 }
 
 function syncManagedPackageTools(
@@ -501,12 +502,20 @@ function syncManagedPackageTools(
   runCommand(toolPath, ["tools", "sync", "--required-version", PLUSHIE_RUST_VERSION], {
     env,
   });
-  for (const path of [rendererPath, launcherPath]) {
+  for (const path of [toolPath, rendererPath, launcherPath]) {
     if (!existsSync(path)) {
       throw new Error(`bin/plushie tools sync did not install ${path}`);
     }
   }
+  checkManagedPackageTools(env);
   return rendererPath;
+}
+
+function checkManagedPackageTools(env: NodeJS.ProcessEnv = process.env): void {
+  const toolPath = resolve("bin", installedToolName());
+  runCommand(toolPath, ["tools", "check", "--required-version", PLUSHIE_RUST_VERSION], {
+    env,
+  });
 }
 
 export function prepareNodePackagePayload(
@@ -937,6 +946,9 @@ function writeDefaultIcons(outDir: string, env: NodeJS.ProcessEnv | undefined): 
       join(rustSourcePath, "Cargo.toml"),
       "-p",
       "cargo-plushie",
+      "--bin",
+      "plushie",
+      "--release",
       "--",
       "default-icons",
       "--out",
@@ -945,7 +957,7 @@ function writeDefaultIcons(outDir: string, env: NodeJS.ProcessEnv | undefined): 
     return;
   }
 
-  runCommand("cargo-plushie", ["default-icons", "--out", outDir]);
+  runCommand(resolve("bin", installedToolName()), ["default-icons", "--out", outDir], { env });
 }
 
 function validatePayloadArchiveInputs(payloadDir: string): void {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Postinstall script: downloads the plushie binary for the current platform.
+ * Postinstall script: bootstraps the managed Plushie native tool set.
  *
  * Skipped when:
  *   - PLUSHIE_SKIP_DOWNLOAD=1 is set
@@ -14,8 +14,10 @@
  */
 
 import { createHash, randomUUID } from "node:crypto"
+import { spawnSync } from "node:child_process"
 import {
   chmodSync,
+  copyFileSync,
   createWriteStream,
   existsSync,
   mkdirSync,
@@ -27,7 +29,8 @@ import { get as httpsGet } from "node:https"
 import { basename, dirname, join, resolve } from "node:path"
 
 const PLUSHIE_RUST_VERSION = "0.7.1"
-const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-renderer/releases/download"
+const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-rust/releases/download"
+const RELEASE_BASE_URL_ENV = "PLUSHIE_RELEASE_BASE_URL"
 const DOWNLOAD_ATTEMPTS = 3
 const DOWNLOAD_RETRY_DELAY_MS = 100
 const DOWNLOAD_TIMEOUT_MS = 30000
@@ -81,29 +84,103 @@ try {
 } catch {}
 
 const ext = platformOs() === "windows" ? ".exe" : ""
-const binaryName = `plushie-renderer-${platformOs()}-${platformArch()}${ext}`
+const toolAssetName = `plushie-${platformOs()}-${platformArch()}${ext}`
+const toolName = `plushie${ext}`
 const installedName = `plushie-renderer${ext}`
+const launcherName = `plushie-launcher${ext}`
 const destDir = configBinFile
   ? resolve(projectRoot, configBinFile, "..")
   : resolve(projectRoot, "bin")
 const destPath = configBinFile ? resolve(projectRoot, configBinFile) : join(destDir, installedName)
-
-if (existsSync(destPath)) {
-  process.exit(0)
-}
-
-const url = `${RELEASE_BASE_URL}/v${PLUSHIE_RUST_VERSION}/${binaryName}`
+const managedBinDir = resolve(projectRoot, "bin")
+const toolPath = join(managedBinDir, toolName)
+const managedRendererPath = join(managedBinDir, installedName)
+const managedLauncherPath = join(managedBinDir, launcherName)
 
 async function main() {
-  console.log(`plushie: downloading binary (v${PLUSHIE_RUST_VERSION}) for ${platformOs()}-${platformArch()}...`)
+  console.log(`plushie: syncing native tools (v${PLUSHIE_RUST_VERSION}) for ${platformOs()}-${platformArch()}...`)
 
   try {
-    await installVerifiedFile(url, destPath)
-    console.log("plushie: binary downloaded successfully")
+    const url = `${releaseBaseUrl()}/v${PLUSHIE_RUST_VERSION}/${toolAssetName}`
+    if (!toolsCheck()) {
+      if (!existsSync(toolPath)) {
+        await installVerifiedFile(url, toolPath)
+      }
+      if (!toolsSync() && existsSync(toolPath)) {
+        await installVerifiedFile(url, toolPath)
+        requireToolsSync()
+      }
+      requireToolsCheck()
+    }
+    copyConfiguredRenderer()
+    console.log("plushie: native tools synced successfully")
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.warn(`plushie: binary download skipped (${message})`)
+    console.warn(`plushie: native tool sync skipped (${message})`)
     console.warn("plushie: run `npx plushie download` to download manually")
+  }
+}
+
+function releaseBaseUrl() {
+  const value = (process.env[RELEASE_BASE_URL_ENV] ?? RELEASE_BASE_URL).trim().replace(/\/+$/, "")
+  if (value === "") {
+    throw new Error(`${RELEASE_BASE_URL_ENV} must not be empty`)
+  }
+  return value
+}
+
+function toolsCheck() {
+  if (!existsSync(toolPath)) return false
+  const result = spawnSync(
+    toolPath,
+    ["tools", "check", "--required-version", PLUSHIE_RUST_VERSION],
+    { cwd: projectRoot, stdio: "ignore" },
+  )
+  return result.status === 0
+}
+
+function requireToolsCheck() {
+  if (!existsSync(toolPath)) {
+    throw new Error(`missing ${toolPath}`)
+  }
+  const result = spawnSync(
+    toolPath,
+    ["tools", "check", "--required-version", PLUSHIE_RUST_VERSION],
+    { cwd: projectRoot, stdio: "inherit" },
+  )
+  if (result.error) throw result.error
+  if (result.status !== 0) {
+    throw new Error(`bin/plushie tools check failed with status ${result.status ?? "unknown"}`)
+  }
+}
+
+function toolsSync() {
+  const result = spawnSync(
+    toolPath,
+    ["tools", "sync", "--required-version", PLUSHIE_RUST_VERSION],
+    { cwd: projectRoot, stdio: "inherit" },
+  )
+  if (result.error) throw result.error
+  return result.status === 0
+}
+
+function requireToolsSync() {
+  if (!toolsSync()) {
+    throw new Error("bin/plushie tools sync failed")
+  }
+}
+
+function copyConfiguredRenderer() {
+  for (const path of [toolPath, managedRendererPath, managedLauncherPath]) {
+    if (!existsSync(path)) {
+      throw new Error(`managed native tool missing after sync: ${path}`)
+    }
+  }
+  if (resolve(destPath) === resolve(managedRendererPath)) return
+  mkdirSync(dirname(destPath), { recursive: true })
+  copyFileSync(managedRendererPath, destPath)
+  if (process.platform !== "win32") {
+    chmodSync(destPath, 0o755)
   }
 }
 

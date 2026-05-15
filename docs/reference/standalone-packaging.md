@@ -75,7 +75,7 @@ optional app icon assets, writes `payload.tar.zst`, and writes
 
 Use `--icon path/to/icon.png` to copy an app-provided icon into the
 payload. Use `--default-icon` to export Plushie's bundled default icon
-set through `cargo-plushie` and record the 512px PNG in
+set through `bin/plushie default-icons` and record the 512px PNG in
 `[platform].icon`.
 
 For apps that prepare a Node host executable themselves, pass
@@ -92,7 +92,8 @@ the payload cannot silently package stock renderer bits as custom.
 Build the final launcher with the shared Plushie tool:
 
 ```sh
-bin/plushie package portable --manifest dist/shared-launcher/plushie-package.toml
+bin/plushie package check --manifest dist/shared-launcher/plushie-package.toml --strict-tools
+bin/plushie package portable --manifest dist/shared-launcher/plushie-package.toml --strict-tools
 ```
 
 Pass `--portable` to `plushie package` to run that final step

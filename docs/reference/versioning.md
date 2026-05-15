@@ -108,11 +108,12 @@ Precompiled binaries are the default path:
 npx plushie download
 ```
 
-This fetches
-`plushie-renderer-<os>-<arch>` from the plushie-rust GitHub
-release tagged `v<PLUSHIE_RUST_VERSION>` and writes it to
-`bin/`. `npx plushie download --wasm`
-fetches the WASM renderer for browser apps.
+This fetches the standalone `plushie-<os>-<arch>` tool from the
+plushie-rust GitHub release tagged `v<PLUSHIE_RUST_VERSION>`, then
+runs its managed tool sync. The result is `bin/plushie`,
+`bin/plushie-renderer`, and `bin/plushie-launcher`, verified against
+the required version. `npx plushie download --wasm` fetches the WASM
+renderer for browser apps.
 
 Building from source is the path for local development against a
 plushie-rust checkout or for apps with native widget extensions:

@@ -39,17 +39,18 @@ for the upgrade policy.
 Plushie apps communicate with a Rust binary (built on
 [Iced](https://github.com/iced-rs/iced)) that handles rendering
 and platform input. A `postinstall` script in the `plushie`
-package downloads it automatically. If that step was skipped
-(CI, `PLUSHIE_SKIP_DOWNLOAD=1`, offline install), fetch it by
-hand:
+package syncs the managed native tool set automatically. If that
+step was skipped (CI, `PLUSHIE_SKIP_DOWNLOAD=1`, offline install),
+fetch it by hand:
 
 ```bash
 npx plushie download
 ```
 
-The binary lands at `bin/` and the SDK
-resolves it at runtime. The download is pinned to the SDK
-version so the binary and the SDK always match.
+The managed tools land at `bin/`: `plushie`, `plushie-renderer`,
+and `plushie-launcher`. The SDK resolves the renderer at runtime.
+The sync is pinned to the SDK version so the native tools and SDK
+always match.
 
 If you prefer to build the renderer yourself (or need to for
 [native widgets](../reference/custom-widgets.md)), see the

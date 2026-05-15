@@ -368,13 +368,13 @@ message points at an unresolved `react/jsx-runtime` import. Fix
 the `jsxImportSource` in the project's primary tsconfig; extends
 chains inherit.
 
-**Forgetting the renderer download.** A fresh `pnpm install`
-triggers the postinstall script, which downloads the renderer
-binary for the current platform. If the script is skipped (CI,
-`PLUSHIE_SKIP_DOWNLOAD=1`, network failure), the first
-`plushie run` exits with guidance to run
-`npx plushie download` by hand. Set `PLUSHIE_DOWNLOAD_IN_CI=1` in
-CI environments that need the binary available.
+**Forgetting the native tool sync.** A fresh `pnpm install`
+triggers the postinstall script, which syncs `bin/plushie`,
+`bin/plushie-renderer`, and `bin/plushie-launcher` for the current
+platform. If the script is skipped (CI, `PLUSHIE_SKIP_DOWNLOAD=1`,
+network failure), the first `plushie run` exits with guidance to run
+`npx plushie download` by hand. Set `PLUSHIE_DOWNLOAD_IN_CI=1` in CI
+environments that need the tools available.
 
 **WASM files in the wrong directory.** The wasm-bindgen JS
 loader `fetch`es `plushie_renderer_wasm_bg.wasm` relative to

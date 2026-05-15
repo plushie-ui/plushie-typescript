@@ -135,8 +135,9 @@ implementation arrive together.
 
 ## Binary requirement
 
-Tests need the binary. It must be available before `pnpm test`
-works. The postinstall script handles the typical case;
+Tests need the renderer binary. It must be available before `pnpm test`
+works. The postinstall script syncs the managed native tools in the
+typical case;
 `PLUSHIE_RUST_SOURCE_PATH` plus `pnpm preflight` rebuilds from a
 sibling checkout. If the binary is missing, tests fail fast with
 a clear error message and resolution instructions.
