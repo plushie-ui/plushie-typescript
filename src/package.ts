@@ -25,7 +25,12 @@ import {
 import { createRequire } from "node:module";
 import { basename, dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { arch, execPath, platform } from "node:process";
-import { installedBinaryName, PLUSHIE_RUST_VERSION } from "./client/binary.js";
+import {
+  installedBinaryName,
+  installedLauncherName,
+  installedToolName,
+  PLUSHIE_RUST_VERSION,
+} from "./client/binary.js";
 import { PACKAGE_READY_FILE_ENV } from "./client/package_ready.js";
 import { PROTOCOL_VERSION } from "./client/protocol.js";
 import { generateSEAConfig } from "./sea.js";
@@ -435,23 +440,52 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
     };
   }
 
-  const downloadedPath = resolve("bin", installedBinaryName());
-  if (existsSync(downloadedPath)) {
+  const syncedPath = syncManagedPackageTools(env, opts.log);
+  if (syncedPath !== undefined) {
     const source = opts.rendererSource ?? "local-resolve";
-    validateExecutable(downloadedPath, "renderer binary");
+    validateExecutable(syncedPath, "renderer binary");
     return {
       kind,
       source,
-      sourcePath: downloadedPath,
-      payloadPath: join("bin", basename(downloadedPath)),
+      sourcePath: syncedPath,
+      payloadPath: join("bin", basename(syncedPath)),
     };
   }
 
   throw new Error(
     `Error: plushie binary not found.\n` +
       `Run 'npx plushie download' or set PLUSHIE_BINARY_PATH.\n` +
-      `Expected: ${downloadedPath}`,
+      `Expected: ${resolve("bin", installedBinaryName())}`,
   );
+}
+
+function syncManagedPackageTools(
+  env: NodeJS.ProcessEnv,
+  log: ((message: string) => void) | undefined,
+): string | undefined {
+  const rendererPath = resolve("bin", installedBinaryName());
+  const launcherPath = resolve("bin", installedLauncherName());
+  const toolPath = resolve("bin", installedToolName());
+  if (!existsSync(toolPath)) {
+    if (existsSync(rendererPath)) {
+      throw new Error(
+        `Cannot package with ${rendererPath} until ${toolPath} is available. ` +
+          "Run 'npx plushie download' to sync the managed native tool set.",
+      );
+    }
+    return undefined;
+  }
+
+  log?.(`Checking Plushie native tools through ${toolPath}`);
+  runCommand(toolPath, ["tools", "sync", "--required-version", PLUSHIE_RUST_VERSION], {
+    env,
+  });
+  for (const path of [rendererPath, launcherPath]) {
+    if (!existsSync(path)) {
+      throw new Error(`bin/plushie tools sync did not install ${path}`);
+    }
+  }
+  return rendererPath;
 }
 
 export function prepareNodePackagePayload(
@@ -953,10 +987,11 @@ function commandExists(command: string): boolean {
 function runCommand(
   command: string,
   args: readonly string[],
-  opts: { cwd?: string; allowFailure?: boolean } = {},
+  opts: { cwd?: string; env?: NodeJS.ProcessEnv; allowFailure?: boolean } = {},
 ): void {
   const result = spawnSync(command, [...args], {
     cwd: opts.cwd,
+    env: opts.env,
     stdio: opts.allowFailure ? "ignore" : "inherit",
   });
   if (!opts.allowFailure && result.status !== 0) {

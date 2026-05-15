@@ -419,6 +419,37 @@ describe("resolvePackageRenderer", () => {
     expect(result?.sourcePath).toBe(renderer);
   });
 
+  test("syncs managed native tools for stock packages", () => {
+    const dir = tempDir();
+    const binDir = join(dir, "bin");
+    mkdirSync(binDir);
+    writeExecutable(
+      join(binDir, "plushie"),
+      [
+        "#!/bin/sh",
+        "mkdir -p bin",
+        "printf renderer > bin/plushie-renderer",
+        "printf launcher > bin/plushie-launcher",
+        "exit 0",
+        "",
+      ].join("\n"),
+    );
+
+    const oldCwd = process.cwd();
+    try {
+      process.chdir(dir);
+      const result = resolvePackageRenderer({
+        env: {},
+        log: () => {},
+      });
+
+      expect(result.source).toBe("local-resolve");
+      expect(result.sourcePath).toBe(join(dir, "bin", "plushie-renderer"));
+    } finally {
+      process.chdir(oldCwd);
+    }
+  });
+
   test("rejects custom renderer packaging without an explicit binary path", () => {
     expect(() =>
       resolvePackageRenderer({

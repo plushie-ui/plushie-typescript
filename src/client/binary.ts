@@ -103,6 +103,12 @@ export function installedToolName(): string {
   return `plushie${ext}`;
 }
 
+/** Return the stable project-local reusable launcher filename. */
+export function installedLauncherName(): string {
+  const ext = platformOs() === "windows" ? ".exe" : "";
+  return `plushie-launcher${ext}`;
+}
+
 export const platformBinaryName = releaseBinaryName;
 
 function platformOs(): string {

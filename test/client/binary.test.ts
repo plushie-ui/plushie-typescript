@@ -17,6 +17,7 @@ import {
   downloadFileWithChecksum,
   downloadReleaseBinary,
   installedBinaryName,
+  installedLauncherName,
   installedToolName,
   platformBinaryName,
   RELEASE_BASE_URL,
@@ -58,6 +59,12 @@ describe("RELEASE_BASE_URL", () => {
 describe("installedToolName", () => {
   test("returns the stable project-local plushie tool name", () => {
     expect(["plushie", "plushie.exe"]).toContain(installedToolName());
+  });
+});
+
+describe("installedLauncherName", () => {
+  test("returns the stable project-local reusable launcher name", () => {
+    expect(["plushie-launcher", "plushie-launcher.exe"]).toContain(installedLauncherName());
   });
 });
 
