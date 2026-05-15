@@ -408,7 +408,7 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
       );
     }
     opts.log?.(`Building plushie-renderer from ${rustSourcePath}`);
-    const targetDir = join(rustSourcePath, "target", "plushie-package-renderer");
+    const targetDir = resolve("node_modules", ".plushie", "package-renderer-target");
     runCommand(
       "cargo",
       ["build", "--release", "-p", "plushie-renderer", "--target-dir", targetDir],

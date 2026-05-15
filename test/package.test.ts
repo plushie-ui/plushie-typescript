@@ -382,14 +382,16 @@ describe("resolvePackageRenderer", () => {
     const dir = tempDir();
     const source = join(dir, "plushie-rust");
     const renderer = join(
-      source,
-      "target",
-      "plushie-package-renderer",
+      process.cwd(),
+      "node_modules",
+      ".plushie",
+      "package-renderer-target",
       "release",
       "plushie-renderer",
     );
     const binDir = join(dir, "bin");
     mkdirSync(dirname(renderer), { recursive: true });
+    mkdirSync(source, { recursive: true });
     mkdirSync(binDir);
     writeFileSync(join(source, "Cargo.toml"), "[workspace]\n", "utf-8");
     writeExecutable(renderer);
