@@ -78,8 +78,10 @@ and `--wasm` can be combined.
 
 ### Destinations
 
-- Native binary: `bin/plushie-renderer` by default, or the path given
-  by `--bin-file` / `bin_file` in the project config.
+- Native tool set: `bin/plushie`, `bin/plushie-renderer`, and
+  `bin/plushie-launcher` by default. `bin/plushie` owns renderer and
+  launcher sync. A custom path given by `--bin-file` / `bin_file` only
+  overrides the renderer destination.
 - WASM tarball: extracted to `node_modules/.plushie/wasm/` by
   default, producing `plushie_renderer_wasm.js` and
   `plushie_renderer_wasm_bg.wasm`. Override with `--wasm-dir` or
