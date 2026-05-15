@@ -94,6 +94,17 @@ native binary path runs through the SDK's programmatic
 `downloadBinary` and is then re-verified with the CLI's own
 checksum check.
 
+### Release mirrors
+
+By default downloads come from GitHub releases. Set
+`PLUSHIE_RELEASE_BASE_URL` to verify the same flow against another
+release mirror. The mirror must expose assets as
+`BASE/vVERSION/ARTIFACT` with checksum sidecars at
+`BASE/vVERSION/ARTIFACT.sha256`.
+
+Remote mirrors must use HTTPS. `file://` mirrors and loopback HTTP are
+for local release verification before assets are uploaded.
+
 ### Native widgets block precompiled downloads
 
 If `plushie.extensions.json` declares any extension with a
