@@ -980,7 +980,7 @@ async function handlePackage(
   console.log(`Shared launcher manifest: ${result.manifestPath}`);
   console.log();
   console.log("Build shared launcher:");
-  console.log(`  cargo plushie package portable --manifest ${result.manifestPath} --release`);
+  console.log(`  bin/plushie package portable --manifest ${result.manifestPath}`);
 }
 
 // =========================================================================

@@ -90,7 +90,7 @@ the payload cannot silently package stock renderer bits as custom.
 Build the final launcher with cargo-plushie:
 
 ```sh
-cargo plushie package portable --manifest dist/shared-launcher/plushie-package.toml --release
+bin/plushie package portable --manifest dist/shared-launcher/plushie-package.toml
 ```
 
 ## Manifest
@@ -106,8 +106,8 @@ validate and run the payload:
 - `[payload]` archive, hash, and size
 - `[renderer]` kind and source
 
-The demo artifact postcheck runs the generated launcher from a
+The demo artifact postcheck runs the portable launcher from a
 temporary working directory with a narrowed runtime `PATH`. It writes a
-report next to the generated launcher recording payload size, launcher
+report next to the portable launcher recording payload size, launcher
 size, target, host SDK, runtime path, exit status, and the renderer
 path reported by launcher diagnostics.
