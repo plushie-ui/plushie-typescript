@@ -95,7 +95,9 @@ bin/plushie package portable --manifest dist/shared-launcher/plushie-package.tom
 
 Pass `--portable` to `plushie package` to run that final step
 immediately. Use `--portable-out PATH` to pass an output path to
-`bin/plushie package portable`.
+`bin/plushie package portable`. Use `--strict-tools` when packaging
+must fail if the Rust package checker cannot use the expected native
+tools. The flag is forwarded to the final portable package command.
 
 ## Manifest
 

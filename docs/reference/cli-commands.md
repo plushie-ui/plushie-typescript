@@ -218,6 +218,7 @@ Package metadata and output flags:
 | `--default-icon` | Export Plushie's default icon set and use the 512px PNG. |
 | `--portable` | Run `bin/plushie package portable --manifest <manifest>` after writing the manifest. |
 | `--portable-out <path>` | Pass `--out <path>` to the portable package command when `--portable` is set. |
+| `--strict-tools` | Pass `--strict-tools` to the portable package command so missing, stale, dirty, mixed, or mismatched native tools fail before portable packaging. |
 
 Renderer flags:
 

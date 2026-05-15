@@ -132,6 +132,7 @@ describe("plushie package", () => {
         join(projectDir, "plushie-package.config.toml"),
         "--target",
         "linux-x86_64",
+        "--strict-tools",
       ],
       projectDir,
       { ...process.env, PATH: `${binDir}${delimiter}${process.env["PATH"] ?? ""}` },
@@ -153,7 +154,9 @@ describe("plushie package", () => {
     expect(manifest).toContain('command = ["bin/host", "--cli-config"]');
     expect(manifest).toContain('forward_env = ["PATH"]');
     expect(manifest).toContain('icon = "assets/icon.png"');
-    expect(result.stdout).toContain(`bin/plushie package portable --manifest ${manifestPath}`);
+    expect(result.stdout).toContain(
+      `bin/plushie package portable --manifest ${manifestPath} --strict-tools`,
+    );
   });
 
   test("runs the portable launcher when requested", async () => {
@@ -199,6 +202,7 @@ describe("plushie package", () => {
         "--target",
         "linux-x86_64",
         "--portable",
+        "--strict-tools",
         "--portable-out",
         "dist/portable/Test App",
       ],
@@ -214,6 +218,7 @@ describe("plushie package", () => {
       "portable",
       "--manifest",
       manifestPath,
+      "--strict-tools",
       "--out",
       "dist/portable/Test App",
     ]);

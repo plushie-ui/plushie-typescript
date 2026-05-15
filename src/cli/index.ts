@@ -130,6 +130,7 @@ Options:
   --default-icon    Use Plushie's bundled default app icon (package)
   --portable        Run bin/plushie package portable after preparing the payload (package)
   --portable-out <p> Portable launcher output path (package)
+  --strict-tools    Require strict native package tool identity (package)
   --target <target> Override package target (package)
   --bin             Download/build the native binary
   --wasm            Download/build the WASM renderer
@@ -920,11 +921,27 @@ function defaultHostName(pkg: LocalPackageJson, hostBin: string | undefined): st
   return `${base}-host${ext}`;
 }
 
-function runPackagePortable(manifestPath: string, portableOut: string | undefined): void {
-  const args = ["package", "portable", "--manifest", manifestPath];
-  if (portableOut !== undefined) {
-    args.push("--out", portableOut);
+function packagePortableArgs(opts: {
+  readonly manifestPath: string;
+  readonly portableOut?: string;
+  readonly strictTools: boolean;
+}): string[] {
+  const args = ["package", "portable", "--manifest", opts.manifestPath];
+  if (opts.strictTools) {
+    args.push("--strict-tools");
   }
+  if (opts.portableOut !== undefined) {
+    args.push("--out", opts.portableOut);
+  }
+  return args;
+}
+
+function runPackagePortable(opts: {
+  readonly manifestPath: string;
+  readonly portableOut?: string;
+  readonly strictTools: boolean;
+}): void {
+  const args = packagePortableArgs(opts);
   const toolPath = join("bin", installedToolName());
   const result = spawnSync(toolPath, args, { stdio: "inherit" });
   if (result.error !== undefined) {
@@ -996,14 +1013,23 @@ async function handlePackage(
   }
   console.log(`Shared launcher payload: ${result.payloadArchivePath}`);
   console.log(`Shared launcher manifest: ${result.manifestPath}`);
+  const strictTools = flags.includes("--strict-tools");
   if (flags.includes("--portable")) {
-    runPackagePortable(result.manifestPath, valueFlags.get("--portable-out"));
+    runPackagePortable({
+      manifestPath: result.manifestPath,
+      ...(valueFlags.has("--portable-out")
+        ? { portableOut: valueFlags.get("--portable-out")! }
+        : {}),
+      strictTools,
+    });
   } else {
+    const portableArgs = packagePortableArgs({
+      manifestPath: result.manifestPath,
+      strictTools,
+    });
     console.log();
     console.log("Build shared launcher:");
-    console.log(
-      `  ${join("bin", installedToolName())} package portable --manifest ${result.manifestPath}`,
-    );
+    console.log(`  ${join("bin", installedToolName())} ${portableArgs.join(" ")}`);
   }
 }
 
