@@ -87,11 +87,15 @@ renderer build, then the downloaded binary under
 `--renderer custom` with `--renderer-bin` or `PLUSHIE_BINARY_PATH` so
 the payload cannot silently package stock renderer bits as custom.
 
-Build the final launcher with cargo-plushie:
+Build the final launcher with the shared Plushie tool:
 
 ```sh
 bin/plushie package portable --manifest dist/shared-launcher/plushie-package.toml
 ```
+
+Pass `--portable` to `plushie package` to run that final step
+immediately. Use `--portable-out PATH` to pass an output path to
+`bin/plushie package portable`.
 
 ## Manifest
 

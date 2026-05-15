@@ -216,6 +216,8 @@ Package metadata and output flags:
 | `--sea-output <path>` | Also write a renderer-embedded SEA executable for compatibility proofs. |
 | `--icon <path>` | Copy an app icon into the payload. |
 | `--default-icon` | Export Plushie's default icon set and use the 512px PNG. |
+| `--portable` | Run `bin/plushie package portable --manifest <manifest>` after writing the manifest. |
+| `--portable-out <path>` | Pass `--out <path>` to the portable package command when `--portable` is set. |
 
 Renderer flags:
 
@@ -256,6 +258,13 @@ forward_env = [
 
 `forward_env = []` is valid when the packaged host should inherit no
 parent environment names.
+
+By default the command prints the final portable-package handoff. Pass
+`--portable` to run that final step immediately:
+
+```bash
+plushie package --app-id dev.example.my_app --main dist/app.cjs --portable
+```
 
 ## dev
 

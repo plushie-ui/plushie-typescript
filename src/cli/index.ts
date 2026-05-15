@@ -40,6 +40,7 @@ import {
   downloadReleaseBinary,
   downloadTool,
   installedBinaryName,
+  installedToolName,
   PLUSHIE_RUST_VERSION,
   releaseBaseUrl,
   releaseBinaryName,
@@ -127,6 +128,8 @@ Options:
   --write-package-config Write a package config template and exit (package)
   --icon <path>     App icon copied into the package payload (package)
   --default-icon    Use Plushie's bundled default app icon (package)
+  --portable        Run bin/plushie package portable after preparing the payload (package)
+  --portable-out <p> Portable launcher output path (package)
   --target <target> Override package target (package)
   --bin             Download/build the native binary
   --wasm            Download/build the WASM renderer
@@ -917,6 +920,21 @@ function defaultHostName(pkg: LocalPackageJson, hostBin: string | undefined): st
   return `${base}-host${ext}`;
 }
 
+function runPackagePortable(manifestPath: string, portableOut: string | undefined): void {
+  const args = ["package", "portable", "--manifest", manifestPath];
+  if (portableOut !== undefined) {
+    args.push("--out", portableOut);
+  }
+  const toolPath = join("bin", installedToolName());
+  const result = spawnSync(toolPath, args, { stdio: "inherit" });
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`${toolPath} package portable failed with exit code ${String(result.status)}`);
+  }
+}
+
 async function handlePackage(
   valueFlags: Map<string, string>,
   flags: readonly string[],
@@ -978,9 +996,15 @@ async function handlePackage(
   }
   console.log(`Shared launcher payload: ${result.payloadArchivePath}`);
   console.log(`Shared launcher manifest: ${result.manifestPath}`);
-  console.log();
-  console.log("Build shared launcher:");
-  console.log(`  bin/plushie package portable --manifest ${result.manifestPath}`);
+  if (flags.includes("--portable")) {
+    runPackagePortable(result.manifestPath, valueFlags.get("--portable-out"));
+  } else {
+    console.log();
+    console.log("Build shared launcher:");
+    console.log(
+      `  ${join("bin", installedToolName())} package portable --manifest ${result.manifestPath}`,
+    );
+  }
 }
 
 // =========================================================================
@@ -1160,6 +1184,7 @@ async function main(argv: string[]): Promise<void> {
     "--renderer-source",
     "--package-config",
     "--icon",
+    "--portable-out",
     "--target",
   ]);
   const flags: string[] = [];
