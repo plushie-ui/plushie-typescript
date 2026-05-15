@@ -184,7 +184,7 @@ files are copied to the resolved WASM directory.
 ## package
 
 Prepare the payload archive and manifest consumed by
-`cargo plushie package`.
+`bin/plushie package portable` or `bin/plushie package bundle`.
 
 ```bash
 plushie package \

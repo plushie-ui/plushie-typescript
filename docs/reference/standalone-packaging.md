@@ -16,10 +16,12 @@ The packaged payload should contain:
 - `payload.tar.zst`
 - `plushie-package.toml`
 
-The manifest is consumed by `cargo plushie package`. Paths in the
-manifest are payload-relative, so the renderer path must point inside
-the archived payload. A packaged app must not depend on a renderer in
-`node_modules`, a downloaded cache, or `PATH`.
+The manifest is consumed by `bin/plushie package portable` for the
+self-extracting artifact or by `bin/plushie package bundle` for
+platform packages. Paths in the manifest are payload-relative, so the
+renderer path must point inside the archived payload. A packaged app
+must not depend on a renderer in `node_modules`, a downloaded cache, or
+`PATH`.
 
 ## Startup
 
