@@ -408,12 +408,16 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
       );
     }
     opts.log?.(`Building plushie-renderer from ${rustSourcePath}`);
-    runCommand("cargo", ["build", "--release", "-p", "plushie-renderer"], {
-      cwd: rustSourcePath,
-    });
+    const targetDir = join(rustSourcePath, "target", "plushie-package-renderer");
+    runCommand(
+      "cargo",
+      ["build", "--release", "-p", "plushie-renderer", "--target-dir", targetDir],
+      {
+        cwd: rustSourcePath,
+      },
+    );
     const sourcePath = join(
-      rustSourcePath,
-      "target",
+      targetDir,
       "release",
       process.platform === "win32" ? "plushie-renderer.exe" : "plushie-renderer",
     );
@@ -700,7 +704,7 @@ function parseTomlStringArray(value: string, path: string, lineNumber: number): 
 
 function parseTomlValue(value: string, path: string, lineNumber: number): unknown {
   const trimmed = value.trim();
-  if (trimmed.startsWith("[") || trimmed.endsWith("]")) {
+  if (trimmed.startsWith("[")) {
     return parseTomlArray(trimmed, path, lineNumber);
   }
   return parseTomlScalar(trimmed, path, lineNumber);

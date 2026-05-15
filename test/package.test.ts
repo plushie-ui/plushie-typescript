@@ -163,6 +163,26 @@ describe("package start config", () => {
     });
   });
 
+  test("reads TOML strings that end with a bracket", () => {
+    const dir = tempDir();
+    const configPath = join(dir, "plushie-package.config.toml");
+    writeFileSync(
+      configPath,
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        'working_dir = "host/[prod]"',
+        'command = ["bin/host"]',
+        'forward_env = ["PATH"]',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    expect(readPackageStartConfig(configPath)?.workingDir).toBe("host/[prod]");
+  });
+
   test("allows an empty forwarded environment", () => {
     const dir = tempDir();
     const configPath = join(dir, "plushie-package.config.toml");
@@ -361,7 +381,13 @@ describe("resolvePackageRenderer", () => {
   test("records source-built renderers as local builds", () => {
     const dir = tempDir();
     const source = join(dir, "plushie-rust");
-    const renderer = join(source, "target", "release", "plushie-renderer");
+    const renderer = join(
+      source,
+      "target",
+      "plushie-package-renderer",
+      "release",
+      "plushie-renderer",
+    );
     const binDir = join(dir, "bin");
     mkdirSync(dirname(renderer), { recursive: true });
     mkdirSync(binDir);
