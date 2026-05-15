@@ -62,6 +62,19 @@ describe("plushie package", () => {
     writeExecutable(renderer);
     writeFileSync(icon, "icon", "utf-8");
     writeFileSync(
+      join(projectDir, "plushie-package.config.toml"),
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        'working_dir = "app"',
+        'command = ["bin/host", "--cli-config"]',
+        'forward_env = ["PATH"]',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+    writeFileSync(
       join(projectDir, "package.json"),
       JSON.stringify({ name: "package-test", version: "0.2.0" }),
       "utf-8",
@@ -80,6 +93,8 @@ describe("plushie package", () => {
         renderer,
         "--icon",
         icon,
+        "--package-config",
+        join(projectDir, "plushie-package.config.toml"),
         "--target",
         "linux-x86_64",
       ],
@@ -99,7 +114,21 @@ describe("plushie package", () => {
     expect(manifest).toContain('app_name = "Test App"');
     expect(manifest).toContain('app_version = "0.2.0"');
     expect(manifest).toContain('[renderer]\npath = "bin/plushie-renderer"');
-    expect(manifest).toContain('command = ["bin/host"]');
+    expect(manifest).toContain('working_dir = "app"');
+    expect(manifest).toContain('command = ["bin/host", "--cli-config"]');
+    expect(manifest).toContain('forward_env = ["PATH"]');
     expect(manifest).toContain('icon = "assets/icon.png"');
+  });
+
+  test("writes package config without requiring package metadata", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "plushie-cli-package-config-"));
+    tempDirs.push(dir);
+
+    const code = await runCli(["package", "--write-package-config"], dir, process.env);
+
+    expect(code).toBe(0);
+    expect(readFileSync(join(dir, "plushie-package.config.toml"), "utf-8")).toContain(
+      'command = ["bin/connect"]',
+    );
   });
 });

@@ -23,7 +23,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { arch, execPath, platform } from "node:process";
 import { PLUSHIE_RUST_VERSION, platformBinaryName } from "./client/binary.js";
 import { PROTOCOL_VERSION } from "./client/protocol.js";
@@ -40,6 +40,8 @@ const DEFAULT_FORWARD_ENV = [
   "WAYLAND_DISPLAY",
   "DISPLAY",
 ] as const;
+const DEFAULT_PACKAGE_CONFIG = "plushie-package.config.toml";
+const RESERVED_FORWARD_ENV = new Set(["PLUSHIE_BINARY_PATH", "PLUSHIE_PACKAGE_DIR"]);
 
 export interface RendererManifest {
   readonly kind: RendererKind;
@@ -60,6 +62,12 @@ export interface PackageManifest {
   readonly payloadArchive: string;
   readonly payloadHash: string;
   readonly payloadSize: number;
+}
+
+export interface PackageStartConfig {
+  readonly workingDir: string;
+  readonly command: readonly string[];
+  readonly forwardEnv: readonly string[];
 }
 
 export interface PackagePlatformManifest {
@@ -104,6 +112,7 @@ export interface PrepareNodePackagePayloadOptions {
   readonly icon?: string;
   readonly defaultIcon?: boolean;
   readonly seaOutput?: string;
+  readonly packageConfig?: string;
   readonly target?: string;
   readonly env?: NodeJS.ProcessEnv;
   readonly log?: (message: string) => void;
@@ -233,6 +242,55 @@ export function renderPackageManifest(manifest: PackageManifest): string {
     "",
   );
   return lines.join("\n");
+}
+
+export function readPackageStartConfig(
+  path = DEFAULT_PACKAGE_CONFIG,
+): PackageStartConfig | undefined {
+  if (!existsSync(path)) return undefined;
+  const config = parsePackageStartConfig(readFileSync(path, "utf-8"), path);
+  validatePackageStartConfig(config, path);
+  return config;
+}
+
+export function defaultPackageStartConfig(
+  command: readonly string[] = ["bin/connect"],
+): PackageStartConfig {
+  return {
+    workingDir: ".",
+    command,
+    forwardEnv: [...DEFAULT_FORWARD_ENV],
+  };
+}
+
+export function renderPackageStartConfig(
+  config: PackageStartConfig = defaultPackageStartConfig(),
+): string {
+  validatePackageStartConfig(config, DEFAULT_PACKAGE_CONFIG);
+  return [
+    "# Plushie standalone package config.",
+    "# Commit this file and edit it when the packaged app needs a",
+    "# different entry point, working directory, or forwarded environment.",
+    "",
+    "config_version = 1",
+    "",
+    "[start]",
+    "# Relative to the extracted app package.",
+    `working_dir = ${tomlString(config.workingDir)}`,
+    "# Structured argv. The first item is the packaged host executable.",
+    `command = ${tomlArray(config.command)}`,
+    "# Environment variable names copied from the parent process.",
+    `forward_env = ${tomlArray(config.forwardEnv)}`,
+    "",
+  ].join("\n");
+}
+
+export function writePackageStartConfig(
+  path = DEFAULT_PACKAGE_CONFIG,
+  config: PackageStartConfig = defaultPackageStartConfig(),
+): void {
+  mkdirSync(dirname(resolve(path)), { recursive: true });
+  writeFileSync(path, renderPackageStartConfig(config), "utf-8");
 }
 
 export function writePackageManifest(path: string, manifest: PackageManifest): void {
@@ -396,6 +454,13 @@ export function prepareNodePackagePayload(
   const archivePath = join(outputDir, "payload.tar.zst");
   const manifestPath = join(outputDir, "plushie-package.toml");
   const renderer = opts.renderer ?? resolvePackageRenderer(opts);
+  if (opts.packageConfig !== undefined && !existsSync(opts.packageConfig)) {
+    throw new Error(`package config not found at ${opts.packageConfig}`);
+  }
+  const startConfig =
+    opts.packageConfig !== undefined
+      ? readPackageStartConfig(opts.packageConfig)
+      : readPackageStartConfig();
 
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(join(payloadRoot, "bin"), { recursive: true });
@@ -439,8 +504,9 @@ export function prepareNodePackagePayload(
     rendererKind: renderer.kind,
     rendererSource: renderer.source,
     rendererPath: renderer.payloadPath,
-    startCommand: [join("bin", opts.hostName)],
-    workingDir: ".",
+    startCommand: startConfig?.command ?? [join("bin", opts.hostName)],
+    workingDir: startConfig?.workingDir ?? ".",
+    ...(startConfig !== undefined ? { forwardEnv: startConfig.forwardEnv } : {}),
     ...(platformIcon !== undefined ? { platformIcon } : {}),
     payloadArchive: archivePath,
   });
@@ -460,6 +526,155 @@ function readSdkVersion(): string {
   const require = createRequire(import.meta.url);
   const pkg = require("../package.json") as { version: string };
   return pkg.version;
+}
+
+function parsePackageStartConfig(source: string, path: string): PackageStartConfig {
+  let table = "";
+  let configVersion: number | undefined;
+  const start: Partial<{
+    workingDir: string;
+    command: readonly string[];
+    forwardEnv: readonly string[];
+  }> = {};
+
+  for (const [index, rawLine] of source.split(/\r?\n/).entries()) {
+    const lineNumber = index + 1;
+    const line = stripTomlComment(rawLine).trim();
+    if (line === "") continue;
+
+    const tableMatch = line.match(/^\[([A-Za-z0-9_-]+)\]$/);
+    if (tableMatch !== null) {
+      table = tableMatch[1]!;
+      continue;
+    }
+
+    const match = line.match(/^([A-Za-z0-9_-]+)\s*=\s*(.+)$/);
+    if (match === null) {
+      throw new Error(`${path}:${lineNumber}: unsupported package config syntax`);
+    }
+
+    const key = match[1]!;
+    const value = match[2]!.trim();
+    if (table === "" && key === "config_version") {
+      configVersion = parseConfigVersion(value, path, lineNumber);
+    } else if (table === "start" && key === "working_dir") {
+      start.workingDir = parseTomlString(value, path, lineNumber);
+    } else if (table === "start" && key === "command") {
+      start.command = parseTomlStringArray(value, path, lineNumber);
+    } else if (table === "start" && key === "forward_env") {
+      start.forwardEnv = parseTomlStringArray(value, path, lineNumber);
+    } else {
+      throw new Error(`${path}:${lineNumber}: unsupported package config key: ${key}`);
+    }
+  }
+
+  if (configVersion !== 1) {
+    throw new Error(`${path}: package config requires config_version = 1`);
+  }
+  if (start.workingDir === undefined) {
+    throw new Error(`${path}: package config missing [start].working_dir`);
+  }
+  if (start.command === undefined) {
+    throw new Error(`${path}: package config missing [start].command`);
+  }
+  if (start.forwardEnv === undefined) {
+    throw new Error(`${path}: package config missing [start].forward_env`);
+  }
+
+  return {
+    workingDir: start.workingDir,
+    command: start.command,
+    forwardEnv: start.forwardEnv,
+  };
+}
+
+function stripTomlComment(line: string): string {
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]!;
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+    } else if (char === '"') {
+      inString = true;
+    } else if (char === "#") {
+      return line.slice(0, i);
+    }
+  }
+  return line;
+}
+
+function parseConfigVersion(value: string, path: string, lineNumber: number): number {
+  if (!/^[0-9]+$/.test(value)) {
+    throw new Error(`${path}:${lineNumber}: config_version must be an integer`);
+  }
+  return Number(value);
+}
+
+function parseTomlString(value: string, path: string, lineNumber: number): string {
+  const parsed = parseTomlJsonValue(value, path, lineNumber);
+  if (typeof parsed !== "string") {
+    throw new Error(`${path}:${lineNumber}: expected string value`);
+  }
+  return parsed;
+}
+
+function parseTomlStringArray(value: string, path: string, lineNumber: number): readonly string[] {
+  const parsed = parseTomlJsonValue(value, path, lineNumber);
+  if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === "string")) {
+    throw new Error(`${path}:${lineNumber}: expected string array value`);
+  }
+  return parsed as string[];
+}
+
+function parseTomlJsonValue(value: string, path: string, lineNumber: number): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    throw new Error(`${path}:${lineNumber}: unsupported package config value`);
+  }
+}
+
+function validatePackageStartConfig(config: PackageStartConfig, path: string): void {
+  validateRelativePackagePath(config.workingDir, "working_dir", path);
+  if (config.command.length === 0) {
+    throw new Error(`${path}: [start].command must not be empty`);
+  }
+  for (const [index, arg] of config.command.entries()) {
+    if (arg === "") {
+      throw new Error(`${path}: [start].command[${String(index)}] must not be empty`);
+    }
+  }
+  validateRelativePackagePath(config.command[0]!, "command[0]", path);
+  if (config.forwardEnv.length === 0) {
+    throw new Error(`${path}: [start].forward_env must not be empty`);
+  }
+  for (const name of config.forwardEnv) {
+    if (name === "" || name.includes(",") || name.includes("=")) {
+      throw new Error(`${path}: invalid [start].forward_env name: ${name}`);
+    }
+    if (RESERVED_FORWARD_ENV.has(name)) {
+      throw new Error(`${path}: [start].forward_env cannot include reserved name: ${name}`);
+    }
+  }
+}
+
+function validateRelativePackagePath(value: string, label: string, path: string): void {
+  if (value === "") {
+    throw new Error(`${path}: [start].${label} must not be empty`);
+  }
+  if (isAbsolute(value) || win32.isAbsolute(value)) {
+    throw new Error(`${path}: [start].${label} must be relative`);
+  }
+  if (value.split(/[\\/]+/).includes("..")) {
+    throw new Error(`${path}: [start].${label} must not contain parent traversal`);
+  }
 }
 
 function preparePlatformIcon(

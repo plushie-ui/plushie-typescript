@@ -16,8 +16,11 @@ import {
   manifestForPayload,
   normalizePackageTarget,
   prepareNodePackagePayload,
+  readPackageStartConfig,
   renderPackageManifest,
+  renderPackageStartConfig,
   resolvePackageRenderer,
+  writePackageStartConfig,
 } from "../src/package.js";
 
 const repoRoot = resolvePath(import.meta.dirname, "..");
@@ -104,6 +107,99 @@ describe("package manifest", () => {
   });
 });
 
+describe("package start config", () => {
+  test("reads committed source package config", () => {
+    const dir = tempDir();
+    const configPath = join(dir, "plushie-package.config.toml");
+    writeFileSync(
+      configPath,
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        'working_dir = "app"',
+        'command = ["bin/host", "--mode", "standalone"]',
+        'forward_env = ["PATH", "HOME"]',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    expect(readPackageStartConfig(configPath)).toEqual({
+      workingDir: "app",
+      command: ["bin/host", "--mode", "standalone"],
+      forwardEnv: ["PATH", "HOME"],
+    });
+  });
+
+  test("renders package config template with real start values", () => {
+    const text = renderPackageStartConfig();
+
+    expect(text).toContain("config_version = 1");
+    expect(text).toContain('working_dir = "."');
+    expect(text).toContain('command = ["bin/connect"]');
+    expect(text).toContain('"WAYLAND_DISPLAY"');
+  });
+
+  test("writes package config template", () => {
+    const dir = tempDir();
+    const configPath = join(dir, "plushie-package.config.toml");
+
+    writePackageStartConfig(configPath);
+
+    expect(readFileSync(configPath, "utf-8")).toContain('command = ["bin/connect"]');
+  });
+
+  test("keeps current behavior when source package config is missing", () => {
+    const dir = tempDir();
+
+    expect(readPackageStartConfig(join(dir, "missing.toml"))).toBeUndefined();
+  });
+
+  test.each([
+    ["absolute working_dir", 'working_dir = "/app"', /working_dir must be relative/],
+    ["parent working_dir", 'working_dir = "../app"', /working_dir must not contain parent/],
+    ["absolute command path", 'command = ["/bin/host"]', /command\[0\] must be relative/],
+    ["parent command path", 'command = ["bin/../host"]', /command\[0\] must not contain parent/],
+    ["empty command", "command = []", /command must not be empty/],
+    ["empty command arg", 'command = ["bin/host", ""]', /command\[1\] must not be empty/],
+    ["empty env list", "forward_env = []", /forward_env must not be empty/],
+    ["env with comma", 'forward_env = ["PATH,HOME"]', /invalid .*forward_env name/],
+    ["env with equals", 'forward_env = ["PATH=HOME"]', /invalid .*forward_env name/],
+    [
+      "reserved binary env",
+      'forward_env = ["PLUSHIE_BINARY_PATH"]',
+      /cannot include reserved name/,
+    ],
+    [
+      "reserved package env",
+      'forward_env = ["PLUSHIE_PACKAGE_DIR"]',
+      /cannot include reserved name/,
+    ],
+  ])("rejects invalid source package config: %s", (_name, replacement, error) => {
+    const dir = tempDir();
+    const configPath = join(dir, "plushie-package.config.toml");
+    const workingDir = 'working_dir = "."';
+    const command = 'command = ["bin/host"]';
+    const forwardEnv = 'forward_env = ["PATH"]';
+    writeFileSync(
+      configPath,
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        replacement.startsWith("working_dir") ? replacement : workingDir,
+        replacement.startsWith("command") ? replacement : command,
+        replacement.startsWith("forward_env") ? replacement : forwardEnv,
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    expect(() => readPackageStartConfig(configPath)).toThrow(error);
+  });
+});
+
 describe("prepareNodePackagePayload", () => {
   test("copies the host and renderer into a shared-launcher payload", () => {
     const dir = tempDir();
@@ -149,6 +245,49 @@ describe("prepareNodePackagePayload", () => {
     expect(list.stdout).toContain("./bin/test-host");
     expect(list.stdout).toContain("./bin/plushie-renderer");
     expect(list.stdout).toContain("./assets/icon.png");
+  });
+
+  test("applies committed source package config to the shared-launcher manifest", () => {
+    const dir = tempDir();
+    const outputDir = join(dir, "dist", "shared-launcher");
+    const host = join(dir, "host");
+    const renderer = join(dir, "plushie-renderer");
+    writeExecutable(host);
+    writeExecutable(renderer);
+    writeFileSync(
+      join(dir, "plushie-package.config.toml"),
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        'working_dir = "app"',
+        'command = ["bin/test-host", "--standalone"]',
+        'forward_env = ["PATH"]',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const result = prepareNodePackagePayload({
+      appId: "dev.plushie.test",
+      appVersion: "0.1.0",
+      hostBin: host,
+      hostName: "test-host",
+      outputDir,
+      target: "linux-x86_64",
+      renderer: {
+        kind: "stock",
+        source: "local-resolve",
+        sourcePath: renderer,
+        payloadPath: "bin/plushie-renderer",
+      },
+      packageConfig: join(dir, "plushie-package.config.toml"),
+    });
+
+    const manifest = readFileSync(result.manifestPath, "utf-8");
+    expect(manifest).toContain('working_dir = "app"');
+    expect(manifest).toContain('command = ["bin/test-host", "--standalone"]');
+    expect(manifest).toContain('forward_env = ["PATH"]');
   });
 });
 

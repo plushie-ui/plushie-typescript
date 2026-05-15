@@ -43,7 +43,12 @@ import {
   platformBinaryName,
 } from "../client/binary.js";
 import { DevServer } from "../dev-server.js";
-import { prepareNodePackagePayload, type RendererKind } from "../package.js";
+import {
+  defaultPackageStartConfig,
+  prepareNodePackagePayload,
+  type RendererKind,
+  writePackageStartConfig,
+} from "../package.js";
 import { DEFAULT_WASM_DIR, WASM_BG_FILE, WASM_JS_FILE } from "../wasm.js";
 import { resolveCargoPlushie } from "./cargo-plushie.js";
 
@@ -116,6 +121,8 @@ Options:
   --renderer <kind> Renderer kind: stock or custom (package)
   --renderer-bin <p> Use an existing renderer binary (package)
   --renderer-source <s> Renderer provenance string (package)
+  --package-config <p> Source package config path (package)
+  --write-package-config Write a package config template and exit (package)
   --icon <path>     App icon copied into the package payload (package)
   --default-icon    Use Plushie's bundled default app icon (package)
   --target <target> Override package target (package)
@@ -850,6 +857,12 @@ async function handlePackage(
   const appId = valueFlags.get("--app-id");
   const main = valueFlags.get("--main");
   const hostBin = valueFlags.get("--host-bin");
+  if (flags.includes("--write-package-config")) {
+    const packageConfig = valueFlags.get("--package-config") ?? "plushie-package.config.toml";
+    writePackageStartConfig(packageConfig, defaultPackageStartConfig());
+    console.log(`Wrote ${packageConfig}`);
+    return;
+  }
   if (appId === undefined) {
     console.error("Error: --app-id is required");
     process.exitCode = 1;
@@ -881,6 +894,9 @@ async function handlePackage(
     ...(rendererKind !== undefined ? { rendererKind } : {}),
     ...(valueFlags.has("--renderer-source")
       ? { rendererSource: valueFlags.get("--renderer-source")! }
+      : {}),
+    ...(valueFlags.has("--package-config")
+      ? { packageConfig: valueFlags.get("--package-config")! }
       : {}),
     ...(valueFlags.has("--icon") ? { icon: valueFlags.get("--icon")! } : {}),
     defaultIcon: flags.includes("--default-icon"),
@@ -1075,6 +1091,7 @@ async function main(argv: string[]): Promise<void> {
     "--renderer",
     "--renderer-bin",
     "--renderer-source",
+    "--package-config",
     "--icon",
     "--target",
   ]);
