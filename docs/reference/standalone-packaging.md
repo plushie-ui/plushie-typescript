@@ -116,6 +116,35 @@ validate and run the payload:
 - `target`
 - `[payload]` archive, hash, and size
 - `[renderer]` kind
+- `[platform]` (optional, omitted when empty)
+
+## Platform metadata
+
+Optional platform metadata can be committed to `plushie-package.config.toml`
+and is passed through verbatim to the generated manifest. Add a
+`[platform]` section with any of these fields:
+
+```toml
+[platform]
+publisher = "Example Corp"
+copyright = "Copyright 2025 Example Corp"
+category = "public.app-category.productivity"
+description = "A great app"
+bundle_id = "com.example.myapp"
+
+[platform.macos]
+bundle_version = "1"
+
+[platform.windows]
+install_scope = "perUser"   # perUser or perMachine
+```
+
+All fields are optional. Omit the `[platform]` section entirely when
+none apply. The `[platform]` section is dropped from the manifest when
+no fields are populated.
+
+Run `npx plushie package --write-package-config` to generate a config
+template with these fields shown as commented-out examples.
 
 The demo artifact postcheck runs the portable launcher from a
 temporary working directory with a narrowed runtime `PATH`. It writes a

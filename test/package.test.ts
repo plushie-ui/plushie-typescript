@@ -21,6 +21,7 @@ import {
   manifestForPayload,
   normalizePackageTarget,
   prepareNodePackagePayload,
+  readPackageSourceConfig,
   readPackageStartConfig,
   renderPackageManifest,
   renderPackageStartConfig,
@@ -135,6 +136,84 @@ describe("package manifest", () => {
     const toml = renderPackageManifest(manifest);
     expect(toml).not.toContain("[platform]");
     expect(toml).not.toContain("icon =");
+  });
+
+  test("emits all top-level platform fields when present", () => {
+    const dir = tempDir();
+    const archive = join(dir, "payload.tar.zst");
+    writeFileSync(archive, "payload");
+
+    const manifest = manifestForPayload({
+      appId: "dev.plushie.test",
+      appVersion: "1.0.0",
+      target: "linux-x86_64",
+      rendererPath: "bin/plushie-renderer",
+      startCommand: ["bin/host"],
+      payloadArchive: archive,
+      platform: {
+        publisher: "Example Corp",
+        copyright: "Copyright 2025 Example Corp",
+        category: "public.app-category.productivity",
+        description: "A great app",
+        bundleId: "com.example.myapp",
+      },
+    });
+
+    const toml = renderPackageManifest(manifest);
+    expect(toml).toContain('[platform]\npublisher = "Example Corp"');
+    expect(toml).toContain('copyright = "Copyright 2025 Example Corp"');
+    expect(toml).toContain('category = "public.app-category.productivity"');
+    expect(toml).toContain('description = "A great app"');
+    expect(toml).toContain('bundle_id = "com.example.myapp"');
+    expect(toml).not.toContain("[platform.macos]");
+    expect(toml).not.toContain("[platform.windows]");
+  });
+
+  test("emits [platform.macos] and [platform.windows] subsections when present", () => {
+    const dir = tempDir();
+    const archive = join(dir, "payload.tar.zst");
+    writeFileSync(archive, "payload");
+
+    const manifest = manifestForPayload({
+      appId: "dev.plushie.test",
+      appVersion: "1.0.0",
+      target: "darwin-aarch64",
+      rendererPath: "bin/plushie-renderer",
+      startCommand: ["bin/host"],
+      payloadArchive: archive,
+      platform: {
+        bundleId: "com.example.myapp",
+        macos: { bundleVersion: "42" },
+        windows: { installScope: "perUser" },
+      },
+    });
+
+    const toml = renderPackageManifest(manifest);
+    expect(toml).toContain("[platform.macos]");
+    expect(toml).toContain('bundle_version = "42"');
+    expect(toml).toContain("[platform.windows]");
+    expect(toml).toContain('install_scope = "perUser"');
+  });
+
+  test("merges platformIcon with platform config", () => {
+    const dir = tempDir();
+    const archive = join(dir, "payload.tar.zst");
+    writeFileSync(archive, "payload");
+
+    const manifest = manifestForPayload({
+      appId: "dev.plushie.test",
+      appVersion: "1.0.0",
+      target: "linux-x86_64",
+      rendererPath: "bin/plushie-renderer",
+      startCommand: ["bin/host"],
+      payloadArchive: archive,
+      platformIcon: "assets/icon.png",
+      platform: { publisher: "Example Corp" },
+    });
+
+    const toml = renderPackageManifest(manifest);
+    expect(toml).toContain('icon = "assets/icon.png"');
+    expect(toml).toContain('publisher = "Example Corp"');
   });
 });
 
@@ -343,6 +422,136 @@ describe("package start config", () => {
     );
 
     expect(() => readPackageStartConfig(configPath)).toThrow(error);
+  });
+});
+
+describe("package source config platform fields", () => {
+  test("reads [platform] fields from source config", () => {
+    const dir = tempDir();
+    const configPath = join(dir, "plushie-package.config.toml");
+    writeFileSync(
+      configPath,
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        'working_dir = "."',
+        'command = ["bin/host"]',
+        'forward_env = ["PATH"]',
+        "",
+        "[platform]",
+        'publisher = "Example Corp"',
+        'copyright = "Copyright 2025 Example Corp"',
+        'category = "public.app-category.productivity"',
+        'description = "A great app"',
+        'bundle_id = "com.example.myapp"',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const config = readPackageSourceConfig(configPath);
+    expect(config?.platform?.publisher).toBe("Example Corp");
+    expect(config?.platform?.copyright).toBe("Copyright 2025 Example Corp");
+    expect(config?.platform?.category).toBe("public.app-category.productivity");
+    expect(config?.platform?.description).toBe("A great app");
+    expect(config?.platform?.bundleId).toBe("com.example.myapp");
+  });
+
+  test("reads [platform.macos] and [platform.windows] from source config", () => {
+    const dir = tempDir();
+    const configPath = join(dir, "plushie-package.config.toml");
+    writeFileSync(
+      configPath,
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        'working_dir = "."',
+        'command = ["bin/host"]',
+        'forward_env = ["PATH"]',
+        "",
+        "[platform.macos]",
+        'bundle_version = "42"',
+        "",
+        "[platform.windows]",
+        'install_scope = "perMachine"',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const config = readPackageSourceConfig(configPath);
+    expect(config?.platform?.macos?.bundleVersion).toBe("42");
+    expect(config?.platform?.windows?.installScope).toBe("perMachine");
+  });
+
+  test("returns no platform when [platform] section is absent", () => {
+    const dir = tempDir();
+    const configPath = join(dir, "plushie-package.config.toml");
+    writeFileSync(
+      configPath,
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        'working_dir = "."',
+        'command = ["bin/host"]',
+        'forward_env = ["PATH"]',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const config = readPackageSourceConfig(configPath);
+    expect(config?.platform).toBeUndefined();
+  });
+
+  test.each([
+    ["empty publisher", 'publisher = ""', /platform.publisher must not be empty/],
+    ["empty copyright", 'copyright = ""', /platform.copyright must not be empty/],
+    ["empty category", 'category = ""', /platform.category must not be empty/],
+    ["empty description", 'description = ""', /platform.description must not be empty/],
+    ["empty bundle_id", 'bundle_id = ""', /platform.bundle_id must not be empty/],
+    [
+      "invalid install_scope",
+      'install_scope = "system"',
+      /install_scope must be "perUser" or "perMachine"/,
+    ],
+  ])("rejects invalid platform field: %s", (_name, field, error) => {
+    const dir = tempDir();
+    const configPath = join(dir, "plushie-package.config.toml");
+    const isWindows = field.startsWith("install_scope");
+    writeFileSync(
+      configPath,
+      [
+        "config_version = 1",
+        "",
+        "[start]",
+        'working_dir = "."',
+        'command = ["bin/host"]',
+        'forward_env = ["PATH"]',
+        "",
+        isWindows ? "[platform.windows]" : "[platform]",
+        field,
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    expect(() => readPackageSourceConfig(configPath)).toThrow(error);
+  });
+
+  test("template includes commented-out platform examples", () => {
+    const text = renderPackageStartConfig();
+
+    expect(text).toContain("# [platform]");
+    expect(text).toContain("# publisher");
+    expect(text).toContain("# bundle_id");
+    expect(text).toContain("# [platform.macos]");
+    expect(text).toContain("# bundle_version");
+    expect(text).toContain("# [platform.windows]");
+    expect(text).toContain("# install_scope");
   });
 });
 

@@ -93,8 +93,28 @@ export interface PackageStartConfig {
   readonly forwardEnv: readonly string[];
 }
 
+export interface PackageSourceConfig {
+  readonly start: PackageStartConfig;
+  readonly platform?: PackagePlatformManifest;
+}
+
+export interface PackagePlatformMacosManifest {
+  readonly bundleVersion?: string;
+}
+
+export interface PackagePlatformWindowsManifest {
+  readonly installScope?: "perUser" | "perMachine";
+}
+
 export interface PackagePlatformManifest {
   readonly icon?: string;
+  readonly publisher?: string;
+  readonly copyright?: string;
+  readonly category?: string;
+  readonly description?: string;
+  readonly bundleId?: string;
+  readonly macos?: PackagePlatformMacosManifest;
+  readonly windows?: PackagePlatformWindowsManifest;
 }
 
 export interface ResolvedRenderer {
@@ -199,10 +219,19 @@ export function manifestForPayload(opts: {
   target?: string;
   rendererKind?: RendererKind;
   platformIcon?: string;
+  platform?: PackagePlatformManifest;
   workingDir?: string;
   forwardEnv?: readonly string[];
 }): PackageManifest {
   const archivePath = resolve(opts.payloadArchive);
+  // Merge platform config with the icon derived from payload preparation.
+  // platformIcon wins if both are supplied.
+  const iconField: PackagePlatformManifest | undefined =
+    opts.platformIcon !== undefined ? { icon: opts.platformIcon } : undefined;
+  const platform: PackagePlatformManifest | undefined =
+    opts.platform !== undefined || iconField !== undefined
+      ? { ...opts.platform, ...iconField }
+      : undefined;
   return {
     appId: opts.appId,
     ...(opts.appName !== undefined ? { appName: opts.appName } : {}),
@@ -212,7 +241,7 @@ export function manifestForPayload(opts: {
       kind: opts.rendererKind ?? "stock",
       path: opts.rendererPath,
     },
-    ...(opts.platformIcon !== undefined ? { platform: { icon: opts.platformIcon } } : {}),
+    ...(platform !== undefined ? { platform } : {}),
     startCommand: opts.startCommand,
     workingDir: opts.workingDir ?? ".",
     forwardEnv: opts.forwardEnv ?? DEFAULT_FORWARD_ENV,
@@ -245,8 +274,25 @@ export function renderPackageManifest(manifest: PackageManifest): string {
     `kind = ${tomlString(manifest.renderer.kind)}`,
     "",
   );
-  if (manifest.platform?.icon !== undefined) {
-    lines.push("[platform]", `icon = ${tomlString(manifest.platform.icon)}`, "");
+  const p = manifest.platform;
+  if (p !== undefined) {
+    const platformLines: string[] = [];
+    if (p.icon !== undefined) platformLines.push(`icon = ${tomlString(p.icon)}`);
+    if (p.publisher !== undefined) platformLines.push(`publisher = ${tomlString(p.publisher)}`);
+    if (p.copyright !== undefined) platformLines.push(`copyright = ${tomlString(p.copyright)}`);
+    if (p.category !== undefined) platformLines.push(`category = ${tomlString(p.category)}`);
+    if (p.description !== undefined)
+      platformLines.push(`description = ${tomlString(p.description)}`);
+    if (p.bundleId !== undefined) platformLines.push(`bundle_id = ${tomlString(p.bundleId)}`);
+    if (platformLines.length > 0) {
+      lines.push("[platform]", ...platformLines, "");
+    }
+    if (p.macos?.bundleVersion !== undefined) {
+      lines.push("[platform.macos]", `bundle_version = ${tomlString(p.macos.bundleVersion)}`, "");
+    }
+    if (p.windows?.installScope !== undefined) {
+      lines.push("[platform.windows]", `install_scope = ${tomlString(p.windows.installScope)}`, "");
+    }
   }
   lines.push(
     "[payload]",
@@ -258,13 +304,19 @@ export function renderPackageManifest(manifest: PackageManifest): string {
   return lines.join("\n");
 }
 
+export function readPackageSourceConfig(
+  path = DEFAULT_PACKAGE_CONFIG,
+): PackageSourceConfig | undefined {
+  if (!existsSync(path)) return undefined;
+  const config = parsePackageSourceConfig(readFileSync(path, "utf-8"), path);
+  validatePackageStartConfig(config.start, path);
+  return config;
+}
+
 export function readPackageStartConfig(
   path = DEFAULT_PACKAGE_CONFIG,
 ): PackageStartConfig | undefined {
-  if (!existsSync(path)) return undefined;
-  const config = parsePackageStartConfig(readFileSync(path, "utf-8"), path);
-  validatePackageStartConfig(config, path);
-  return config;
+  return readPackageSourceConfig(path)?.start;
 }
 
 export function defaultPackageStartConfig(
@@ -295,6 +347,22 @@ export function renderPackageStartConfig(
     `command = ${tomlArray(config.command)}`,
     "# Environment variable names copied from the parent process.",
     `forward_env = ${tomlArray(config.forwardEnv)}`,
+    "",
+    "# Optional platform metadata. All fields are optional; omit the",
+    "# [platform] section entirely when none apply.",
+    "#",
+    "# [platform]",
+    '# publisher = "Example Corp"',
+    '# copyright = "Copyright 2025 Example Corp"',
+    '# category = "public.app-category.productivity"',
+    '# description = "A great app"',
+    '# bundle_id = "com.example.myapp"',
+    "#",
+    "# [platform.macos]",
+    '# bundle_version = "1"',
+    "#",
+    "# [platform.windows]",
+    '# install_scope = "perUser"   # perUser or perMachine',
     "",
   ].join("\n");
 }
@@ -555,10 +623,11 @@ export function prepareNodePackagePayload(
   if (opts.packageConfig !== undefined && !existsSync(opts.packageConfig)) {
     throw new Error(`package config not found at ${opts.packageConfig}`);
   }
-  const startConfig =
+  const sourceConfig =
     opts.packageConfig !== undefined
-      ? readPackageStartConfig(opts.packageConfig)
-      : readPackageStartConfig();
+      ? readPackageSourceConfig(opts.packageConfig)
+      : readPackageSourceConfig();
+  const startConfig = sourceConfig?.start;
 
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(join(payloadRoot, "bin"), { recursive: true });
@@ -596,6 +665,7 @@ export function prepareNodePackagePayload(
     workingDir: startConfig?.workingDir ?? ".",
     ...(startConfig !== undefined ? { forwardEnv: startConfig.forwardEnv } : {}),
     ...(platformIcon !== undefined ? { platformIcon } : {}),
+    ...(sourceConfig?.platform !== undefined ? { platform: sourceConfig.platform } : {}),
     payloadArchive: archivePath,
   });
   writePackageManifest(manifestPath, manifest);
@@ -615,7 +685,7 @@ function readSdkVersion(): string {
   return pkg.version;
 }
 
-function parsePackageStartConfig(source: string, path: string): PackageStartConfig {
+function parsePackageSourceConfig(source: string, path: string): PackageSourceConfig {
   let table = "";
   let configVersion: number | undefined;
   const start: Partial<{
@@ -623,10 +693,20 @@ function parsePackageStartConfig(source: string, path: string): PackageStartConf
     command: readonly string[];
     forwardEnv: readonly string[];
   }> = {};
+  const platform: {
+    icon?: string;
+    publisher?: string;
+    copyright?: string;
+    category?: string;
+    description?: string;
+    bundleId?: string;
+    macos?: { bundleVersion?: string };
+    windows?: { installScope?: "perUser" | "perMachine" };
+  } = {};
 
   for (const statement of packageConfigStatements(source, path)) {
     const line = statement.text;
-    const tableMatch = line.match(/^\[([A-Za-z0-9_-]+)\]$/);
+    const tableMatch = line.match(/^\[([A-Za-z0-9_][A-Za-z0-9_.-]*)\]$/);
     if (tableMatch !== null) {
       table = tableMatch[1]!;
       continue;
@@ -647,6 +727,53 @@ function parsePackageStartConfig(source: string, path: string): PackageStartConf
       start.command = parseTomlStringArray(value, path, statement.line);
     } else if (table === "start" && key === "forward_env") {
       start.forwardEnv = parseTomlStringArray(value, path, statement.line);
+    } else if (table === "platform" && key === "icon") {
+      platform.icon = parseNonEmptyTomlString(value, "platform.icon", path, statement.line);
+    } else if (table === "platform" && key === "publisher") {
+      platform.publisher = parseNonEmptyTomlString(
+        value,
+        "platform.publisher",
+        path,
+        statement.line,
+      );
+    } else if (table === "platform" && key === "copyright") {
+      platform.copyright = parseNonEmptyTomlString(
+        value,
+        "platform.copyright",
+        path,
+        statement.line,
+      );
+    } else if (table === "platform" && key === "category") {
+      platform.category = parseNonEmptyTomlString(value, "platform.category", path, statement.line);
+    } else if (table === "platform" && key === "description") {
+      platform.description = parseNonEmptyTomlString(
+        value,
+        "platform.description",
+        path,
+        statement.line,
+      );
+    } else if (table === "platform" && key === "bundle_id") {
+      platform.bundleId = parseNonEmptyTomlString(
+        value,
+        "platform.bundle_id",
+        path,
+        statement.line,
+      );
+    } else if (table === "platform.macos" && key === "bundle_version") {
+      platform.macos = {
+        ...platform.macos,
+        bundleVersion: parseNonEmptyTomlString(
+          value,
+          "platform.macos.bundle_version",
+          path,
+          statement.line,
+        ),
+      };
+    } else if (table === "platform.windows" && key === "install_scope") {
+      platform.windows = {
+        ...platform.windows,
+        installScope: parseInstallScope(value, path, statement.line),
+      };
     } else {
       throw new Error(`${path}:${String(statement.line)}: unsupported package config key: ${key}`);
     }
@@ -665,10 +792,23 @@ function parsePackageStartConfig(source: string, path: string): PackageStartConf
     throw new Error(`${path}: package config missing [start].forward_env`);
   }
 
+  const hasPlatform =
+    platform.icon !== undefined ||
+    platform.publisher !== undefined ||
+    platform.copyright !== undefined ||
+    platform.category !== undefined ||
+    platform.description !== undefined ||
+    platform.bundleId !== undefined ||
+    platform.macos !== undefined ||
+    platform.windows !== undefined;
+
   return {
-    workingDir: start.workingDir,
-    command: start.command,
-    forwardEnv: start.forwardEnv,
+    start: {
+      workingDir: start.workingDir,
+      command: start.command,
+      forwardEnv: start.forwardEnv,
+    },
+    ...(hasPlatform ? { platform } : {}),
   };
 }
 
@@ -694,7 +834,7 @@ function packageConfigStatements(
       continue;
     }
 
-    if (line.match(/^\[([A-Za-z0-9_-]+)\]$/) !== null || tomlBracketDepth(line) <= 0) {
+    if (line.match(/^\[([A-Za-z0-9_][A-Za-z0-9_.-]*)\]$/) !== null || tomlBracketDepth(line) <= 0) {
       statements.push({ line: lineNumber, text: line });
     } else {
       pending = { line: lineNumber, parts: [line] };
@@ -766,6 +906,33 @@ function parseTomlString(value: string, path: string, lineNumber: number): strin
   const parsed = parseTomlValue(value, path, lineNumber);
   if (typeof parsed !== "string") {
     throw new Error(`${path}:${lineNumber}: expected string value`);
+  }
+  return parsed;
+}
+
+function parseNonEmptyTomlString(
+  value: string,
+  field: string,
+  path: string,
+  lineNumber: number,
+): string {
+  const parsed = parseTomlString(value, path, lineNumber);
+  if (parsed === "") {
+    throw new Error(`${path}:${lineNumber}: ${field} must not be empty`);
+  }
+  return parsed;
+}
+
+function parseInstallScope(
+  value: string,
+  path: string,
+  lineNumber: number,
+): "perUser" | "perMachine" {
+  const parsed = parseTomlString(value, path, lineNumber);
+  if (parsed !== "perUser" && parsed !== "perMachine") {
+    throw new Error(
+      `${path}:${lineNumber}: platform.windows.install_scope must be "perUser" or "perMachine"`,
+    );
   }
   return parsed;
 }

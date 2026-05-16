@@ -235,7 +235,7 @@ plushie package --write-package-config --package-config config/package.toml
 ```
 
 The generated `plushie-package.config.toml` lets the app commit a
-shared TOML package start config:
+shared TOML package start config, along with optional platform metadata:
 
 ```toml
 config_version = 1
@@ -247,6 +247,22 @@ forward_env = [
   "PATH",
   "HOME",
 ]
+
+# Optional platform metadata passed through to the manifest.
+# All fields are optional; omit the [platform] section when none apply.
+#
+# [platform]
+# publisher = "Example Corp"
+# copyright = "Copyright 2025 Example Corp"
+# category = "public.app-category.productivity"
+# description = "A great app"
+# bundle_id = "com.example.myapp"
+#
+# [platform.macos]
+# bundle_version = "1"
+#
+# [platform.windows]
+# install_scope = "perUser"   # perUser or perMachine
 ```
 
 `forward_env = []` is valid when the packaged host should inherit no
