@@ -1,29 +1,17 @@
 /**
  * Standalone package payload helpers.
  *
- * The shared Rust launcher owns the outer executable. The TypeScript
- * SDK owns the host payload shape and the package manifest values for
- * TypeScript apps.
+ * The TypeScript SDK builds the host payload and writes a partial
+ * manifest; `cargo plushie package assemble` reads the partial
+ * manifest and payload directory to produce the final package.
  *
  * @module
  */
 
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import {
-  chmodSync,
-  copyFileSync,
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { basename, dirname, isAbsolute, join, resolve, win32 } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { arch, execPath, platform } from "node:process";
 import {
   installedBinaryName,
@@ -31,90 +19,25 @@ import {
   installedToolName,
   PLUSHIE_RUST_VERSION,
 } from "./client/binary.js";
-import { PACKAGE_READY_FILE_ENV } from "./client/package_ready.js";
 import { PROTOCOL_VERSION } from "./client/protocol.js";
 import { generateSEAConfig } from "./sea.js";
 
 export type RendererKind = "stock" | "custom";
-const DEFAULT_FORWARD_ENV = [
-  "PATH",
-  "HOME",
-  "LANG",
-  "LC_ALL",
-  "XDG_RUNTIME_DIR",
-  "WAYLAND_DISPLAY",
-  "DISPLAY",
-] as const;
 const DEFAULT_PACKAGE_CONFIG = "plushie-package.config.toml";
-// Names owned by the launcher or renderer that must not be forwarded from the
-// host environment. Forwarding these would let a host environment variable
-// silently override launcher-injected values, breaking the packaging contract.
-// Any name matching /^PLUSHIE_/ that is not in this list should be added here
-// when it becomes a documented launcher- or renderer-owned variable.
-const RESERVED_FORWARD_ENV = new Set([
-  "PLUSHIE_BINARY_PATH",
-  "PLUSHIE_PACKAGE_DIR",
-  PACKAGE_READY_FILE_ENV, // PLUSHIE_PACKAGE_READY_FILE
-  "PLUSHIE_SOCKET",
-  "PLUSHIE_TOKEN",
-  "PLUSHIE_TRANSPORT",
-  "PLUSHIE_RUST_SOURCE_PATH",
-  "PLUSHIE_RELEASE_BASE_URL",
-  "PLUSHIE_CACHE_DIR",
-  "PLUSHIE_LAUNCHER_PATH",
-  "PLUSHIE_TOOL_SOURCE_KIND",
-  "PLUSHIE_FORMAT",
-  "PLUSHIE_NO_CATCH_UNWIND",
-]);
 
 export interface RendererManifest {
   readonly kind: RendererKind;
   readonly path: string;
 }
 
-export interface PackageManifest {
+/** Partial manifest written by the SDK; cargo-plushie completes it. */
+export interface PartialPackageManifest {
   readonly appId: string;
   readonly appName?: string;
   readonly appVersion: string;
   readonly target: string;
   readonly renderer: RendererManifest;
-  readonly platform?: PackagePlatformManifest;
   readonly startCommand: readonly string[];
-  readonly workingDir: string;
-  readonly forwardEnv: readonly string[];
-  readonly payloadArchive: string;
-  readonly payloadHash: string;
-  readonly payloadSize: number;
-}
-
-export interface PackageStartConfig {
-  readonly workingDir: string;
-  readonly command: readonly string[];
-  readonly forwardEnv: readonly string[];
-}
-
-export interface PackageSourceConfig {
-  readonly start: PackageStartConfig;
-  readonly platform?: PackagePlatformManifest;
-}
-
-export interface PackagePlatformMacosManifest {
-  readonly bundleVersion?: string;
-}
-
-export interface PackagePlatformWindowsManifest {
-  readonly installScope?: "perUser" | "perMachine";
-}
-
-export interface PackagePlatformManifest {
-  readonly icon?: string;
-  readonly publisher?: string;
-  readonly copyright?: string;
-  readonly category?: string;
-  readonly description?: string;
-  readonly bundleId?: string;
-  readonly macos?: PackagePlatformMacosManifest;
-  readonly windows?: PackagePlatformWindowsManifest;
 }
 
 export interface ResolvedRenderer {
@@ -148,8 +71,6 @@ export interface PrepareNodePackagePayloadOptions {
   readonly renderer?: ResolvedRenderer;
   readonly rendererPath?: string;
   readonly rendererKind?: RendererKind;
-  readonly icon?: string;
-  readonly defaultIcon?: boolean;
   readonly packageConfig?: string;
   readonly target?: string;
   readonly env?: NodeJS.ProcessEnv;
@@ -157,10 +78,14 @@ export interface PrepareNodePackagePayloadOptions {
 }
 
 export interface PreparedNodePackagePayload {
-  readonly manifest: PackageManifest;
+  readonly manifest: PartialPackageManifest;
   readonly manifestPath: string;
-  readonly payloadArchivePath: string;
+  readonly payloadDir: string;
   readonly renderer: ResolvedRenderer;
+}
+
+export interface PackageStartConfig {
+  readonly command: readonly string[];
 }
 
 export function normalizePackageTarget(osName: string, cpuName: string): string {
@@ -199,59 +124,7 @@ export function packageTarget(): string {
   return normalizePackageTarget(platform, arch);
 }
 
-export function sha256File(path: string): string {
-  const digest = createHash("sha256");
-  digest.update(readFileSync(path));
-  return digest.digest("hex");
-}
-
-export function fileSize(path: string): number {
-  return statSync(path).size;
-}
-
-export function manifestForPayload(opts: {
-  appId: string;
-  appName?: string;
-  appVersion: string;
-  rendererPath: string;
-  startCommand: readonly string[];
-  payloadArchive: string;
-  target?: string;
-  rendererKind?: RendererKind;
-  platformIcon?: string;
-  platform?: PackagePlatformManifest;
-  workingDir?: string;
-  forwardEnv?: readonly string[];
-}): PackageManifest {
-  const archivePath = resolve(opts.payloadArchive);
-  // Merge platform config with the icon derived from payload preparation.
-  // platformIcon wins if both are supplied.
-  const iconField: PackagePlatformManifest | undefined =
-    opts.platformIcon !== undefined ? { icon: opts.platformIcon } : undefined;
-  const platform: PackagePlatformManifest | undefined =
-    opts.platform !== undefined || iconField !== undefined
-      ? { ...opts.platform, ...iconField }
-      : undefined;
-  return {
-    appId: opts.appId,
-    ...(opts.appName !== undefined ? { appName: opts.appName } : {}),
-    appVersion: opts.appVersion,
-    target: opts.target ?? packageTarget(),
-    renderer: {
-      kind: opts.rendererKind ?? "stock",
-      path: opts.rendererPath,
-    },
-    ...(platform !== undefined ? { platform } : {}),
-    startCommand: opts.startCommand,
-    workingDir: opts.workingDir ?? ".",
-    forwardEnv: opts.forwardEnv ?? DEFAULT_FORWARD_ENV,
-    payloadArchive: basename(archivePath),
-    payloadHash: sha256File(archivePath),
-    payloadSize: fileSize(archivePath),
-  };
-}
-
-export function renderPackageManifest(manifest: PackageManifest): string {
+export function renderPartialManifest(manifest: PartialPackageManifest): string {
   const lines = ["schema_version = 1", `app_id = ${tomlString(manifest.appId)}`];
   if (manifest.appName !== undefined) {
     lines.push(`app_name = ${tomlString(manifest.appName)}`);
@@ -265,88 +138,40 @@ export function renderPackageManifest(manifest: PackageManifest): string {
     `protocol_version = ${String(PROTOCOL_VERSION)}`,
     "",
     "[start]",
-    `working_dir = ${tomlString(manifest.workingDir)}`,
     `command = ${tomlArray(manifest.startCommand)}`,
-    `forward_env = ${tomlArray(manifest.forwardEnv)}`,
     "",
     "[renderer]",
     `path = ${tomlString(manifest.renderer.path)}`,
     `kind = ${tomlString(manifest.renderer.kind)}`,
     "",
   );
-  const p = manifest.platform;
-  if (p !== undefined) {
-    const platformLines: string[] = [];
-    if (p.icon !== undefined) platformLines.push(`icon = ${tomlString(p.icon)}`);
-    if (p.publisher !== undefined) platformLines.push(`publisher = ${tomlString(p.publisher)}`);
-    if (p.copyright !== undefined) platformLines.push(`copyright = ${tomlString(p.copyright)}`);
-    if (p.category !== undefined) platformLines.push(`category = ${tomlString(p.category)}`);
-    if (p.description !== undefined)
-      platformLines.push(`description = ${tomlString(p.description)}`);
-    if (p.bundleId !== undefined) platformLines.push(`bundle_id = ${tomlString(p.bundleId)}`);
-    if (platformLines.length > 0) {
-      lines.push("[platform]", ...platformLines, "");
-    }
-    if (p.macos?.bundleVersion !== undefined) {
-      lines.push("[platform.macos]", `bundle_version = ${tomlString(p.macos.bundleVersion)}`, "");
-    }
-    if (p.windows?.installScope !== undefined) {
-      lines.push("[platform.windows]", `install_scope = ${tomlString(p.windows.installScope)}`, "");
-    }
-  }
-  lines.push(
-    "[payload]",
-    `archive = ${tomlString(manifest.payloadArchive)}`,
-    `hash = ${tomlString(`sha256:${manifest.payloadHash}`)}`,
-    `size = ${String(manifest.payloadSize)}`,
-    "",
-  );
   return lines.join("\n");
 }
 
-export function readPackageSourceConfig(
-  path = DEFAULT_PACKAGE_CONFIG,
-): PackageSourceConfig | undefined {
-  if (!existsSync(path)) return undefined;
-  const config = parsePackageSourceConfig(readFileSync(path, "utf-8"), path);
-  validatePackageStartConfig(config.start, path);
-  return config;
-}
-
-export function readPackageStartConfig(
-  path = DEFAULT_PACKAGE_CONFIG,
-): PackageStartConfig | undefined {
-  return readPackageSourceConfig(path)?.start;
+export function writePartialManifest(path: string, manifest: PartialPackageManifest): void {
+  mkdirSync(dirname(resolve(path)), { recursive: true });
+  writeFileSync(path, renderPartialManifest(manifest), "utf-8");
 }
 
 export function defaultPackageStartConfig(
   command: readonly string[] = ["bin/connect"],
 ): PackageStartConfig {
-  return {
-    workingDir: ".",
-    command,
-    forwardEnv: [...DEFAULT_FORWARD_ENV],
-  };
+  return { command };
 }
 
 export function renderPackageStartConfig(
   config: PackageStartConfig = defaultPackageStartConfig(),
 ): string {
-  validatePackageStartConfig(config, DEFAULT_PACKAGE_CONFIG);
   return [
     "# Plushie standalone package config.",
     "# Commit this file and edit it when the packaged app needs a",
-    "# different entry point, working directory, or forwarded environment.",
+    "# different entry point or forwarded environment.",
     "",
     "config_version = 1",
     "",
     "[start]",
-    "# Relative to the extracted app package.",
-    `working_dir = ${tomlString(config.workingDir)}`,
     "# Structured argv. The first item is the packaged host executable.",
     `command = ${tomlArray(config.command)}`,
-    "# Environment variable names copied from the parent process.",
-    `forward_env = ${tomlArray(config.forwardEnv)}`,
     "",
     "# Optional platform metadata. All fields are optional; omit the",
     "# [platform] section entirely when none apply.",
@@ -373,54 +198,6 @@ export function writePackageStartConfig(
 ): void {
   mkdirSync(dirname(resolve(path)), { recursive: true });
   writeFileSync(path, renderPackageStartConfig(config), "utf-8");
-}
-
-export function writePackageManifest(path: string, manifest: PackageManifest): void {
-  mkdirSync(dirname(resolve(path)), { recursive: true });
-  writeFileSync(path, renderPackageManifest(manifest), "utf-8");
-}
-
-export function archivePayload(payloadDir: string, archivePath: string): void {
-  const resolvedPayloadDir = resolve(payloadDir);
-  const resolvedArchivePath = resolve(archivePath);
-  validatePayloadArchiveInputs(resolvedPayloadDir);
-  mkdirSync(dirname(resolvedArchivePath), { recursive: true });
-
-  const tar = archiveTarCommand();
-  if (!archiveTarSupportsGnuFlags(tar)) {
-    throw new Error("GNU tar or gtar is required for deterministic payload archives");
-  }
-
-  const commonArgs = [
-    "-C",
-    resolvedPayloadDir,
-    "--sort=name",
-    "--mtime=UTC 1970-01-01",
-    "--owner=0",
-    "--group=0",
-    "--numeric-owner",
-  ];
-
-  if (tarSupportsZstd(tar)) {
-    runCommand(tar, [...commonArgs, "--zstd", "-cf", resolvedArchivePath, "."]);
-    return;
-  }
-
-  if (commandExists("zstd")) {
-    if (process.platform === "win32") {
-      throw new Error(
-        "tar does not support --zstd and the fallback archive pipeline requires a Unix shell. " +
-          "Install GNU tar with --zstd support for Windows package assembly.",
-      );
-    }
-    runCommand("sh", [
-      "-c",
-      `${shellQuote(tar)} ${commonArgs.map(shellQuote).join(" ")} -cf - . | zstd -q -o ${shellQuote(resolvedArchivePath)}`,
-    ]);
-    return;
-  }
-
-  throw new Error("missing required command: zstd");
 }
 
 export function buildSEAExecutable(opts: BuildSEAExecutableOptions): void {
@@ -510,6 +287,69 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
       `Run 'npx plushie download' or set PLUSHIE_BINARY_PATH.\n` +
       `Expected: ${resolve("bin", installedBinaryName())}`,
   );
+}
+
+export function prepareNodePackagePayload(
+  opts: PrepareNodePackagePayloadOptions,
+): PreparedNodePackagePayload {
+  if (opts.main === undefined && opts.hostBin === undefined) {
+    throw new Error("Either main or hostBin is required");
+  }
+  if (opts.main !== undefined && opts.hostBin !== undefined) {
+    throw new Error("main and hostBin cannot be used together");
+  }
+
+  const outputDir = resolve(opts.outputDir);
+  const log = opts.log ?? (() => {});
+  const payloadDir = join(outputDir, "payload-root");
+  const manifestPath = join(outputDir, "plushie-package.toml");
+  const renderer = opts.renderer ?? resolvePackageRenderer(opts);
+
+  rmSync(outputDir, { recursive: true, force: true });
+  mkdirSync(join(payloadDir, "bin"), { recursive: true });
+
+  const hostPayloadPath = join(payloadDir, "bin", opts.hostName);
+  if (opts.main !== undefined) {
+    log("Building host SEA for shared launcher payload...");
+    buildSEAExecutable({
+      main: opts.main,
+      output: hostPayloadPath,
+    });
+  } else {
+    copyFileSync(resolve(opts.hostBin!), hostPayloadPath);
+    makeExecutable(hostPayloadPath);
+  }
+
+  const rendererPayloadPath = join(payloadDir, renderer.payloadPath);
+  mkdirSync(dirname(rendererPayloadPath), { recursive: true });
+  copyFileSync(renderer.sourcePath, rendererPayloadPath);
+  makeExecutable(rendererPayloadPath);
+
+  const manifest: PartialPackageManifest = {
+    appId: opts.appId,
+    ...(opts.appName !== undefined ? { appName: opts.appName } : {}),
+    appVersion: opts.appVersion,
+    target: opts.target ?? packageTarget(),
+    renderer: {
+      kind: renderer.kind,
+      path: renderer.payloadPath,
+    },
+    startCommand: [join("bin", opts.hostName)],
+  };
+  writePartialManifest(manifestPath, manifest);
+
+  return {
+    manifest,
+    manifestPath,
+    payloadDir,
+    renderer,
+  };
+}
+
+function readSdkVersion(): string {
+  const require = createRequire(import.meta.url);
+  const pkg = require("../package.json") as { version: string };
+  return pkg.version;
 }
 
 function ensurePortablePackageToolsAvailable(): void {
@@ -604,598 +444,7 @@ function checkManagedPackageTools(env: NodeJS.ProcessEnv = process.env): void {
   });
 }
 
-export function prepareNodePackagePayload(
-  opts: PrepareNodePackagePayloadOptions,
-): PreparedNodePackagePayload {
-  if (opts.main === undefined && opts.hostBin === undefined) {
-    throw new Error("Either main or hostBin is required");
-  }
-  if (opts.main !== undefined && opts.hostBin !== undefined) {
-    throw new Error("main and hostBin cannot be used together");
-  }
-
-  const outputDir = resolve(opts.outputDir);
-  const log = opts.log ?? (() => {});
-  const payloadRoot = join(outputDir, "payload-root");
-  const archivePath = join(outputDir, "payload.tar.zst");
-  const manifestPath = join(outputDir, "plushie-package.toml");
-  const renderer = opts.renderer ?? resolvePackageRenderer(opts);
-  if (opts.packageConfig !== undefined && !existsSync(opts.packageConfig)) {
-    throw new Error(`package config not found at ${opts.packageConfig}`);
-  }
-  const sourceConfig =
-    opts.packageConfig !== undefined
-      ? readPackageSourceConfig(opts.packageConfig)
-      : readPackageSourceConfig();
-  const startConfig = sourceConfig?.start;
-
-  rmSync(outputDir, { recursive: true, force: true });
-  mkdirSync(join(payloadRoot, "bin"), { recursive: true });
-
-  const hostPayloadPath = join(payloadRoot, "bin", opts.hostName);
-  if (opts.main !== undefined) {
-    log("Building host SEA for shared launcher payload...");
-    buildSEAExecutable({
-      main: opts.main,
-      output: hostPayloadPath,
-    });
-  } else {
-    copyFileSync(resolve(opts.hostBin!), hostPayloadPath);
-    makeExecutable(hostPayloadPath);
-  }
-
-  const rendererPayloadPath = join(payloadRoot, renderer.payloadPath);
-  mkdirSync(dirname(rendererPayloadPath), { recursive: true });
-  copyFileSync(renderer.sourcePath, rendererPayloadPath);
-  makeExecutable(rendererPayloadPath);
-
-  const platformIcon = preparePlatformIcon(payloadRoot, opts);
-
-  log("Compressing shared launcher payload...");
-  archivePayload(payloadRoot, archivePath);
-
-  const manifest = manifestForPayload({
-    appId: opts.appId,
-    ...(opts.appName !== undefined ? { appName: opts.appName } : {}),
-    appVersion: opts.appVersion,
-    ...(opts.target !== undefined ? { target: opts.target } : {}),
-    rendererKind: renderer.kind,
-    rendererPath: renderer.payloadPath,
-    startCommand: startConfig?.command ?? [join("bin", opts.hostName)],
-    workingDir: startConfig?.workingDir ?? ".",
-    ...(startConfig !== undefined ? { forwardEnv: startConfig.forwardEnv } : {}),
-    ...(platformIcon !== undefined ? { platformIcon } : {}),
-    ...(sourceConfig?.platform !== undefined ? { platform: sourceConfig.platform } : {}),
-    payloadArchive: archivePath,
-  });
-  writePackageManifest(manifestPath, manifest);
-  rmSync(payloadRoot, { recursive: true, force: true });
-
-  return {
-    manifest,
-    manifestPath,
-    payloadArchivePath: archivePath,
-    renderer,
-  };
-}
-
-function readSdkVersion(): string {
-  const require = createRequire(import.meta.url);
-  const pkg = require("../package.json") as { version: string };
-  return pkg.version;
-}
-
-function parsePackageSourceConfig(source: string, path: string): PackageSourceConfig {
-  let table = "";
-  let configVersion: number | undefined;
-  const start: Partial<{
-    workingDir: string;
-    command: readonly string[];
-    forwardEnv: readonly string[];
-  }> = {};
-  const platform: {
-    icon?: string;
-    publisher?: string;
-    copyright?: string;
-    category?: string;
-    description?: string;
-    bundleId?: string;
-    macos?: { bundleVersion?: string };
-    windows?: { installScope?: "perUser" | "perMachine" };
-  } = {};
-
-  for (const statement of packageConfigStatements(source, path)) {
-    const line = statement.text;
-    const tableMatch = line.match(/^\[([A-Za-z0-9_][A-Za-z0-9_.-]*)\]$/);
-    if (tableMatch !== null) {
-      table = tableMatch[1]!;
-      continue;
-    }
-
-    const match = line.match(/^([A-Za-z0-9_-]+)\s*=\s*([\s\S]+)$/);
-    if (match === null) {
-      throw new Error(`${path}:${String(statement.line)}: unsupported package config syntax`);
-    }
-
-    const key = match[1]!;
-    const value = match[2]!.trim();
-    if (table === "" && key === "config_version") {
-      configVersion = parseConfigVersion(value, path, statement.line);
-    } else if (table === "start" && key === "working_dir") {
-      start.workingDir = parseTomlString(value, path, statement.line);
-    } else if (table === "start" && key === "command") {
-      start.command = parseTomlStringArray(value, path, statement.line);
-    } else if (table === "start" && key === "forward_env") {
-      start.forwardEnv = parseTomlStringArray(value, path, statement.line);
-    } else if (table === "platform" && key === "icon") {
-      platform.icon = parseNonEmptyTomlString(value, "platform.icon", path, statement.line);
-    } else if (table === "platform" && key === "publisher") {
-      platform.publisher = parseNonEmptyTomlString(
-        value,
-        "platform.publisher",
-        path,
-        statement.line,
-      );
-    } else if (table === "platform" && key === "copyright") {
-      platform.copyright = parseNonEmptyTomlString(
-        value,
-        "platform.copyright",
-        path,
-        statement.line,
-      );
-    } else if (table === "platform" && key === "category") {
-      platform.category = parseNonEmptyTomlString(value, "platform.category", path, statement.line);
-    } else if (table === "platform" && key === "description") {
-      platform.description = parseNonEmptyTomlString(
-        value,
-        "platform.description",
-        path,
-        statement.line,
-      );
-    } else if (table === "platform" && key === "bundle_id") {
-      platform.bundleId = parseNonEmptyTomlString(
-        value,
-        "platform.bundle_id",
-        path,
-        statement.line,
-      );
-    } else if (table === "platform.macos" && key === "bundle_version") {
-      platform.macos = {
-        ...platform.macos,
-        bundleVersion: parseNonEmptyTomlString(
-          value,
-          "platform.macos.bundle_version",
-          path,
-          statement.line,
-        ),
-      };
-    } else if (table === "platform.windows" && key === "install_scope") {
-      platform.windows = {
-        ...platform.windows,
-        installScope: parseInstallScope(value, path, statement.line),
-      };
-    } else {
-      throw new Error(`${path}:${String(statement.line)}: unsupported package config key: ${key}`);
-    }
-  }
-
-  if (configVersion !== 1) {
-    throw new Error(`${path}: package config requires config_version = 1`);
-  }
-  if (start.workingDir === undefined) {
-    throw new Error(`${path}: package config missing [start].working_dir`);
-  }
-  if (start.command === undefined) {
-    throw new Error(`${path}: package config missing [start].command`);
-  }
-  if (start.forwardEnv === undefined) {
-    throw new Error(`${path}: package config missing [start].forward_env`);
-  }
-
-  const hasPlatform =
-    platform.icon !== undefined ||
-    platform.publisher !== undefined ||
-    platform.copyright !== undefined ||
-    platform.category !== undefined ||
-    platform.description !== undefined ||
-    platform.bundleId !== undefined ||
-    platform.macos !== undefined ||
-    platform.windows !== undefined;
-
-  return {
-    start: {
-      workingDir: start.workingDir,
-      command: start.command,
-      forwardEnv: start.forwardEnv,
-    },
-    ...(hasPlatform ? { platform } : {}),
-  };
-}
-
-function packageConfigStatements(
-  source: string,
-  path: string,
-): Array<{ readonly line: number; readonly text: string }> {
-  const statements: Array<{ readonly line: number; readonly text: string }> = [];
-  let pending: { line: number; parts: string[] } | undefined;
-
-  for (const [index, rawLine] of source.split(/\r?\n/).entries()) {
-    const lineNumber = index + 1;
-    const line = stripTomlComment(rawLine).trim();
-    if (line === "" && pending === undefined) continue;
-
-    if (pending !== undefined) {
-      if (line !== "") pending.parts.push(line);
-      const text = pending.parts.join("\n");
-      if (tomlBracketDepth(text) <= 0) {
-        statements.push({ line: pending.line, text });
-        pending = undefined;
-      }
-      continue;
-    }
-
-    if (line.match(/^\[([A-Za-z0-9_][A-Za-z0-9_.-]*)\]$/) !== null || tomlBracketDepth(line) <= 0) {
-      statements.push({ line: lineNumber, text: line });
-    } else {
-      pending = { line: lineNumber, parts: [line] };
-    }
-  }
-
-  if (pending !== undefined) {
-    throw new Error(`${path}:${String(pending.line)}: unterminated package config value`);
-  }
-
-  return statements;
-}
-
-function stripTomlComment(line: string): string {
-  let inString = false;
-  let escaped = false;
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i]!;
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (char === "\\") {
-        escaped = true;
-      } else if (char === '"') {
-        inString = false;
-      }
-    } else if (char === '"') {
-      inString = true;
-    } else if (char === "#") {
-      return line.slice(0, i);
-    }
-  }
-  return line;
-}
-
-function tomlBracketDepth(value: string): number {
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-  for (let i = 0; i < value.length; i++) {
-    const char = value[i]!;
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (char === "\\") {
-        escaped = true;
-      } else if (char === '"') {
-        inString = false;
-      }
-    } else if (char === '"') {
-      inString = true;
-    } else if (char === "[") {
-      depth += 1;
-    } else if (char === "]") {
-      depth -= 1;
-    }
-  }
-  return depth;
-}
-
-function parseConfigVersion(value: string, path: string, lineNumber: number): number {
-  if (!/^[0-9]+$/.test(value)) {
-    throw new Error(`${path}:${lineNumber}: config_version must be an integer`);
-  }
-  return Number(value);
-}
-
-function parseTomlString(value: string, path: string, lineNumber: number): string {
-  const parsed = parseTomlValue(value, path, lineNumber);
-  if (typeof parsed !== "string") {
-    throw new Error(`${path}:${lineNumber}: expected string value`);
-  }
-  return parsed;
-}
-
-function parseNonEmptyTomlString(
-  value: string,
-  field: string,
-  path: string,
-  lineNumber: number,
-): string {
-  const parsed = parseTomlString(value, path, lineNumber);
-  if (parsed === "") {
-    throw new Error(`${path}:${lineNumber}: ${field} must not be empty`);
-  }
-  return parsed;
-}
-
-function parseInstallScope(
-  value: string,
-  path: string,
-  lineNumber: number,
-): "perUser" | "perMachine" {
-  const parsed = parseTomlString(value, path, lineNumber);
-  if (parsed !== "perUser" && parsed !== "perMachine") {
-    throw new Error(
-      `${path}:${lineNumber}: platform.windows.install_scope must be "perUser" or "perMachine"`,
-    );
-  }
-  return parsed;
-}
-
-function parseTomlStringArray(value: string, path: string, lineNumber: number): readonly string[] {
-  const parsed = parseTomlValue(value, path, lineNumber);
-  if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === "string")) {
-    throw new Error(`${path}:${lineNumber}: expected string array value`);
-  }
-  return parsed as string[];
-}
-
-function parseTomlValue(value: string, path: string, lineNumber: number): unknown {
-  const trimmed = value.trim();
-  if (trimmed.startsWith("[")) {
-    return parseTomlArray(trimmed, path, lineNumber);
-  }
-  return parseTomlScalar(trimmed, path, lineNumber);
-}
-
-function parseTomlArray(value: string, path: string, lineNumber: number): unknown[] {
-  if (!value.startsWith("[") || !value.endsWith("]")) {
-    throw new Error(`${path}:${lineNumber}: unsupported package config value`);
-  }
-
-  const items: unknown[] = [];
-  let index = 1;
-  let expectingValue = true;
-  while (index < value.length - 1) {
-    index = skipTomlWhitespace(value, index);
-    if (index >= value.length - 1) break;
-
-    const char = value[index]!;
-    if (char === ",") {
-      if (expectingValue) {
-        throw new Error(`${path}:${lineNumber}: unsupported package config value`);
-      }
-      expectingValue = true;
-      index += 1;
-      continue;
-    }
-    if (!expectingValue) {
-      throw new Error(`${path}:${lineNumber}: unsupported package config value`);
-    }
-
-    const parsed = parseTomlArrayItem(value, index, path, lineNumber);
-    items.push(parsed.value);
-    index = parsed.next;
-    expectingValue = false;
-  }
-
-  return items;
-}
-
-function parseTomlArrayItem(
-  value: string,
-  start: number,
-  path: string,
-  lineNumber: number,
-): { readonly value: unknown; readonly next: number } {
-  if (value[start] === '"') {
-    const end = findTomlStringEnd(value, start, path, lineNumber);
-    return {
-      value: parseTomlBasicString(value.slice(start, end + 1), path, lineNumber),
-      next: end + 1,
-    };
-  }
-
-  let end = start;
-  while (end < value.length - 1 && value[end] !== "," && value[end] !== "]") {
-    end += 1;
-  }
-  return {
-    value: parseTomlScalar(value.slice(start, end).trim(), path, lineNumber),
-    next: end,
-  };
-}
-
-function skipTomlWhitespace(value: string, start: number): number {
-  let index = start;
-  while (index < value.length && /\s/.test(value[index]!)) {
-    index += 1;
-  }
-  return index;
-}
-
-function parseTomlScalar(value: string, path: string, lineNumber: number): unknown {
-  if (value === "true") return true;
-  if (value === "false") return false;
-  if (/^[+-]?[0-9]+$/.test(value)) return Number(value);
-  if (/^[+-]?[0-9]+\.[0-9]+$/.test(value)) return Number(value);
-  if (value.startsWith('"')) return parseTomlBasicString(value, path, lineNumber);
-  throw new Error(`${path}:${lineNumber}: unsupported package config value`);
-}
-
-function parseTomlBasicString(value: string, path: string, lineNumber: number): string {
-  try {
-    return JSON.parse(value) as string;
-  } catch {
-    throw new Error(`${path}:${lineNumber}: unsupported package config value`);
-  }
-}
-
-function findTomlStringEnd(value: string, start: number, path: string, lineNumber: number): number {
-  let escaped = false;
-  for (let index = start + 1; index < value.length; index++) {
-    const char = value[index]!;
-    if (escaped) {
-      escaped = false;
-    } else if (char === "\\") {
-      escaped = true;
-    } else if (char === '"') {
-      return index;
-    }
-  }
-  throw new Error(`${path}:${lineNumber}: unsupported package config value`);
-}
-
-function validatePackageStartConfig(config: PackageStartConfig, path: string): void {
-  validateRelativePackagePath(config.workingDir, "working_dir", path);
-  if (config.command.length === 0) {
-    throw new Error(`${path}: [start].command must not be empty`);
-  }
-  for (const [index, arg] of config.command.entries()) {
-    if (arg === "") {
-      throw new Error(`${path}: [start].command[${String(index)}] must not be empty`);
-    }
-  }
-  validateRelativePackagePath(config.command[0]!, "command[0]", path);
-  for (const name of config.forwardEnv) {
-    if (name === "" || name.includes(",") || name.includes("=")) {
-      throw new Error(`${path}: invalid [start].forward_env name: ${name}`);
-    }
-    if (RESERVED_FORWARD_ENV.has(name)) {
-      throw new Error(`${path}: [start].forward_env cannot include reserved name: ${name}`);
-    }
-  }
-}
-
-function validateRelativePackagePath(value: string, label: string, path: string): void {
-  if (value === "") {
-    throw new Error(`${path}: [start].${label} must not be empty`);
-  }
-  if (isAbsolute(value) || win32.isAbsolute(value)) {
-    throw new Error(`${path}: [start].${label} must be relative`);
-  }
-  if (value.split(/[\\/]+/).includes("..")) {
-    throw new Error(`${path}: [start].${label} must not contain parent traversal`);
-  }
-}
-
-function preparePlatformIcon(
-  payloadRoot: string,
-  opts: PrepareNodePackagePayloadOptions,
-): string | undefined {
-  if (opts.icon !== undefined && opts.defaultIcon === true) {
-    throw new Error("icon and defaultIcon cannot both be set");
-  }
-
-  if (opts.icon !== undefined) {
-    const iconPath = resolve(opts.icon);
-    const payloadPath = join("assets", basename(iconPath));
-    const dest = join(payloadRoot, payloadPath);
-    mkdirSync(dirname(dest), { recursive: true });
-    copyFileSync(iconPath, dest);
-    return payloadPath;
-  }
-
-  if (opts.defaultIcon === true) {
-    const assetsDir = join(payloadRoot, "assets");
-    writeDefaultIcons(assetsDir, opts.env);
-    return join("assets", "default-app-icon-512.png");
-  }
-
-  return undefined;
-}
-
-function writeDefaultIcons(outDir: string, env: NodeJS.ProcessEnv | undefined): void {
-  const rustSourcePath =
-    env?.["PLUSHIE_RUST_SOURCE_PATH"] ?? process.env["PLUSHIE_RUST_SOURCE_PATH"];
-  if (rustSourcePath !== undefined && rustSourcePath !== "") {
-    runCommand("cargo", [
-      "run",
-      "--manifest-path",
-      join(rustSourcePath, "Cargo.toml"),
-      "-p",
-      "cargo-plushie",
-      "--bin",
-      "plushie",
-      "--release",
-      "--",
-      "default-icons",
-      "--out",
-      outDir,
-    ]);
-    return;
-  }
-
-  runCommand(
-    resolve("bin", installedToolName()),
-    ["default-icons", "--out", outDir],
-    env === undefined ? {} : { env },
-  );
-}
-
-function validatePayloadArchiveInputs(payloadDir: string): void {
-  walk(payloadDir, (path) => {
-    const info = lstatSync(path);
-    if (info.isSymbolicLink()) {
-      throw new Error(`payload contains unsupported symlink: ${relativeWithin(payloadDir, path)}`);
-    }
-    if (!info.isDirectory() && !info.isFile()) {
-      throw new Error(
-        `payload contains unsupported special file: ${relativeWithin(payloadDir, path)}`,
-      );
-    }
-    if (info.isFile() && info.nlink > 1) {
-      throw new Error(
-        `payload contains unsupported hard-linked file: ${relativeWithin(payloadDir, path)}`,
-      );
-    }
-  });
-}
-
-function walk(path: string, visit: (path: string) => void): void {
-  visit(path);
-  if (!lstatSync(path).isDirectory()) return;
-  for (const entry of readdirSync(path)) {
-    walk(join(path, entry), visit);
-  }
-}
-
-function archiveTarCommand(): string {
-  if (gnuTar("tar")) return "tar";
-  if (commandExists("gtar") && gnuTar("gtar")) return "gtar";
-  return "tar";
-}
-
-function archiveTarSupportsGnuFlags(tar: string): boolean {
-  return gnuTar(tar);
-}
-
-function gnuTar(command: string): boolean {
-  const result = spawnSync(command, ["--version"], { encoding: "utf-8", stdio: "pipe" });
-  return result.status === 0 && result.stdout.includes("GNU tar");
-}
-
-function tarSupportsZstd(command: string): boolean {
-  const result = spawnSync(command, ["--help"], { encoding: "utf-8", stdio: "pipe" });
-  return result.status === 0 && result.stdout.includes("--zstd");
-}
-
-function commandExists(command: string): boolean {
-  if (process.platform === "win32") {
-    return spawnSync("where", [command], { stdio: "ignore" }).status === 0;
-  }
-  const result = spawnSync("sh", ["-c", `command -v ${shellQuote(command)}`], {
-    stdio: "ignore",
-  });
-  return result.status === 0;
-}
-
-function runCommand(
+export function runCommand(
   command: string,
   args: readonly string[],
   opts: { cwd?: string; env?: NodeJS.ProcessEnv; allowFailure?: boolean } = {},
@@ -1229,13 +478,4 @@ function tomlString(value: string): string {
 
 function tomlArray(values: readonly string[]): string {
   return `[${values.map(tomlString).join(", ")}]`;
-}
-
-function shellQuote(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`;
-}
-
-function relativeWithin(root: string, path: string): string {
-  const relative = path.slice(root.length).replace(/^[/\\]/, "");
-  return relative === "" ? "." : relative;
 }

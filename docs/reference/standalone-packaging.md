@@ -8,20 +8,18 @@ extraction, cache lifecycle, host startup, and future update hooks.
 
 ## Shape
 
-The packaged payload should contain:
+The packaged payload contains:
 
 - a host-only SEA executable
 - a payload-local `bin/plushie-renderer`
 - any application assets needed by the SEA host
-- `payload.tar.zst`
-- `plushie-package.toml`
 
-The manifest is consumed by `bin/plushie package portable` for the
-self-extracting artifact or by `bin/plushie package bundle` for
-platform packages. Paths in the manifest are payload-relative, so the
-renderer path must point inside the archived payload. A packaged app
-must not depend on a renderer in `node_modules`, a downloaded cache, or
-`PATH`.
+The final archive (`payload.tar.zst`) and the full `plushie-package.toml`
+are produced by `cargo plushie package assemble`, which reads the SDK's
+partial manifest and the payload directory. Paths in the manifest are
+payload-relative, so the renderer path must point inside the archived
+payload. A packaged app must not depend on a renderer in `node_modules`,
+a downloaded cache, or `PATH`.
 
 ## Startup
 
@@ -32,16 +30,11 @@ uses the payload-local renderer path from the package environment, so
 `app.run()` owns renderer startup the same way it does outside a
 package.
 
-Renderer-parent remains useful for explicit embedding and debugging
-flows where an already-running renderer launches the host over stdio
-or provides a socket address. It is not the shared package startup
-default.
-
 ## SEA Payload
 
 SEA is the TypeScript host payload format, not the final launcher.
 Earlier host-parent proofs embedded the renderer as a SEA asset, but
-the shared-launcher path should avoid duplicate renderer ownership:
+the shared-launcher path avoids duplicate renderer ownership:
 
 - the Rust launcher embeds and extracts the payload
 - the payload contains a host-only SEA executable
@@ -53,7 +46,10 @@ with the other wire SDKs.
 
 ## SDK Command
 
-The SDK owns the TypeScript package preparation step:
+The SDK owns the TypeScript package preparation step. It builds the
+host SEA (or copies a prepared host binary), places the renderer, writes
+a partial manifest, and delegates final assembly to `cargo plushie
+package assemble`:
 
 ```sh
 npx plushie package \
@@ -67,87 +63,64 @@ The command expects `--main` to point at a bundled CommonJS host file.
 App-specific bundling stays with the app because the SDK does not know
 which bundler or asset graph the app uses. From there the command
 builds the host-only SEA for the shared launcher, copies the renderer
-into the payload, writes optional app icon assets, writes
-`payload.tar.zst`, and writes `plushie-package.toml`.
-
-Use `--icon path/to/icon.png` to copy an app-provided icon into the
-payload. When `--icon` is absent, the default Plushie icon set is
-exported through `bin/plushie default-icons` and the 512px PNG is
-recorded in `[platform].icon`.
+into the payload directory, writes `plushie-package.toml` (partial
+manifest), and calls `cargo plushie package assemble` to produce the
+archive and final manifest.
 
 For apps that prepare a Node host executable themselves, pass
-`--host-bin` instead of `--main`. The SDK still owns the renderer copy,
-payload archive, and manifest generation.
+`--host-bin` instead of `--main`. The SDK still owns the renderer copy
+and partial manifest.
 
 Renderer resolution for stock packages uses `--renderer-path`,
 `PLUSHIE_BINARY_PATH`, `PLUSHIE_RUST_SOURCE_PATH` with a release
-renderer build, then the downloaded binary under
-`bin/`. Custom packages must pass
-`--renderer-kind custom` with `--renderer-path` or `PLUSHIE_BINARY_PATH` so
-the payload cannot silently package stock renderer bits as custom.
+renderer build, then the downloaded binary under `bin/`. Custom
+packages must pass `--renderer-kind custom` with `--renderer-path` or
+`PLUSHIE_BINARY_PATH` so the payload cannot silently package stock
+renderer bits as custom.
 
-Build the final launcher with the shared Plushie tool:
+## Partial Manifest
 
-```sh
-bin/plushie package check --manifest dist/shared-launcher/plushie-package.toml --strict-tools
-bin/plushie package portable --manifest dist/shared-launcher/plushie-package.toml --strict-tools
-```
-
-After writing the payload, `plushie package` prints a handoff message:
-
-```
-Build launcher with:
-  bin/plushie package portable --manifest <path>
-```
-
-Use `--strict-tools` with `bin/plushie package portable` when packaging
-must fail if the Rust package checker cannot use the expected native
-tools.
-
-## Manifest
-
-The generated manifest records the fields the shared launcher needs to
-validate and run the payload:
-
-- `host_sdk = "typescript"`
-- `host_sdk_version`
-- `plushie_rust_version`
-- `protocol_version`
-- `target`
-- `[payload]` archive, hash, and size
-- `[renderer]` kind
-- `[platform]` (optional, omitted when empty)
-
-## Platform metadata
-
-Optional platform metadata can be committed to `plushie-package.config.toml`
-and is passed through verbatim to the generated manifest. Add a
-`[platform]` section with any of these fields:
+The SDK writes a partial `plushie-package.toml` with the fields it
+knows about:
 
 ```toml
-[platform]
-publisher = "Example Corp"
-copyright = "Copyright 2025 Example Corp"
-category = "public.app-category.productivity"
-description = "A great app"
-bundle_id = "com.example.myapp"
+schema_version = 1
+app_id = "dev.example.my_app"
+app_version = "0.1.0"
+target = "linux-x86_64"
+host_sdk = "typescript"
+host_sdk_version = "0.6.0"
+plushie_rust_version = "0.7.1"
+protocol_version = 1
 
-[platform.macos]
-bundle_version = "1"
+[start]
+command = ["bin/my-app-host"]
 
-[platform.windows]
-install_scope = "perUser"   # perUser or perMachine
+[renderer]
+path = "bin/plushie-renderer"
+kind = "stock"
 ```
 
-All fields are optional. Omit the `[platform]` section entirely when
-none apply. The `[platform]` section is dropped from the manifest when
-no fields are populated.
+`cargo plushie package assemble` reads this file along with
+`--package-config` (if provided) and the payload directory to produce
+the final manifest with `[payload]`, `working_dir`, `forward_env`,
+`[platform]`, and the archive hash.
 
-Run `npx plushie package --write-package-config` to generate a config
-template with these fields shown as commented-out examples.
+## Package Config
 
-The demo artifact postcheck runs the portable launcher from a
-temporary working directory with a narrowed runtime `PATH`. It writes a
-report next to the portable launcher recording payload size, launcher
-size, target, host SDK, runtime path, exit status, and the renderer
-path reported by launcher diagnostics.
+Use `--package-config` to pass a committed source config to
+`cargo plushie package assemble`. The config lets the app commit
+platform metadata:
+
+```sh
+plushie package --write-package-config
+plushie package --write-package-config --package-config config/package.toml
+```
+
+The generated `plushie-package.config.toml` template includes
+commented-out platform metadata examples. Pass its path to
+`--package-config` when running `plushie package` and it is forwarded
+to the assemble step.
+
+After assembly, `cargo plushie package assemble` prints the handoff for
+the next step.

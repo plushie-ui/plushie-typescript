@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve as resolvePath } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
+import { PLUSHIE_RUST_VERSION } from "../../src/client/binary.js";
 
 const repoRoot = resolvePath(import.meta.dirname, "..", "..");
 const tempDirs: string[] = [];
@@ -21,8 +22,8 @@ afterEach(() => {
   }
 });
 
-function writeExecutable(path: string): void {
-  writeFileSync(path, "#!/bin/sh\nexit 0\n", "utf-8");
+function writeExecutable(path: string, contents = "#!/bin/sh\nexit 0\n"): void {
+  writeFileSync(path, contents, "utf-8");
   chmodSync(path, 0o755);
 }
 
@@ -76,8 +77,35 @@ function runCliWithOutput(
   });
 }
 
+/**
+ * Write a fake `cargo-plushie` stub that records its arguments and exits 0.
+ *
+ * When called with `--version` it prints `cargo-plushie <version>` so
+ * `resolveCargoPlushie` accepts it as a matching installed binary.
+ * Otherwise it writes all args to `<binDir>/assemble-args` for assertion.
+ */
+function writeFakeCargoPlushie(binDir: string, version: string): void {
+  const stubPath = join(binDir, "cargo-plushie");
+  writeFileSync(
+    stubPath,
+    [
+      "#!/bin/sh",
+      `if [ "$1" = "--version" ]; then`,
+      `  printf 'cargo-plushie %s\\n' '${version}'`,
+      "  exit 0",
+      "fi",
+      // Write args to a file for assertion
+      `printf '%s\\n' "$@" > "${binDir}/assemble-args"`,
+      "exit 0",
+      "",
+    ].join("\n"),
+    "utf-8",
+  );
+  chmodSync(stubPath, 0o755);
+}
+
 describe("plushie package", () => {
-  test("prepares a shared-launcher payload from an existing host executable", async () => {
+  test("builds payload dir, writes partial manifest, and shells to cargo-plushie assemble", async () => {
     const dir = mkdtempSync(join(tmpdir(), "plushie-cli-package-"));
     tempDirs.push(dir);
 
@@ -90,31 +118,20 @@ describe("plushie package", () => {
 
     const host = join(binDir, "host");
     const renderer = join(binDir, "plushie-renderer");
-    const icon = join(binDir, "icon.png");
     writeExecutable(host);
     writeExecutable(renderer);
     writeExecutable(join(packageToolDir, "plushie"));
     writeExecutable(join(packageToolDir, "plushie-launcher"));
-    writeFileSync(icon, "icon", "utf-8");
-    writeFileSync(
-      join(projectDir, "plushie-package.config.toml"),
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        'working_dir = "app"',
-        'command = ["bin/host", "--cli-config"]',
-        'forward_env = ["PATH"]',
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
+    writeFakeCargoPlushie(binDir, PLUSHIE_RUST_VERSION);
     writeFileSync(
       join(projectDir, "package.json"),
       JSON.stringify({ name: "package-test", version: "0.2.0" }),
       "utf-8",
     );
 
+    // Unset PLUSHIE_RUST_SOURCE_PATH so resolveCargoPlushie uses the
+    // installed cargo-plushie stub on PATH rather than a source checkout.
+    const { PLUSHIE_RUST_SOURCE_PATH: _ignored, ...baseEnv } = process.env;
     const result = await runCliWithOutput(
       [
         "package",
@@ -126,23 +143,17 @@ describe("plushie package", () => {
         host,
         "--renderer-path",
         renderer,
-        "--icon",
-        icon,
-        "--package-config",
-        join(projectDir, "plushie-package.config.toml"),
         "--target",
         "linux-x86_64",
-        "--strict-tools",
       ],
       projectDir,
-      { ...process.env, PATH: `${binDir}${delimiter}${process.env["PATH"] ?? ""}` },
+      { ...baseEnv, PATH: `${binDir}${delimiter}${baseEnv["PATH"] ?? ""}` },
     );
 
     expect(result.code).toBe(0);
 
     const outputDir = join(projectDir, "dist");
     const manifestPath = join(outputDir, "plushie-package.toml");
-    expect(existsSync(join(outputDir, "payload.tar.zst"))).toBe(true);
     expect(existsSync(manifestPath)).toBe(true);
 
     const manifest = readFileSync(manifestPath, "utf-8");
@@ -150,15 +161,23 @@ describe("plushie package", () => {
     expect(manifest).toContain('app_name = "Test App"');
     expect(manifest).toContain('app_version = "0.2.0"');
     expect(manifest).toContain('[renderer]\npath = "bin/plushie-renderer"');
-    expect(manifest).toContain('working_dir = "app"');
-    expect(manifest).toContain('command = ["bin/host", "--cli-config"]');
-    expect(manifest).toContain('forward_env = ["PATH"]');
-    expect(manifest).toContain('icon = "assets/icon.png"');
-    expect(result.stdout).toContain(`bin/plushie package portable --manifest ${manifestPath}`);
+    // host-bin basename is used as the host name when --host-name is not set
+    expect(manifest).toContain('command = ["bin/host"]');
+    // Partial manifest must not include payload or working_dir
+    expect(manifest).not.toContain("[payload]");
+    expect(manifest).not.toContain("working_dir");
+
+    // cargo-plushie assemble must have been called with the right args
+    const assembleArgs = readFileSync(join(binDir, "assemble-args"), "utf-8");
+    expect(assembleArgs).toContain("package");
+    expect(assembleArgs).toContain("assemble");
+    expect(assembleArgs).toContain("--manifest");
+    expect(assembleArgs).toContain(manifestPath);
+    expect(assembleArgs).toContain("--payload-dir");
   });
 
-  test("prints handoff message with manifest path", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "plushie-cli-handoff-"));
+  test("forwards --package-config to cargo-plushie assemble", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "plushie-cli-pkg-config-"));
     tempDirs.push(dir);
 
     const projectDir = join(dir, "project");
@@ -170,16 +189,22 @@ describe("plushie package", () => {
 
     const host = join(binDir, "host");
     const renderer = join(binDir, "plushie-renderer");
+    const packageConfig = join(projectDir, "my-package.toml");
     writeExecutable(host);
     writeExecutable(renderer);
     writeExecutable(join(packageToolDir, "plushie"));
     writeExecutable(join(packageToolDir, "plushie-launcher"));
+    writeFakeCargoPlushie(binDir, PLUSHIE_RUST_VERSION);
+    writeFileSync(packageConfig, "# placeholder\n", "utf-8");
     writeFileSync(
       join(projectDir, "package.json"),
-      JSON.stringify({ name: "package-test", version: "0.2.0" }),
+      JSON.stringify({ name: "package-test", version: "0.1.0" }),
       "utf-8",
     );
 
+    // Unset PLUSHIE_RUST_SOURCE_PATH so resolveCargoPlushie uses the
+    // installed cargo-plushie stub on PATH rather than a source checkout.
+    const { PLUSHIE_RUST_SOURCE_PATH: _ignored, ...baseEnv } = process.env;
     const result = await runCliWithOutput(
       [
         "package",
@@ -191,15 +216,18 @@ describe("plushie package", () => {
         renderer,
         "--target",
         "linux-x86_64",
+        "--package-config",
+        packageConfig,
       ],
       projectDir,
-      { ...process.env, PATH: `${binDir}${delimiter}${process.env["PATH"] ?? ""}` },
+      { ...baseEnv, PATH: `${binDir}${delimiter}${baseEnv["PATH"] ?? ""}` },
     );
 
-    const manifestPath = join(projectDir, "dist", "plushie-package.toml");
     expect(result.code).toBe(0);
-    expect(result.stdout).toContain("Build launcher with:");
-    expect(result.stdout).toContain(`bin/plushie package portable --manifest ${manifestPath}`);
+
+    const assembleArgs = readFileSync(join(binDir, "assemble-args"), "utf-8");
+    expect(assembleArgs).toContain("--package-config");
+    expect(assembleArgs).toContain(packageConfig);
   });
 
   test("writes package config without requiring package metadata", async () => {

@@ -50,6 +50,7 @@ import {
   defaultPackageStartConfig,
   prepareNodePackagePayload,
   type RendererKind,
+  runCommand,
   writePackageStartConfig,
 } from "../package.js";
 import { DEFAULT_WASM_DIR, WASM_BG_FILE, WASM_JS_FILE } from "../wasm.js";
@@ -121,10 +122,8 @@ Options:
   --output <dir>    Package output directory (package)
   --renderer-kind <kind> Renderer kind: stock or custom (package)
   --renderer-path <p> Use an existing renderer binary (package)
-  --package-config <p> Source package config path (package)
+  --package-config <p> Source package config path forwarded to assemble (package)
   --write-package-config Write a package config template and exit (package)
-  --icon <path>     App icon copied into the package payload (package)
-  --strict-tools    Require strict native package tool identity (package)
   --target <target> Override package target (package)
   --bin             Download/build the native binary
   --wasm            Download/build the WASM renderer
@@ -1049,21 +1048,34 @@ async function handlePackage(
       ? { rendererPath: valueFlags.get("--renderer-path")! }
       : {}),
     ...(rendererKind !== undefined ? { rendererKind } : {}),
-    ...(valueFlags.has("--package-config")
-      ? { packageConfig: valueFlags.get("--package-config")! }
-      : {}),
-    ...(valueFlags.has("--icon") ? { icon: valueFlags.get("--icon")! } : {}),
-    defaultIcon: !valueFlags.has("--icon"),
     ...(valueFlags.has("--target") ? { target: valueFlags.get("--target")! } : {}),
     log: console.log,
   });
 
-  console.log();
-  console.log(`Shared launcher payload: ${result.payloadArchivePath}`);
-  console.log(`Shared launcher manifest: ${result.manifestPath}`);
-  console.log();
-  console.log("Build launcher with:");
-  console.log(`  bin/plushie package portable --manifest ${result.manifestPath}`);
+  // Resolve how to invoke cargo plushie for the assemble step.
+  let invocation: ReturnType<typeof resolveCargoPlushie>;
+  try {
+    invocation = resolveCargoPlushie();
+  } catch (err) {
+    console.error(String(err instanceof Error ? err.message : err));
+    process.exitCode = 1;
+    return;
+  }
+
+  const assembleArgs = [
+    ...invocation.argsPrefix,
+    "package",
+    "assemble",
+    "--manifest",
+    result.manifestPath,
+    "--payload-dir",
+    result.payloadDir,
+  ];
+  if (valueFlags.has("--package-config")) {
+    assembleArgs.push("--package-config", valueFlags.get("--package-config")!);
+  }
+
+  runCommand(invocation.command, assembleArgs);
 }
 
 // =========================================================================
@@ -1240,7 +1252,6 @@ async function main(argv: string[]): Promise<void> {
     "--renderer-kind",
     "--renderer-path",
     "--package-config",
-    "--icon",
     "--target",
   ]);
   const flags: string[] = [];

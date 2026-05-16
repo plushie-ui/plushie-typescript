@@ -181,8 +181,8 @@ files are copied to the resolved WASM directory.
 
 ## package
 
-Prepare the payload archive and manifest consumed by
-`bin/plushie package portable` or `bin/plushie package bundle`.
+Build the host payload, write a partial manifest, and delegate final
+assembly to `cargo plushie package assemble`.
 
 ```bash
 plushie package \
@@ -210,8 +210,7 @@ Package metadata and output flags:
 | `--host-name <name>` | Payload-local host executable name. |
 | `--output <dir>` | Package payload output directory. Defaults to `dist`. |
 | `--target <target>` | Override package target such as `linux-x86_64`. |
-| `--icon <path>` | Copy an app icon into the payload. When absent, the default Plushie icon set is used. |
-| `--strict-tools` | Require the Plushie native tools to be present and version-matched. |
+| `--package-config <path>` | Source package config path forwarded to `cargo plushie package assemble`. |
 
 Renderer flags:
 
@@ -227,53 +226,29 @@ Stock renderer resolution uses `--renderer-path`, then
 Custom renderer packaging requires an explicit binary path so a stock
 renderer is not mislabeled as custom.
 
-Package start config:
+Package start config template:
 
 ```bash
 plushie package --write-package-config
 plushie package --write-package-config --package-config config/package.toml
 ```
 
-The generated `plushie-package.config.toml` lets the app commit a
-shared TOML package start config, along with optional platform metadata:
+The generated `plushie-package.config.toml` is a committed source config
+consumed by `cargo plushie package assemble`. It controls `working_dir`,
+`forward_env`, and optional platform metadata (`[platform]`,
+`[platform.macos]`, `[platform.windows]`). Pass its path via
+`--package-config` when running `plushie package` and it is forwarded to
+the assemble step.
 
-```toml
-config_version = 1
-
-[start]
-working_dir = "."
-command = ["bin/my-app-host"]
-forward_env = [
-  "PATH",
-  "HOME",
-]
-
-# Optional platform metadata passed through to the manifest.
-# All fields are optional; omit the [platform] section when none apply.
-#
-# [platform]
-# publisher = "Example Corp"
-# copyright = "Copyright 2025 Example Corp"
-# category = "public.app-category.productivity"
-# description = "A great app"
-# bundle_id = "com.example.myapp"
-#
-# [platform.macos]
-# bundle_version = "1"
-#
-# [platform.windows]
-# install_scope = "perUser"   # perUser or perMachine
-```
-
-`forward_env = []` is valid when the packaged host should inherit no
-parent environment names.
-
-After writing the payload, the command prints the handoff for the next step:
+After building the payload directory and writing the partial manifest,
+the command calls:
 
 ```
-Build launcher with:
-  bin/plushie package portable --manifest <path>
+cargo plushie package assemble --manifest <path> --payload-dir <dir> [--package-config <path>]
 ```
+
+`cargo plushie package assemble` produces the archive, computes hashes,
+merges the source config, and prints the handoff message.
 
 ## dev
 

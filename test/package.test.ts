@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
@@ -18,13 +17,10 @@ import {
   PLUSHIE_RUST_VERSION,
 } from "../src/client/binary.js";
 import {
-  manifestForPayload,
   normalizePackageTarget,
   prepareNodePackagePayload,
-  readPackageSourceConfig,
-  readPackageStartConfig,
-  renderPackageManifest,
   renderPackageStartConfig,
+  renderPartialManifest,
   resolvePackageRenderer,
   writePackageStartConfig,
 } from "../src/package.js";
@@ -78,248 +74,85 @@ describe("normalizePackageTarget", () => {
   });
 });
 
-describe("package manifest", () => {
-  test("records payload identity and SDK metadata", () => {
-    const dir = tempDir();
-    const archive = join(dir, "payload.tar.zst");
-    writeFileSync(archive, "payload");
-
-    const manifest = manifestForPayload({
+describe("partial manifest", () => {
+  test("records SDK metadata and start command", () => {
+    const manifest = renderPartialManifest({
       appId: "dev.plushie.test",
       appName: "Test App",
       appVersion: "0.1.0",
       target: "linux-x86_64",
-      rendererKind: "custom",
-      rendererPath: "bin/plushie-renderer",
-      startCommand: ["bin/host", "--flag"],
-      platformIcon: "assets/icon.png",
-      payloadArchive: archive,
+      renderer: { kind: "stock", path: "bin/plushie-renderer" },
+      startCommand: ["bin/host"],
     });
 
-    expect(manifest.payloadArchive).toBe("payload.tar.zst");
-    expect(manifest.payloadSize).toBe(Buffer.byteLength("payload"));
-    expect(manifest.payloadHash).toMatch(/^[a-f0-9]{64}$/);
-
-    const toml = renderPackageManifest(manifest);
-    expect(toml).toContain('host_sdk = "typescript"');
-    expect(toml).toContain(`host_sdk_version = "${sdkVersion()}"`);
-    expect(toml).toContain(`plushie_rust_version = "${PLUSHIE_RUST_VERSION}"`);
-    expect(toml).toContain("protocol_version = 1");
-    expect(toml).toContain("[start]");
-    expect(toml).toContain('working_dir = "."');
-    expect(toml).toContain('command = ["bin/host", "--flag"]');
-    expect(toml).toContain(
-      'forward_env = ["PATH", "HOME", "LANG", "LC_ALL", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "DISPLAY"]',
-    );
-    expect(toml).toContain('[renderer]\npath = "bin/plushie-renderer"');
-    expect(toml).toContain('kind = "custom"');
-    expect(toml).toContain("[platform]");
-    expect(toml).toContain('icon = "assets/icon.png"');
+    expect(manifest).toContain('app_id = "dev.plushie.test"');
+    expect(manifest).toContain('app_name = "Test App"');
+    expect(manifest).toContain('app_version = "0.1.0"');
+    expect(manifest).toContain('target = "linux-x86_64"');
+    expect(manifest).toContain('host_sdk = "typescript"');
+    expect(manifest).toContain(`host_sdk_version = "${sdkVersion()}"`);
+    expect(manifest).toContain(`plushie_rust_version = "${PLUSHIE_RUST_VERSION}"`);
+    expect(manifest).toContain("protocol_version = 1");
+    expect(manifest).toContain("[start]");
+    expect(manifest).toContain('command = ["bin/host"]');
+    expect(manifest).toContain("[renderer]");
+    expect(manifest).toContain('path = "bin/plushie-renderer"');
+    expect(manifest).toContain('kind = "stock"');
   });
 
-  test("omits [platform] section when no icon is set", () => {
-    const dir = tempDir();
-    const archive = join(dir, "payload.tar.zst");
-    writeFileSync(archive, "payload");
-
-    const manifest = manifestForPayload({
+  test("omits app_name when not provided", () => {
+    const manifest = renderPartialManifest({
       appId: "dev.plushie.test",
-      appName: "Test App",
       appVersion: "0.1.0",
       target: "linux-x86_64",
-      rendererKind: "custom",
-      rendererPath: "bin/plushie-renderer",
+      renderer: { kind: "stock", path: "bin/plushie-renderer" },
       startCommand: ["bin/host"],
-      payloadArchive: archive,
     });
 
-    const toml = renderPackageManifest(manifest);
-    expect(toml).not.toContain("[platform]");
-    expect(toml).not.toContain("icon =");
+    expect(manifest).not.toContain("app_name");
   });
 
-  test("emits all top-level platform fields when present", () => {
-    const dir = tempDir();
-    const archive = join(dir, "payload.tar.zst");
-    writeFileSync(archive, "payload");
-
-    const manifest = manifestForPayload({
+  test("emits custom renderer kind", () => {
+    const manifest = renderPartialManifest({
       appId: "dev.plushie.test",
-      appVersion: "1.0.0",
+      appVersion: "0.1.0",
       target: "linux-x86_64",
-      rendererPath: "bin/plushie-renderer",
+      renderer: { kind: "custom", path: "bin/plushie-renderer" },
       startCommand: ["bin/host"],
-      payloadArchive: archive,
-      platform: {
-        publisher: "Example Corp",
-        copyright: "Copyright 2025 Example Corp",
-        category: "public.app-category.productivity",
-        description: "A great app",
-        bundleId: "com.example.myapp",
-      },
     });
 
-    const toml = renderPackageManifest(manifest);
-    expect(toml).toContain('[platform]\npublisher = "Example Corp"');
-    expect(toml).toContain('copyright = "Copyright 2025 Example Corp"');
-    expect(toml).toContain('category = "public.app-category.productivity"');
-    expect(toml).toContain('description = "A great app"');
-    expect(toml).toContain('bundle_id = "com.example.myapp"');
-    expect(toml).not.toContain("[platform.macos]");
-    expect(toml).not.toContain("[platform.windows]");
+    expect(manifest).toContain('kind = "custom"');
   });
 
-  test("emits [platform.macos] and [platform.windows] subsections when present", () => {
-    const dir = tempDir();
-    const archive = join(dir, "payload.tar.zst");
-    writeFileSync(archive, "payload");
-
-    const manifest = manifestForPayload({
+  test("does not include payload, working_dir, forward_env, or platform sections", () => {
+    const manifest = renderPartialManifest({
       appId: "dev.plushie.test",
-      appVersion: "1.0.0",
-      target: "darwin-aarch64",
-      rendererPath: "bin/plushie-renderer",
-      startCommand: ["bin/host"],
-      payloadArchive: archive,
-      platform: {
-        bundleId: "com.example.myapp",
-        macos: { bundleVersion: "42" },
-        windows: { installScope: "perUser" },
-      },
-    });
-
-    const toml = renderPackageManifest(manifest);
-    expect(toml).toContain("[platform.macos]");
-    expect(toml).toContain('bundle_version = "42"');
-    expect(toml).toContain("[platform.windows]");
-    expect(toml).toContain('install_scope = "perUser"');
-  });
-
-  test("merges platformIcon with platform config", () => {
-    const dir = tempDir();
-    const archive = join(dir, "payload.tar.zst");
-    writeFileSync(archive, "payload");
-
-    const manifest = manifestForPayload({
-      appId: "dev.plushie.test",
-      appVersion: "1.0.0",
+      appVersion: "0.1.0",
       target: "linux-x86_64",
-      rendererPath: "bin/plushie-renderer",
+      renderer: { kind: "stock", path: "bin/plushie-renderer" },
       startCommand: ["bin/host"],
-      payloadArchive: archive,
-      platformIcon: "assets/icon.png",
-      platform: { publisher: "Example Corp" },
     });
 
-    const toml = renderPackageManifest(manifest);
-    expect(toml).toContain('icon = "assets/icon.png"');
-    expect(toml).toContain('publisher = "Example Corp"');
+    expect(manifest).not.toContain("[payload]");
+    expect(manifest).not.toContain("working_dir");
+    expect(manifest).not.toContain("forward_env");
+    expect(manifest).not.toContain("[platform]");
   });
 });
 
-describe("package start config", () => {
-  test("reads committed source package config", () => {
-    const dir = tempDir();
-    const configPath = join(dir, "plushie-package.config.toml");
-    writeFileSync(
-      configPath,
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        'working_dir = "app"',
-        'command = ["bin/host", "--mode", "standalone"]',
-        'forward_env = ["PATH", "HOME"]',
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-
-    expect(readPackageStartConfig(configPath)).toEqual({
-      workingDir: "app",
-      command: ["bin/host", "--mode", "standalone"],
-      forwardEnv: ["PATH", "HOME"],
-    });
-  });
-
-  test("reads multiline TOML arrays", () => {
-    const dir = tempDir();
-    const configPath = join(dir, "plushie-package.config.toml");
-    writeFileSync(
-      configPath,
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        'working_dir = "app"',
-        "command = [",
-        '  "bin/host",',
-        '  "--mode",',
-        '  "standalone",',
-        "]",
-        "forward_env = [",
-        '  "PATH",',
-        '  "HOME",',
-        "]",
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-
-    expect(readPackageStartConfig(configPath)).toEqual({
-      workingDir: "app",
-      command: ["bin/host", "--mode", "standalone"],
-      forwardEnv: ["PATH", "HOME"],
-    });
-  });
-
-  test("reads TOML strings that end with a bracket", () => {
-    const dir = tempDir();
-    const configPath = join(dir, "plushie-package.config.toml");
-    writeFileSync(
-      configPath,
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        'working_dir = "host/[prod]"',
-        'command = ["bin/host"]',
-        'forward_env = ["PATH"]',
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-
-    expect(readPackageStartConfig(configPath)?.workingDir).toBe("host/[prod]");
-  });
-
-  test("allows an empty forwarded environment", () => {
-    const dir = tempDir();
-    const configPath = join(dir, "plushie-package.config.toml");
-    writeFileSync(
-      configPath,
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        'working_dir = "."',
-        'command = ["bin/host"]',
-        "forward_env = []",
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-
-    expect(readPackageStartConfig(configPath)?.forwardEnv).toEqual([]);
-  });
-
-  test("renders package config template with real start values", () => {
+describe("package start config template", () => {
+  test("renders package config template", () => {
     const text = renderPackageStartConfig();
 
     expect(text).toContain("config_version = 1");
-    expect(text).toContain('working_dir = "."');
     expect(text).toContain('command = ["bin/connect"]');
-    expect(text).toContain('"WAYLAND_DISPLAY"');
+    expect(text).toContain("# [platform]");
+    expect(text).toContain("# publisher");
+    expect(text).toContain("# bundle_id");
+    expect(text).toContain("# [platform.macos]");
+    expect(text).toContain("# bundle_version");
+    expect(text).toContain("# [platform.windows]");
+    expect(text).toContain("# install_scope");
   });
 
   test("writes package config template", () => {
@@ -330,241 +163,16 @@ describe("package start config", () => {
 
     expect(readFileSync(configPath, "utf-8")).toContain('command = ["bin/connect"]');
   });
-
-  test("keeps current behavior when source package config is missing", () => {
-    const dir = tempDir();
-
-    expect(readPackageStartConfig(join(dir, "missing.toml"))).toBeUndefined();
-  });
-
-  test.each([
-    ["absolute working_dir", 'working_dir = "/app"', /working_dir must be relative/],
-    ["parent working_dir", 'working_dir = "../app"', /working_dir must not contain parent/],
-    ["absolute command path", 'command = ["/bin/host"]', /command\[0\] must be relative/],
-    ["parent command path", 'command = ["bin/../host"]', /command\[0\] must not contain parent/],
-    ["empty command", "command = []", /command must not be empty/],
-    ["empty command arg", 'command = ["bin/host", ""]', /command\[1\] must not be empty/],
-    ["env with comma", 'forward_env = ["PATH,HOME"]', /invalid .*forward_env name/],
-    ["env with equals", 'forward_env = ["PATH=HOME"]', /invalid .*forward_env name/],
-    ["non-string command arg", 'command = ["bin/host", 1]', /expected string array value/],
-    ["non-string env", 'forward_env = ["PATH", 1]', /expected string array value/],
-    [
-      "reserved binary env",
-      'forward_env = ["PLUSHIE_BINARY_PATH"]',
-      /cannot include reserved name/,
-    ],
-    [
-      "reserved package env",
-      'forward_env = ["PLUSHIE_PACKAGE_DIR"]',
-      /cannot include reserved name/,
-    ],
-    [
-      "reserved package readiness env",
-      'forward_env = ["PLUSHIE_PACKAGE_READY_FILE"]',
-      /cannot include reserved name/,
-    ],
-    ["reserved socket env", 'forward_env = ["PLUSHIE_SOCKET"]', /cannot include reserved name/],
-    ["reserved token env", 'forward_env = ["PLUSHIE_TOKEN"]', /cannot include reserved name/],
-    [
-      "reserved transport env",
-      'forward_env = ["PLUSHIE_TRANSPORT"]',
-      /cannot include reserved name/,
-    ],
-    [
-      "reserved rust source path env",
-      'forward_env = ["PLUSHIE_RUST_SOURCE_PATH"]',
-      /cannot include reserved name/,
-    ],
-    [
-      "reserved release base url env",
-      'forward_env = ["PLUSHIE_RELEASE_BASE_URL"]',
-      /cannot include reserved name/,
-    ],
-    [
-      "reserved cache dir env",
-      'forward_env = ["PLUSHIE_CACHE_DIR"]',
-      /cannot include reserved name/,
-    ],
-    [
-      "reserved launcher path env",
-      'forward_env = ["PLUSHIE_LAUNCHER_PATH"]',
-      /cannot include reserved name/,
-    ],
-    [
-      "reserved tool source kind env",
-      'forward_env = ["PLUSHIE_TOOL_SOURCE_KIND"]',
-      /cannot include reserved name/,
-    ],
-    ["reserved format env", 'forward_env = ["PLUSHIE_FORMAT"]', /cannot include reserved name/],
-    [
-      "reserved no catch unwind env",
-      'forward_env = ["PLUSHIE_NO_CATCH_UNWIND"]',
-      /cannot include reserved name/,
-    ],
-  ])("rejects invalid source package config: %s", (_name, replacement, error) => {
-    const dir = tempDir();
-    const configPath = join(dir, "plushie-package.config.toml");
-    const workingDir = 'working_dir = "."';
-    const command = 'command = ["bin/host"]';
-    const forwardEnv = 'forward_env = ["PATH"]';
-    writeFileSync(
-      configPath,
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        replacement.startsWith("working_dir") ? replacement : workingDir,
-        replacement.startsWith("command") ? replacement : command,
-        replacement.startsWith("forward_env") ? replacement : forwardEnv,
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-
-    expect(() => readPackageStartConfig(configPath)).toThrow(error);
-  });
-});
-
-describe("package source config platform fields", () => {
-  test("reads [platform] fields from source config", () => {
-    const dir = tempDir();
-    const configPath = join(dir, "plushie-package.config.toml");
-    writeFileSync(
-      configPath,
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        'working_dir = "."',
-        'command = ["bin/host"]',
-        'forward_env = ["PATH"]',
-        "",
-        "[platform]",
-        'publisher = "Example Corp"',
-        'copyright = "Copyright 2025 Example Corp"',
-        'category = "public.app-category.productivity"',
-        'description = "A great app"',
-        'bundle_id = "com.example.myapp"',
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-
-    const config = readPackageSourceConfig(configPath);
-    expect(config?.platform?.publisher).toBe("Example Corp");
-    expect(config?.platform?.copyright).toBe("Copyright 2025 Example Corp");
-    expect(config?.platform?.category).toBe("public.app-category.productivity");
-    expect(config?.platform?.description).toBe("A great app");
-    expect(config?.platform?.bundleId).toBe("com.example.myapp");
-  });
-
-  test("reads [platform.macos] and [platform.windows] from source config", () => {
-    const dir = tempDir();
-    const configPath = join(dir, "plushie-package.config.toml");
-    writeFileSync(
-      configPath,
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        'working_dir = "."',
-        'command = ["bin/host"]',
-        'forward_env = ["PATH"]',
-        "",
-        "[platform.macos]",
-        'bundle_version = "42"',
-        "",
-        "[platform.windows]",
-        'install_scope = "perMachine"',
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-
-    const config = readPackageSourceConfig(configPath);
-    expect(config?.platform?.macos?.bundleVersion).toBe("42");
-    expect(config?.platform?.windows?.installScope).toBe("perMachine");
-  });
-
-  test("returns no platform when [platform] section is absent", () => {
-    const dir = tempDir();
-    const configPath = join(dir, "plushie-package.config.toml");
-    writeFileSync(
-      configPath,
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        'working_dir = "."',
-        'command = ["bin/host"]',
-        'forward_env = ["PATH"]',
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-
-    const config = readPackageSourceConfig(configPath);
-    expect(config?.platform).toBeUndefined();
-  });
-
-  test.each([
-    ["empty publisher", 'publisher = ""', /platform.publisher must not be empty/],
-    ["empty copyright", 'copyright = ""', /platform.copyright must not be empty/],
-    ["empty category", 'category = ""', /platform.category must not be empty/],
-    ["empty description", 'description = ""', /platform.description must not be empty/],
-    ["empty bundle_id", 'bundle_id = ""', /platform.bundle_id must not be empty/],
-    [
-      "invalid install_scope",
-      'install_scope = "system"',
-      /install_scope must be "perUser" or "perMachine"/,
-    ],
-  ])("rejects invalid platform field: %s", (_name, field, error) => {
-    const dir = tempDir();
-    const configPath = join(dir, "plushie-package.config.toml");
-    const isWindows = field.startsWith("install_scope");
-    writeFileSync(
-      configPath,
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        'working_dir = "."',
-        'command = ["bin/host"]',
-        'forward_env = ["PATH"]',
-        "",
-        isWindows ? "[platform.windows]" : "[platform]",
-        field,
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-
-    expect(() => readPackageSourceConfig(configPath)).toThrow(error);
-  });
-
-  test("template includes commented-out platform examples", () => {
-    const text = renderPackageStartConfig();
-
-    expect(text).toContain("# [platform]");
-    expect(text).toContain("# publisher");
-    expect(text).toContain("# bundle_id");
-    expect(text).toContain("# [platform.macos]");
-    expect(text).toContain("# bundle_version");
-    expect(text).toContain("# [platform.windows]");
-    expect(text).toContain("# install_scope");
-  });
 });
 
 describe("prepareNodePackagePayload", () => {
-  test("copies the host and renderer into a shared-launcher payload", () => {
+  test("copies host and renderer into payload dir and writes partial manifest", () => {
     const dir = tempDir();
-    const outputDir = join(dir, "dist", "shared-launcher");
+    const outputDir = join(dir, "dist");
     const host = join(dir, "host");
     const renderer = join(dir, "plushie-renderer");
-    const icon = join(dir, "icon.png");
     writeExecutable(host);
     writeExecutable(renderer);
-    writeFileSync(icon, "icon");
 
     const result = prepareNodePackagePayload({
       appId: "dev.plushie.test",
@@ -579,68 +187,44 @@ describe("prepareNodePackagePayload", () => {
         sourcePath: renderer,
         payloadPath: "bin/plushie-renderer",
       },
-      icon,
     });
 
-    expect(existsSync(result.payloadArchivePath)).toBe(true);
+    expect(existsSync(result.payloadDir)).toBe(true);
+    expect(existsSync(join(result.payloadDir, "bin", "test-host"))).toBe(true);
+    expect(existsSync(join(result.payloadDir, "bin", "plushie-renderer"))).toBe(true);
     expect(existsSync(result.manifestPath)).toBe(true);
-    expect(existsSync(join(outputDir, "payload-root"))).toBe(false);
 
     const manifest = readFileSync(result.manifestPath, "utf-8");
     expect(manifest).toContain('app_id = "dev.plushie.test"');
+    expect(manifest).toContain('app_name = "Test App"');
     expect(manifest).toContain('[renderer]\npath = "bin/plushie-renderer"');
     expect(manifest).toContain('command = ["bin/test-host"]');
-    expect(manifest).toContain('icon = "assets/icon.png"');
-
-    const list = spawnSync("tar", ["--zstd", "-tf", result.payloadArchivePath], {
-      encoding: "utf-8",
-    });
-    expect(list.status).toBe(0);
-    expect(list.stdout).toContain("./bin/test-host");
-    expect(list.stdout).toContain("./bin/plushie-renderer");
-    expect(list.stdout).toContain("./assets/icon.png");
+    expect(manifest).not.toContain("[payload]");
+    expect(manifest).not.toContain("working_dir");
   });
 
-  test("applies committed source package config to the shared-launcher manifest", () => {
+  test("sets start command to bin/<hostName> by default", () => {
     const dir = tempDir();
-    const outputDir = join(dir, "dist", "shared-launcher");
     const host = join(dir, "host");
     const renderer = join(dir, "plushie-renderer");
     writeExecutable(host);
     writeExecutable(renderer);
-    writeFileSync(
-      join(dir, "plushie-package.config.toml"),
-      [
-        "config_version = 1",
-        "",
-        "[start]",
-        'working_dir = "app"',
-        'command = ["bin/test-host", "--standalone"]',
-        'forward_env = ["PATH"]',
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
 
     const result = prepareNodePackagePayload({
       appId: "dev.plushie.test",
       appVersion: "0.1.0",
       hostBin: host,
-      hostName: "test-host",
-      outputDir,
+      hostName: "my-app-host",
+      outputDir: join(dir, "dist"),
       target: "linux-x86_64",
       renderer: {
         kind: "stock",
         sourcePath: renderer,
         payloadPath: "bin/plushie-renderer",
       },
-      packageConfig: join(dir, "plushie-package.config.toml"),
     });
 
-    const manifest = readFileSync(result.manifestPath, "utf-8");
-    expect(manifest).toContain('working_dir = "app"');
-    expect(manifest).toContain('command = ["bin/test-host", "--standalone"]');
-    expect(manifest).toContain('forward_env = ["PATH"]');
+    expect(result.manifest.startCommand).toEqual(["bin/my-app-host"]);
   });
 });
 
