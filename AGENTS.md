@@ -198,30 +198,24 @@ clear `Command.async` error. No Workers, no RxJS, no
 
 ## Before committing
 
-Run `pnpm preflight`. It rebuilds the renderer (when
-`PLUSHIE_RUST_SOURCE_PATH` is set), then runs lint, type check,
-build, test, and docs.
+Run `just preflight`. It installs deps, then rebuilds the renderer
+(when `PLUSHIE_RUST_SOURCE_PATH` is set), then runs lint, type check,
+build, test, and docs. The renderer source is controlled by
+`PLUSHIE_RUST_SOURCE_PATH`:
 
-The project uses mise for tool management. If `node`/`pnpm` aren't
-on PATH, activate them:
+- Unset (default): auto-detected from `../plushie-rust` if it exists;
+  otherwise the existing binary resolution chain is used unchanged.
+- Set to a path: plushie-renderer is rebuilt from that checkout via
+  `cargo build --release -p plushie-renderer`, output is dropped into
+  `node_modules/.plushie/bin/` under the platform-specific name
+  `resolveBinary` expects. Guarantees tests run against current source.
+  The cargo invocation runs with cwd set to the workspace so its local
+  `[patch.crates-io]` overrides for plushie-iced apply.
+- Set to `""`: suppresses auto-detection; uses the existing binary
+  resolution chain (env -> SEA -> downloaded -> sibling checkout).
 
-    export PATH="$HOME/.local/share/mise/installs/node/25.2.1/bin:$HOME/.local/share/mise/installs/pnpm/10.24.0:$PATH"
-
-## Renderer freshness
-
-Tests exercise the real renderer binary, so a stale binary hides real
-bugs and surfaces phantom ones. Setting `PLUSHIE_RUST_SOURCE_PATH` to
-a plushie-rust checkout makes preflight rebuild the renderer first
-via `cargo build --release -p plushie-renderer`, then drop the
-output into `node_modules/.plushie/bin/` under the platform-specific
-name `resolveBinary` expects. Without `PLUSHIE_RUST_SOURCE_PATH` the
-existing binary resolution (env -> SEA -> downloaded -> sibling
-checkout) is used unchanged. The cargo invocation runs with cwd set
-to the workspace so its local `[patch.crates-io]` overrides for
-plushie-iced apply.
-
-The script lives at `scripts/rebuild-renderer.mjs` and is also safe
-to invoke standalone when you want a fresh binary outside preflight.
+The rebuild script lives at `scripts/rebuild-renderer.mjs` and is also
+safe to invoke standalone when you want a fresh binary outside preflight.
 
 ## Commit hygiene
 
@@ -261,15 +255,18 @@ only appear as part of CLI flag names (e.g. `--watch`, `--release`).
 ## Quick reference
 
 ```
-pnpm preflight          # lint + type check + build + test + docs
-pnpm lint               # biome check
-pnpm format             # biome format --write (auto-fix)
-pnpm check              # tsc --noEmit (type checking only)
-pnpm test               # vitest run
+just preflight                                           # lint + type check + build + test + docs
+PLUSHIE_RUST_SOURCE_PATH=../plushie-rust just preflight  # explicit renderer source (rebuilds from checkout)
+PLUSHIE_RUST_SOURCE_PATH="" just preflight               # force non-local (use downloaded binary)
+just test               # vitest run
+just fmt                # biome format --write (auto-fix)
+just fmt-check          # biome check
+just lint               # biome check (lint only)
+just typecheck          # tsc --noEmit
+just build              # tsup (ESM + CJS + declarations)
+just docs               # generate API reference (api-docs/)
+just clean              # remove gitignored build artifacts
 pnpm test:watch         # vitest (watch mode)
-pnpm build              # tsup (ESM + CJS + declarations)
-pnpm docs               # generate API reference (api-docs/)
-pnpm docs:check         # generate API reference (warnings as errors)
 ```
 
 ## Tooling
