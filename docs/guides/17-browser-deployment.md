@@ -4,9 +4,9 @@ Plushie apps can ship in three shapes. By default an app runs
 under Node.js, talking to a native `plushie-renderer` subprocess
 over stdin/stdout. The same source can also run in a browser,
 where the renderer rides along as a WebAssembly module loaded
-into the same page. And a Node build can be packaged as a Single
-Executable Application (SEA), a standalone binary that carries
-the plushie renderer and the Node runtime inside one file.
+into the same page. And a Node build can be packaged as a
+host-only SEA executable wrapped by the shared Rust launcher,
+producing a standalone distributable.
 
 This guide covers all three. The Node desktop case is the
 baseline; the bulk of the guide is about the browser/WASM target,
@@ -18,7 +18,7 @@ which is where the architecture genuinely diverges from desktop.
 |---|---|---|---|
 | Node desktop | `SpawnTransport` (default) | msgpack (default) or JSON | Child process, spoken to over stdin/stdout |
 | Browser / WASM | `WasmTransport` | JSON only | Same page, loaded as a WebAssembly module |
-| Node SEA | `SpawnTransport` | msgpack or JSON | Extracted from the SEA bundle into a temp file on first run |
+| Node SEA | `SpawnTransport` | msgpack or JSON | Payload-local renderer binary, resolved by the shared launcher |
 
 The app code itself is identical across targets. `app()`,
 `update`, `view`, inline handlers, subscriptions, commands, and
@@ -310,31 +310,15 @@ separate `RUST_LOG` environment for a subprocess to inherit.
 
 ## Target 3: Node Single Executable Application
 
-A Node SEA bundle is a single file that contains the Node runtime,
-your JavaScript bundle, and any assets you embed, wrapped as one
-executable. Users run the binary; they do not need Node installed.
-Plushie ships helpers in the `plushie` module (`isSEA`,
-`extractBinaryFromSEA`, `generateSEAConfig`) to put the renderer
-binary inside that bundle and pull it back out at runtime.
+The canonical standalone shape for TypeScript Plushie apps is a
+host-only Node SEA executable wrapped by the shared Rust launcher.
+The SEA bundles the TypeScript host; the Rust launcher owns the
+outer executable, payload extraction, and renderer startup. The
+renderer is a payload-local binary, not embedded inside the SEA.
 
-### When to reach for it
-
-- Shipping a desktop app to users who will not install Node.
-- Distributing a command-line tool that embeds a Plushie UI for
-  interactive commands.
-- Air-gapped or locked-down environments where a separate runtime
-  install is a non-starter.
-
-When you don't need any of the above, plain `plushie run` against
-installed Node is simpler. SEA bundles are larger, slower to start
-(the renderer has to be extracted on first run), and harder to
-sign than a loose JavaScript app.
-
-### Building a SEA bundle
-
-Node's SEA support takes a JSON config file that points at the
-bundled JS entry point, the output path, and an optional map of
-embedded assets. `generateSEAConfig` writes that object for you:
+See [Standalone Packaging](standalone-packaging.md) for the full
+packaging workflow. The SDK's `generateSEAConfig` helper produces
+the SEA configuration object for the host-only build:
 
 ```typescript
 import { generateSEAConfig } from "plushie"
@@ -343,64 +327,22 @@ import { writeFileSync } from "node:fs"
 const config = generateSEAConfig({
   main: "dist/app.js",
   output: "build/app.blob",
-  binaryPath: "bin/plushie-renderer",
-  wasmDir: "node_modules/.plushie/wasm",
 })
 
 writeFileSync("sea-config.json", JSON.stringify(config, null, 2))
 ```
 
-The returned object includes:
-
-- `main` and `output` as passed.
-- `disableExperimentalSEAWarning: true`.
-- `useSnapshot: false`, `useCodeCache: true` (the current SDK
-  defaults).
-- An `assets` map with `"plushie-binary"` pointing at the
-  renderer, and, when `wasmDir` is set, `"plushie-wasm-js"` /
-  `"plushie-wasm-bg"` for the WASM pair.
-
-From there the standard Node SEA flow applies: `node
---experimental-sea-config sea-config.json` produces the blob,
-then `postject` injects it into a copy of the Node binary. The
-Node docs cover the invocation; the README for this SDK has a
-short recipe.
-
-### Finding the binary at runtime
-
-Inside a running SEA bundle, `isSEA()` returns true and
-`extractBinaryFromSEA()` pulls the embedded asset out to a
-temp file (`os.tmpdir()/plushie-sea-<pid>` plus a `.exe` suffix
-on Windows) and marks it executable on POSIX. The extracted
-path can then be handed to `.run()`:
-
-```typescript
-import { app, isSEA, extractBinaryFromSEA } from "plushie"
-import counter from "./counter"
-
-const binary = isSEA() ? extractBinaryFromSEA() : undefined
-await counter.run({ binary })
-```
-
-When `binary` is `undefined`, `.run()` falls back to the normal
-resolution chain (`PLUSHIE_BINARY_PATH`,
-`bin/`, and so on). `extractBinaryFromSEA`
-takes an optional asset key; pass it if you used something other
-than the default `"plushie-binary"` in your SEA config.
-
-If the call is made outside a SEA context, it throws. The
-`isSEA()` guard keeps the same entry point usable in both
-development and packaged builds.
+The `npx plushie package` command drives this for you end-to-end.
+Manual use of `generateSEAConfig` is only needed for custom build
+pipelines that bypass the standard command.
 
 ### SEA and WASM together
 
-`generateSEAConfig` can embed the WASM pair alongside the native
-binary. The SEA bundle then carries both, which lets a single
-distributable ship a desktop runtime and an embeddable WASM
-artifact (for apps that hand the WASM off to a webview or an
-internal browser). The keys are `"plushie-wasm-js"` and
-`"plushie-wasm-bg"`; extracting them follows the same
-`sea.getAsset(key)` pattern as the binary.
+`generateSEAConfig` can embed the WASM pair as SEA assets. The SEA
+bundle then carries both, which lets a single distributable ship a
+desktop runtime and an embeddable WASM artifact (for apps that hand
+the WASM off to a webview or an internal browser). The keys are
+`"plushie-wasm-js"` and `"plushie-wasm-bg"`.
 
 Most SEA bundles do not need the WASM files. Skip the `wasmDir`
 argument to keep the bundle small.

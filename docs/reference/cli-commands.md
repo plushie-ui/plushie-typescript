@@ -210,7 +210,6 @@ Package metadata and output flags:
 | `--host-name <name>` | Payload-local host executable name. |
 | `--output <dir>` | Package payload output directory. Defaults to `dist`. |
 | `--target <target>` | Override package target such as `linux-x86_64`. |
-| `--sea-output <path>` | Also write a renderer-embedded SEA executable for compatibility proofs. |
 | `--icon <path>` | Copy an app icon into the payload. When absent, the default Plushie icon set is used. |
 | `--strict-tools` | Require the Plushie native tools to be present and version-matched. |
 
