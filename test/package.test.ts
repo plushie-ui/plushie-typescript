@@ -146,6 +146,8 @@ describe("package start config template", () => {
 
     expect(text).toContain("config_version = 1");
     expect(text).toContain('command = ["bin/connect"]');
+    expect(text).toContain("# [assets]");
+    expect(text).toContain('# dir = "package_assets"');
     expect(text).toContain("# [platform]");
     expect(text).toContain("# publisher");
     expect(text).toContain("# bundle_id");

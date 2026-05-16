@@ -55,6 +55,7 @@ import {
 } from "../package.js";
 import { DEFAULT_WASM_DIR, WASM_BG_FILE, WASM_JS_FILE } from "../wasm.js";
 import { resolveCargoPlushie } from "./cargo-plushie.js";
+import { warnIfNotGitignored } from "./gitignore.js";
 
 function readVersion(): string {
   const require = createRequire(import.meta.url);
@@ -197,6 +198,10 @@ async function handleDownload(
     }
     const sourcePath = process.env["PLUSHIE_RUST_SOURCE_PATH"] ?? config?.source_path;
     await handleDownloadBinary(force, resolvedBinFile, sourcePath);
+    // Nudge users to gitignore the managed-tools destination so
+    // downloaded binaries don't slip into the repo.
+    const binDir = resolvedBinFile !== undefined ? dirname(resolvedBinFile) : "bin";
+    warnIfNotGitignored(binDir);
   }
   if (artifacts.includes("wasm")) {
     await downloadWasm(force, resolvedWasmDir);
@@ -1082,6 +1087,10 @@ async function handlePackage(
   }
 
   runCommand(invocation.command, assembleArgs);
+
+  // Nudge users to gitignore the package output directory so the
+  // assembled payload doesn't slip into the repo.
+  warnIfNotGitignored(outputDir);
 }
 
 // =========================================================================
