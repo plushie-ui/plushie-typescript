@@ -937,7 +937,7 @@ function preparePlatformIcon(
   if (opts.defaultIcon === true) {
     const assetsDir = join(payloadRoot, "assets");
     writeDefaultIcons(assetsDir, opts.env);
-    return join("assets", "plushie-checkbox-512x512.png");
+    return join("assets", "default-app-icon-512.png");
   }
 
   return undefined;

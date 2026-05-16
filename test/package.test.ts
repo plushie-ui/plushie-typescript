@@ -115,6 +115,27 @@ describe("package manifest", () => {
     expect(toml).toContain("[platform]");
     expect(toml).toContain('icon = "assets/icon.png"');
   });
+
+  test("omits [platform] section when no icon is set", () => {
+    const dir = tempDir();
+    const archive = join(dir, "payload.tar.zst");
+    writeFileSync(archive, "payload");
+
+    const manifest = manifestForPayload({
+      appId: "dev.plushie.test",
+      appName: "Test App",
+      appVersion: "0.1.0",
+      target: "linux-x86_64",
+      rendererKind: "custom",
+      rendererPath: "bin/plushie-renderer",
+      startCommand: ["bin/host"],
+      payloadArchive: archive,
+    });
+
+    const toml = renderPackageManifest(manifest);
+    expect(toml).not.toContain("[platform]");
+    expect(toml).not.toContain("icon =");
+  });
 });
 
 describe("package start config", () => {
