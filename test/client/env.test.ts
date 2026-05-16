@@ -62,6 +62,10 @@ describe("buildRendererEnv", () => {
       "PLUSHIE_PACKAGE_READY_FILE",
       "PLUSHIE_RELEASE_BASE_URL",
       "PLUSHIE_CACHE_DIR",
+      "PLUSHIE_LAUNCHER_PATH",
+      "PLUSHIE_TOOL_SOURCE_KIND",
+      "PLUSHIE_LAUNCHER_QUIET",
+      "PLUSHIE_UPDATE_SNAPSHOTS",
     ];
 
     const saved: Record<string, string | undefined> = {};
@@ -77,6 +81,32 @@ describe("buildRendererEnv", () => {
     }
 
     for (const name of blocked) {
+      if (saved[name] !== undefined) {
+        process.env[name] = saved[name];
+      } else {
+        delete process.env[name];
+      }
+    }
+  });
+
+  test("forwards Windows critical vars to renderer", () => {
+    // DLL loader, child-process PATHEXT lookups, and the temp dir resolver
+    // all rely on these. On non-Windows hosts they just won't be present in
+    // the env, but they must pass if set.
+    const vars = ["SystemRoot", "WINDIR", "PATHEXT", "TEMP", "TMP"];
+    const saved: Record<string, string | undefined> = {};
+    for (const name of vars) {
+      saved[name] = process.env[name];
+      process.env[name] = `test-value-${name}`;
+    }
+
+    const env = buildRendererEnv();
+
+    for (const name of vars) {
+      expect(env[name], `${name} must reach renderer`).toBe(`test-value-${name}`);
+    }
+
+    for (const name of vars) {
       if (saved[name] !== undefined) {
         process.env[name] = saved[name];
       } else {

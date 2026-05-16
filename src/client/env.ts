@@ -5,17 +5,18 @@
  * whitelisted variables. This prevents credential leakage and
  * ensures a predictable rendering environment.
  *
- * The whitelist matches the canonical list shared across every host
- * SDK: exact entries for display/rendering/locale/accessibility/font
- * vars, prefix entries for families (`LC_`, `MESA_`, etc.), and an
- * explicit closed list of `PLUSHIE_*` variables the renderer actually
- * reads.
+ * The whitelist mirrors the canonical list in plushie-rust's
+ * `crates/plushie/src/runner/env.rs`, shared across every host SDK:
+ * exact entries for display/rendering/locale/accessibility/font vars,
+ * prefix entries for families (`LC_`, `MESA_`, etc.), and an explicit
+ * closed list of `PLUSHIE_*` variables the renderer actually reads.
  *
  * @module
  */
 
 /** Exact variable names to forward. */
 const EXACT_WHITELIST = new Set([
+  // Display servers
   "DISPLAY",
   "WAYLAND_DISPLAY",
   "WAYLAND_SOCKET",
@@ -23,20 +24,32 @@ const EXACT_WHITELIST = new Set([
   "XDG_RUNTIME_DIR",
   "XDG_DATA_DIRS",
   "XDG_DATA_HOME",
+  // PATH / shared library resolution
   "PATH",
   "LD_LIBRARY_PATH",
   "DYLD_LIBRARY_PATH",
   "DYLD_FALLBACK_LIBRARY_PATH",
+  // Locale
   "LANG",
   "LANGUAGE",
+  // Desktop integration
   "DBUS_SESSION_BUS_ADDRESS",
   "GTK_MODULES",
   "NO_AT_BRIDGE",
+  // Renderer + log controls
   "WGPU_BACKEND",
   "RUST_LOG",
   "RUST_BACKTRACE",
+  // Identity
   "HOME",
   "USER",
+  // Windows: required for DLL loader, child process resolution, and tempdir.
+  // Harmless on other platforms (just absent from the host env).
+  "SystemRoot",
+  "WINDIR",
+  "PATHEXT",
+  "TEMP",
+  "TMP",
   // The renderer subprocess in spawn mode reads at most PLUSHIE_NO_CATCH_UNWIND
   // from inherited env. Other PLUSHIE_* names are host-side, launcher-set, or
   // secrets (e.g. PLUSHIE_TOKEN) that must not leak across the process boundary.
