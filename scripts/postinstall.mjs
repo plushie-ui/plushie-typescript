@@ -31,7 +31,8 @@ import { get as httpsGet } from "node:https"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const PLUSHIE_RUST_VERSION = "0.7.1"
+const _pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf-8"))
+const PLUSHIE_RUST_VERSION = _pkg.plushieRustVersion
 const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-rust/releases/download"
 const RELEASE_BASE_URL_ENV = "PLUSHIE_RELEASE_BASE_URL"
 const DOWNLOAD_ATTEMPTS = 3

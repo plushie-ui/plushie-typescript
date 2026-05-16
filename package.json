@@ -1,6 +1,7 @@
 {
   "name": "plushie",
   "version": "0.6.0",
+  "plushieRustVersion": "0.7.1",
   "description": "Native desktop GUI framework for TypeScript, powered by iced",
   "type": "module",
   "homepage": "https://github.com/plushie-ui/plushie-typescript",
