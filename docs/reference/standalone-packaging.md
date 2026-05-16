@@ -61,8 +61,7 @@ npx plushie package \
   --app-name "My App" \
   --main dist/app.cjs \
   --sea-output dist/my-app \
-  --output dist/shared-launcher \
-  --default-icon
+  --output dist
 ```
 
 The command expects `--main` to point at a bundled CommonJS host file.
@@ -74,19 +73,19 @@ optional app icon assets, writes `payload.tar.zst`, and writes
 `plushie-package.toml`.
 
 Use `--icon path/to/icon.png` to copy an app-provided icon into the
-payload. Use `--default-icon` to export Plushie's bundled default icon
-set through `bin/plushie default-icons` and record the 512px PNG in
-`[platform].icon`.
+payload. When `--icon` is absent, the default Plushie icon set is
+exported through `bin/plushie default-icons` and the 512px PNG is
+recorded in `[platform].icon`.
 
 For apps that prepare a Node host executable themselves, pass
 `--host-bin` instead of `--main`. The SDK still owns the renderer copy,
 payload archive, and manifest generation.
 
-Renderer resolution for stock packages uses `--renderer-bin`,
+Renderer resolution for stock packages uses `--renderer-path`,
 `PLUSHIE_BINARY_PATH`, `PLUSHIE_RUST_SOURCE_PATH` with a release
 renderer build, then the downloaded binary under
 `bin/`. Custom packages must pass
-`--renderer custom` with `--renderer-bin` or `PLUSHIE_BINARY_PATH` so
+`--renderer-kind custom` with `--renderer-path` or `PLUSHIE_BINARY_PATH` so
 the payload cannot silently package stock renderer bits as custom.
 
 Build the final launcher with the shared Plushie tool:
@@ -96,11 +95,16 @@ bin/plushie package check --manifest dist/shared-launcher/plushie-package.toml -
 bin/plushie package portable --manifest dist/shared-launcher/plushie-package.toml --strict-tools
 ```
 
-Pass `--portable` to `plushie package` to run that final step
-immediately. Use `--portable-out PATH` to pass an output path to
-`bin/plushie package portable`. Use `--strict-tools` when packaging
+After writing the payload, `plushie package` prints a handoff message:
+
+```
+Build launcher with:
+  bin/plushie package portable --manifest <path>
+```
+
+Use `--strict-tools` with `bin/plushie package portable` when packaging
 must fail if the Rust package checker cannot use the expected native
-tools. The flag is forwarded to the final portable package command.
+tools.
 
 ## Manifest
 

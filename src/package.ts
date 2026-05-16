@@ -104,7 +104,7 @@ export interface ResolvedRenderer {
 }
 
 export interface ResolveRendererOptions {
-  readonly rendererBin?: string;
+  readonly rendererPath?: string;
   readonly rendererKind?: RendererKind;
   readonly env?: NodeJS.ProcessEnv;
   readonly log?: (message: string) => void;
@@ -127,7 +127,7 @@ export interface PrepareNodePackagePayloadOptions {
   readonly hostName: string;
   readonly outputDir: string;
   readonly renderer?: ResolvedRenderer;
-  readonly rendererBin?: string;
+  readonly rendererPath?: string;
   readonly rendererKind?: RendererKind;
   readonly icon?: string;
   readonly defaultIcon?: boolean;
@@ -400,7 +400,7 @@ export function buildSEAExecutable(opts: BuildSEAExecutableOptions): void {
 export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): ResolvedRenderer {
   const env = opts.env ?? process.env;
   const kind = opts.rendererKind ?? "stock";
-  const explicitPath = opts.rendererBin ?? env["PLUSHIE_BINARY_PATH"];
+  const explicitPath = opts.rendererPath ?? env["PLUSHIE_BINARY_PATH"];
 
   if (explicitPath !== undefined && explicitPath !== "") {
     const sourcePath = resolve(explicitPath);
@@ -416,7 +416,7 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
   if (kind === "custom") {
     throw new Error(
       "custom renderer packaging requires an explicit renderer binary path. " +
-        "Pass --renderer-bin or set PLUSHIE_BINARY_PATH to a renderer built for this app.",
+        "Pass --renderer-path or set PLUSHIE_BINARY_PATH to a renderer built for this app.",
     );
   }
 

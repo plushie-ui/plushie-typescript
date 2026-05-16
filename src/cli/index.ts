@@ -92,9 +92,8 @@ Usage: plushie <command> [options]
 Commands:
   download          Download the precompiled plushie binary
   download --wasm   Download the WASM renderer
-  build             Build plushie from Rust source
+  build             Build plushie from Rust source (release profile)
   build --wasm      Build WASM renderer via wasm-pack
-  build --release   Build with optimizations
   dev <app>         Run an app with file watching (hot reload)
   run <app>         Run an app
   stdio <app>       Run an app in renderer-parent stdio mode
@@ -120,20 +119,16 @@ Options:
   --host-name <name> Payload-local host executable name (package)
   --output <dir>    Package output directory (package)
   --sea-output <p>  Optional SEA executable with an embedded renderer (package)
-  --renderer <kind> Renderer kind: stock or custom (package)
-  --renderer-bin <p> Use an existing renderer binary (package)
+  --renderer-kind <kind> Renderer kind: stock or custom (package)
+  --renderer-path <p> Use an existing renderer binary (package)
   --package-config <p> Source package config path (package)
   --write-package-config Write a package config template and exit (package)
   --icon <path>     App icon copied into the package payload (package)
-  --default-icon    Use Plushie's bundled default app icon (package)
-  --portable        Run bin/plushie package portable after preparing the payload (package)
-  --portable-out <p> Portable launcher output path (package)
   --strict-tools    Require strict native package tool identity (package)
   --target <target> Override package target (package)
   --bin             Download/build the native binary
   --wasm            Download/build the WASM renderer
   --no-watch        Disable file watching in dev mode
-  --release         Build with optimizations (build command)
 
 Config (plushie.extensions.json):
   artifacts         ["bin"], ["wasm"], or ["bin", "wasm"] (default: ["bin"])
@@ -380,7 +375,7 @@ async function handleBuild(
 
   const explicitBin = flags.includes("--bin");
   const explicitWasm = flags.includes("--wasm");
-  const isRelease = flags.includes("--release");
+  const isRelease = true;
 
   // Resolve what to build: CLI flags > config artifacts > default ["bin"]
   const artifacts =
@@ -927,7 +922,7 @@ function readLocalPackageJson(): LocalPackageJson {
 function parseRendererKind(value: string | undefined): RendererKind | undefined {
   if (value === undefined) return undefined;
   if (value === "stock" || value === "custom") return value;
-  throw new Error(`Invalid --renderer value: ${value}`);
+  throw new Error(`Invalid --renderer-kind value: ${value}`);
 }
 
 function defaultHostName(pkg: LocalPackageJson, hostBin: string | undefined): string {
@@ -937,37 +932,6 @@ function defaultHostName(pkg: LocalPackageJson, hostBin: string | undefined): st
   const base = (pkg.name ?? "app").replaceAll(/[^A-Za-z0-9._-]/g, "-");
   const ext = process.platform === "win32" ? ".exe" : "";
   return `${base}-host${ext}`;
-}
-
-function packagePortableArgs(opts: {
-  readonly manifestPath: string;
-  readonly portableOut?: string;
-  readonly strictTools: boolean;
-}): string[] {
-  const args = ["package", "portable", "--manifest", opts.manifestPath];
-  if (opts.strictTools) {
-    args.push("--strict-tools");
-  }
-  if (opts.portableOut !== undefined) {
-    args.push("--out", opts.portableOut);
-  }
-  return args;
-}
-
-function runPackagePortable(opts: {
-  readonly manifestPath: string;
-  readonly portableOut?: string;
-  readonly strictTools: boolean;
-}): void {
-  const args = packagePortableArgs(opts);
-  const toolPath = join("bin", installedToolName());
-  const result = spawnSync(toolPath, args, { stdio: "inherit" });
-  if (result.error !== undefined) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    throw new Error(`${toolPath} package portable failed with exit code ${String(result.status)}`);
-  }
 }
 
 async function handlePackage(
@@ -996,10 +960,10 @@ async function handlePackage(
 
   const pkg = readLocalPackageJson();
   const hostName = valueFlags.get("--host-name") ?? defaultHostName(pkg, hostBin);
-  const outputDir = valueFlags.get("--output") ?? resolve("dist", "shared-launcher");
+  const outputDir = valueFlags.get("--output") ?? resolve("dist");
   const appVersion = valueFlags.get("--app-version") ?? pkg.version ?? "0.1.0";
-  const rendererKind = valueFlags.has("--renderer")
-    ? parseRendererKind(valueFlags.get("--renderer"))
+  const rendererKind = valueFlags.has("--renderer-kind")
+    ? parseRendererKind(valueFlags.get("--renderer-kind"))
     : undefined;
 
   const result = prepareNodePackagePayload({
@@ -1010,13 +974,15 @@ async function handlePackage(
     ...(hostBin !== undefined ? { hostBin } : {}),
     hostName,
     outputDir,
-    ...(valueFlags.has("--renderer-bin") ? { rendererBin: valueFlags.get("--renderer-bin")! } : {}),
+    ...(valueFlags.has("--renderer-path")
+      ? { rendererPath: valueFlags.get("--renderer-path")! }
+      : {}),
     ...(rendererKind !== undefined ? { rendererKind } : {}),
     ...(valueFlags.has("--package-config")
       ? { packageConfig: valueFlags.get("--package-config")! }
       : {}),
     ...(valueFlags.has("--icon") ? { icon: valueFlags.get("--icon")! } : {}),
-    defaultIcon: flags.includes("--default-icon"),
+    defaultIcon: !valueFlags.has("--icon"),
     ...(valueFlags.has("--sea-output") ? { seaOutput: valueFlags.get("--sea-output")! } : {}),
     ...(valueFlags.has("--target") ? { target: valueFlags.get("--target")! } : {}),
     log: console.log,
@@ -1028,24 +994,9 @@ async function handlePackage(
   }
   console.log(`Shared launcher payload: ${result.payloadArchivePath}`);
   console.log(`Shared launcher manifest: ${result.manifestPath}`);
-  const strictTools = flags.includes("--strict-tools");
-  if (flags.includes("--portable")) {
-    runPackagePortable({
-      manifestPath: result.manifestPath,
-      ...(valueFlags.has("--portable-out")
-        ? { portableOut: valueFlags.get("--portable-out")! }
-        : {}),
-      strictTools,
-    });
-  } else {
-    const portableArgs = packagePortableArgs({
-      manifestPath: result.manifestPath,
-      strictTools,
-    });
-    console.log();
-    console.log("Build shared launcher:");
-    console.log(`  ${join("bin", installedToolName())} ${portableArgs.join(" ")}`);
-  }
+  console.log();
+  console.log("Build launcher with:");
+  console.log(`  bin/plushie package portable --manifest ${result.manifestPath}`);
 }
 
 // =========================================================================
@@ -1220,11 +1171,10 @@ async function main(argv: string[]): Promise<void> {
     "--host-name",
     "--output",
     "--sea-output",
-    "--renderer",
-    "--renderer-bin",
+    "--renderer-kind",
+    "--renderer-path",
     "--package-config",
     "--icon",
-    "--portable-out",
     "--target",
   ]);
   const flags: string[] = [];

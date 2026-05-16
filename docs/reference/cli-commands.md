@@ -14,7 +14,7 @@ so teammates get the same commands via `pnpm`, `npm`, or `yarn`.
 ```bash
 npx plushie --help
 npx plushie dev src/main.tsx
-npx plushie build --release
+npx plushie build
 ```
 
 ## Invocation
@@ -33,7 +33,7 @@ A typical `package.json` wraps the commands:
   "scripts": {
     "dev": "plushie dev src/main.tsx",
     "start": "plushie run src/main.tsx",
-    "build:renderer": "plushie build --release",
+    "build:renderer": "plushie build",
     "test:scripts": "plushie script test/scripts"
   }
 }
@@ -119,10 +119,9 @@ Build the renderer from Rust source (or a stock or custom renderer
 via `cargo-plushie`).
 
 ```bash
-plushie build                           # native binary, debug profile
-plushie build --release                 # native binary, release profile
+plushie build                           # native binary, release profile
 plushie build --wasm                    # WASM renderer via wasm-pack
-plushie build --bin --wasm --release    # both, optimized
+plushie build --bin --wasm              # both artifacts
 ```
 
 Selection order matches `download`: CLI flags, then `artifacts` in
@@ -191,8 +190,7 @@ plushie package \
   --app-name "My App" \
   --app-version 0.1.0 \
   --main dist/app.cjs \
-  --output dist/shared-launcher \
-  --default-icon
+  --output dist
 ```
 
 Choose a host input, and do not pass both:
@@ -210,24 +208,21 @@ Package metadata and output flags:
 | `--app-name <name>` | Optional display name. |
 | `--app-version <v>` | App version. Defaults to local `package.json` version, then `0.1.0`. |
 | `--host-name <name>` | Payload-local host executable name. |
-| `--output <dir>` | Package payload output directory. Defaults to `dist/shared-launcher`. |
+| `--output <dir>` | Package payload output directory. Defaults to `dist`. |
 | `--target <target>` | Override package target such as `linux-x86_64`. |
 | `--sea-output <path>` | Also write a renderer-embedded SEA executable for compatibility proofs. |
-| `--icon <path>` | Copy an app icon into the payload. |
-| `--default-icon` | Export Plushie's default icon set and use the 512px PNG. |
-| `--portable` | Run `bin/plushie package portable --manifest <manifest>` after writing the manifest. |
-| `--portable-out <path>` | Pass `--out <path>` to the portable package command when `--portable` is set. |
-| `--strict-tools` | Pass `--strict-tools` to the portable package command so missing, stale, dirty, mixed, or mismatched native tools fail before portable packaging. |
+| `--icon <path>` | Copy an app icon into the payload. When absent, the default Plushie icon set is used. |
+| `--strict-tools` | Require the Plushie native tools to be present and version-matched. |
 
 Renderer flags:
 
 | Flag | Description |
 |---|---|
-| `--renderer stock` | Package a stock renderer. This is the default. |
-| `--renderer custom` | Package a custom renderer. Requires `--renderer-bin` or `PLUSHIE_BINARY_PATH`. |
-| `--renderer-bin <path>` | Copy this renderer binary into the payload. |
+| `--renderer-kind stock` | Package a stock renderer. This is the default. |
+| `--renderer-kind custom` | Package a custom renderer. Requires `--renderer-path` or `PLUSHIE_BINARY_PATH`. |
+| `--renderer-path <path>` | Copy this renderer binary into the payload. |
 
-Stock renderer resolution uses `--renderer-bin`, then
+Stock renderer resolution uses `--renderer-path`, then
 `PLUSHIE_BINARY_PATH`, then `PLUSHIE_RUST_SOURCE_PATH` with
 `bin/plushie tools sync`, then the downloaded binary under `bin/`.
 Custom renderer packaging requires an explicit binary path so a stock
@@ -258,11 +253,11 @@ forward_env = [
 `forward_env = []` is valid when the packaged host should inherit no
 parent environment names.
 
-By default the command prints the final portable-package handoff. Pass
-`--portable` to run that final step immediately:
+After writing the payload, the command prints the handoff for the next step:
 
-```bash
-plushie package --app-id dev.example.my_app --main dist/app.cjs --portable
+```
+Build launcher with:
+  bin/plushie package portable --manifest <path>
 ```
 
 ## dev

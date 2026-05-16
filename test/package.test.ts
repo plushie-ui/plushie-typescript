@@ -425,7 +425,7 @@ describe("resolvePackageRenderer", () => {
     try {
       process.chdir(dir);
       const result = resolvePackageRenderer({
-        rendererBin: renderer,
+        rendererPath: renderer,
         env: {},
       });
 
@@ -528,7 +528,7 @@ describe("resolvePackageRenderer", () => {
       process.chdir(dir);
       const result = resolvePackageRenderer({
         rendererKind: "custom",
-        rendererBin: renderer,
+        rendererPath: renderer,
         env: {},
       });
 
@@ -550,7 +550,7 @@ describe("resolvePackageRenderer", () => {
       expect(() =>
         resolvePackageRenderer({
           rendererKind: "custom",
-          rendererBin: renderer,
+          rendererPath: renderer,
           env: {},
         }),
       ).toThrow(/managed Plushie tool set/);

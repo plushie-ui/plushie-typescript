@@ -124,7 +124,7 @@ describe("plushie package", () => {
         "Test App",
         "--host-bin",
         host,
-        "--renderer-bin",
+        "--renderer-path",
         renderer,
         "--icon",
         icon,
@@ -140,7 +140,7 @@ describe("plushie package", () => {
 
     expect(result.code).toBe(0);
 
-    const outputDir = join(projectDir, "dist", "shared-launcher");
+    const outputDir = join(projectDir, "dist");
     const manifestPath = join(outputDir, "plushie-package.toml");
     expect(existsSync(join(outputDir, "payload.tar.zst"))).toBe(true);
     expect(existsSync(manifestPath)).toBe(true);
@@ -154,36 +154,26 @@ describe("plushie package", () => {
     expect(manifest).toContain('command = ["bin/host", "--cli-config"]');
     expect(manifest).toContain('forward_env = ["PATH"]');
     expect(manifest).toContain('icon = "assets/icon.png"');
-    expect(result.stdout).toContain(
-      `bin/plushie package portable --manifest ${manifestPath} --strict-tools`,
-    );
+    expect(result.stdout).toContain(`bin/plushie package portable --manifest ${manifestPath}`);
   });
 
-  test("runs the portable launcher when requested", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "plushie-cli-portable-"));
+  test("prints handoff message with manifest path", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "plushie-cli-handoff-"));
     tempDirs.push(dir);
 
     const projectDir = join(dir, "project");
-    const binDir = join(projectDir, "bin");
-    const toolArgsPath = join(dir, "tool-args.json");
+    const binDir = join(dir, "bin");
+    const packageToolDir = join(projectDir, "bin");
     mkdirSync(projectDir, { recursive: true });
     mkdirSync(binDir, { recursive: true });
+    mkdirSync(packageToolDir, { recursive: true });
 
-    const host = join(dir, "host");
-    const renderer = join(dir, "plushie-renderer");
+    const host = join(binDir, "host");
+    const renderer = join(binDir, "plushie-renderer");
     writeExecutable(host);
     writeExecutable(renderer);
-    writeFileSync(
-      join(binDir, "plushie"),
-      [
-        "#!/bin/sh",
-        'node -e \'require("node:fs").writeFileSync(process.env.PLUSHIE_ARGS_OUT, JSON.stringify(process.argv.slice(1)))\' "$@"',
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-    chmodSync(join(binDir, "plushie"), 0o755);
-    writeExecutable(join(binDir, "plushie-launcher"));
+    writeExecutable(join(packageToolDir, "plushie"));
+    writeExecutable(join(packageToolDir, "plushie-launcher"));
     writeFileSync(
       join(projectDir, "package.json"),
       JSON.stringify({ name: "package-test", version: "0.2.0" }),
@@ -197,31 +187,19 @@ describe("plushie package", () => {
         "dev.plushie.test",
         "--host-bin",
         host,
-        "--renderer-bin",
+        "--renderer-path",
         renderer,
         "--target",
         "linux-x86_64",
-        "--portable",
-        "--strict-tools",
-        "--portable-out",
-        "dist/portable/Test App",
       ],
       projectDir,
-      { ...process.env, PLUSHIE_ARGS_OUT: toolArgsPath },
+      { ...process.env, PATH: `${binDir}${delimiter}${process.env["PATH"] ?? ""}` },
     );
 
-    const manifestPath = join(projectDir, "dist", "shared-launcher", "plushie-package.toml");
+    const manifestPath = join(projectDir, "dist", "plushie-package.toml");
     expect(result.code).toBe(0);
-    expect(result.stdout).not.toContain("Build shared launcher:");
-    expect(JSON.parse(readFileSync(toolArgsPath, "utf-8"))).toEqual([
-      "package",
-      "portable",
-      "--manifest",
-      manifestPath,
-      "--strict-tools",
-      "--out",
-      "dist/portable/Test App",
-    ]);
+    expect(result.stdout).toContain("Build launcher with:");
+    expect(result.stdout).toContain(`bin/plushie package portable --manifest ${manifestPath}`);
   });
 
   test("writes package config without requiring package metadata", async () => {
