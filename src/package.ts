@@ -47,10 +47,25 @@ const DEFAULT_FORWARD_ENV = [
   "DISPLAY",
 ] as const;
 const DEFAULT_PACKAGE_CONFIG = "plushie-package.config.toml";
+// Names owned by the launcher or renderer that must not be forwarded from the
+// host environment. Forwarding these would let a host environment variable
+// silently override launcher-injected values, breaking the packaging contract.
+// Any name matching /^PLUSHIE_/ that is not in this list should be added here
+// when it becomes a documented launcher- or renderer-owned variable.
 const RESERVED_FORWARD_ENV = new Set([
   "PLUSHIE_BINARY_PATH",
   "PLUSHIE_PACKAGE_DIR",
-  PACKAGE_READY_FILE_ENV,
+  PACKAGE_READY_FILE_ENV, // PLUSHIE_PACKAGE_READY_FILE
+  "PLUSHIE_SOCKET",
+  "PLUSHIE_TOKEN",
+  "PLUSHIE_TRANSPORT",
+  "PLUSHIE_RUST_SOURCE_PATH",
+  "PLUSHIE_RELEASE_BASE_URL",
+  "PLUSHIE_CACHE_DIR",
+  "PLUSHIE_LAUNCHER_PATH",
+  "PLUSHIE_TOOL_SOURCE_KIND",
+  "PLUSHIE_FORMAT",
+  "PLUSHIE_NO_CATCH_UNWIND",
 ]);
 
 export interface RendererManifest {

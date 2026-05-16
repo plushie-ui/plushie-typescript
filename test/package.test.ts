@@ -265,6 +265,44 @@ describe("package start config", () => {
       'forward_env = ["PLUSHIE_PACKAGE_READY_FILE"]',
       /cannot include reserved name/,
     ],
+    ["reserved socket env", 'forward_env = ["PLUSHIE_SOCKET"]', /cannot include reserved name/],
+    ["reserved token env", 'forward_env = ["PLUSHIE_TOKEN"]', /cannot include reserved name/],
+    [
+      "reserved transport env",
+      'forward_env = ["PLUSHIE_TRANSPORT"]',
+      /cannot include reserved name/,
+    ],
+    [
+      "reserved rust source path env",
+      'forward_env = ["PLUSHIE_RUST_SOURCE_PATH"]',
+      /cannot include reserved name/,
+    ],
+    [
+      "reserved release base url env",
+      'forward_env = ["PLUSHIE_RELEASE_BASE_URL"]',
+      /cannot include reserved name/,
+    ],
+    [
+      "reserved cache dir env",
+      'forward_env = ["PLUSHIE_CACHE_DIR"]',
+      /cannot include reserved name/,
+    ],
+    [
+      "reserved launcher path env",
+      'forward_env = ["PLUSHIE_LAUNCHER_PATH"]',
+      /cannot include reserved name/,
+    ],
+    [
+      "reserved tool source kind env",
+      'forward_env = ["PLUSHIE_TOOL_SOURCE_KIND"]',
+      /cannot include reserved name/,
+    ],
+    ["reserved format env", 'forward_env = ["PLUSHIE_FORMAT"]', /cannot include reserved name/],
+    [
+      "reserved no catch unwind env",
+      'forward_env = ["PLUSHIE_NO_CATCH_UNWIND"]',
+      /cannot include reserved name/,
+    ],
   ])("rejects invalid source package config: %s", (_name, replacement, error) => {
     const dir = tempDir();
     const configPath = join(dir, "plushie-package.config.toml");
