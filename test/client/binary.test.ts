@@ -344,6 +344,37 @@ describe("downloadBinary", () => {
   });
 });
 
+describe("resolveBinary", () => {
+  test("does not fall through to source-tree paths when PLUSHIE_PACKAGE_DIR is set", () => {
+    // Simulate a packaged context: run resolveBinary from a temp directory that
+    // has no bin/ renderer so step 3 also fails. With PLUSHIE_PACKAGE_DIR set,
+    // the source-tree dev paths (step 4) must be skipped, so the function throws
+    // "not found" rather than silently picking up a sibling cargo build.
+    const dir = tempDir();
+    // Place a fake binary at the step-4 local path to confirm it is not picked up.
+    const fakeLocal = join(dir, "plushie-renderer");
+    writeFileSync(fakeLocal, "#!/bin/sh\nexit 0\n");
+
+    const { spawnSync } = require("node:child_process") as typeof import("node:child_process");
+    // Use the dist build, which is present when tests run during preflight.
+    const distClientIndex = join(import.meta.dirname, "../../dist/client/index.js");
+    const script = [
+      `import { resolveBinary } from ${JSON.stringify(distClientIndex)};`,
+      "try { resolveBinary(); process.exit(0); } catch (e) { process.stderr.write(e.message); process.exit(1); }",
+    ].join("\n");
+
+    const result = spawnSync(process.execPath, ["--input-type=module"], {
+      input: script,
+      cwd: dir,
+      env: { ...process.env, PLUSHIE_PACKAGE_DIR: "/some/package", PLUSHIE_BINARY_PATH: "" },
+      encoding: "utf-8",
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/Could not find the plushie binary/);
+  });
+});
+
 function tempDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "plushie-binary-"));
   tempDirs.push(dir);

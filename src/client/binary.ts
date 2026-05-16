@@ -178,16 +178,23 @@ export function resolveBinary(): string {
     return downloadPath;
   }
 
-  // 4. Common local paths (for development against local builds)
-  const localPaths = [
-    resolve("plushie-renderer"),
-    resolve("..", "plushie-rust", "target", "release", "plushie-renderer"),
-    resolve("..", "plushie-rust", "target", "debug", "plushie-renderer"),
-  ];
-  for (const p of localPaths) {
-    if (existsSync(p)) {
-      validateArchitecture(p);
-      return p;
+  // 4. Common local paths (for development against local builds).
+  //    Skipped when running as a SEA bundle or inside a packaged app
+  //    (PLUSHIE_PACKAGE_DIR set by the launcher), where the launcher
+  //    always provides PLUSHIE_BINARY_PATH and these dev paths should
+  //    never be reached.
+  const isPackaged = isSEA() || process.env["PLUSHIE_PACKAGE_DIR"] !== undefined;
+  if (!isPackaged) {
+    const localPaths = [
+      resolve("plushie-renderer"),
+      resolve("..", "plushie-rust", "target", "release", "plushie-renderer"),
+      resolve("..", "plushie-rust", "target", "debug", "plushie-renderer"),
+    ];
+    for (const p of localPaths) {
+      if (existsSync(p)) {
+        validateArchitecture(p);
+        return p;
+      }
     }
   }
 
