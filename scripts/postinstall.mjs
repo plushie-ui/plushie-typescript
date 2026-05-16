@@ -131,10 +131,10 @@ function isLocalHttpHost(hostname) {
 
 function validateDownloadProtocol(parsed, previousProtocol) {
   if (parsed.protocol === "http:" && previousProtocol === "https:") {
-    return `Refusing HTTPS to HTTP redirect for ${parsed.toString()}`
+    return `Refusing HTTPS to HTTP redirect for ${parsed.protocol}//${parsed.hostname}`
   }
   if (parsed.protocol === "http:" && !isLocalHttpHost(parsed.hostname)) {
-    return `Refusing non-local HTTP download URL: ${parsed.toString()}`
+    return `Refusing non-local HTTP download URL: ${parsed.protocol}//${parsed.hostname}`
   }
   return undefined
 }
@@ -148,7 +148,7 @@ function releaseBaseUrl() {
   try {
     parsed = new URL(value)
   } catch {
-    throw new Error(`${RELEASE_BASE_URL_ENV} is not a valid URL: ${value}`)
+    throw new Error(`${RELEASE_BASE_URL_ENV} is not a valid URL`)
   }
   const protocolError = validateDownloadProtocol(parsed, undefined)
   if (protocolError !== undefined) {

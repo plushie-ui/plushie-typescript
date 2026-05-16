@@ -495,10 +495,10 @@ function validateDownloadProtocol(
   previousProtocol: string | undefined,
 ): string | undefined {
   if (parsed.protocol === "http:" && previousProtocol === "https:") {
-    return `Refusing HTTPS to HTTP redirect for ${parsed.toString()}`;
+    return `Refusing HTTPS to HTTP redirect for ${parsed.protocol}//${parsed.hostname}`;
   }
   if (parsed.protocol === "http:" && !isLocalHttpHost(parsed.hostname)) {
-    return `Refusing non-local HTTP download URL: ${parsed.toString()}`;
+    return `Refusing non-local HTTP download URL: ${parsed.protocol}//${parsed.hostname}`;
   }
   return undefined;
 }
