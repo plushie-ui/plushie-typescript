@@ -754,8 +754,24 @@ async function handleConnect(
   binaryOverride: string | undefined,
   tokenOverride: string | undefined,
 ): Promise<void> {
-  const addr = positional[0] ?? process.env["PLUSHIE_SOCKET"];
-  const appFile = positional[1];
+  // Positional ordering: [<addr>] [<appFile>]. In renderer-parent mode the
+  // renderer sets PLUSHIE_SOCKET in the spawned environment; the user only
+  // needs to pass the app file. When PLUSHIE_SOCKET is set and the first
+  // positional looks like a TypeScript/JavaScript source file rather than a
+  // socket address, treat it as the app file instead of an address that
+  // would shadow the env-provided socket.
+  const envSocket = process.env["PLUSHIE_SOCKET"];
+  const looksLikeAppFile = (value: string | undefined): boolean =>
+    value !== undefined && /\.(tsx?|jsx?|cjs|mjs)$/i.test(value);
+  let addr: string | undefined;
+  let appFile: string | undefined;
+  if (envSocket && positional.length === 1 && looksLikeAppFile(positional[0])) {
+    addr = envSocket;
+    appFile = positional[0];
+  } else {
+    addr = positional[0] ?? envSocket;
+    appFile = positional[1];
+  }
   if (!addr) {
     console.error("renderer-parent connect requires an address: pass <addr> or set PLUSHIE_SOCKET");
     process.exitCode = 1;

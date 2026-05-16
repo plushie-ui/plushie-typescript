@@ -7,6 +7,11 @@
     "src/client/index.ts",
     "src/testing/index.ts"
   ],
+  "projectDocuments": [
+    "docs/README.md",
+    "docs/guides/*.md",
+    "docs/reference/*.md"
+  ],
   "out": "api-docs",
   "name": "plushie",
   "includeVersion": true,
@@ -16,6 +21,20 @@
     "**/node_modules/**",
     "**/*.test.ts",
     "examples/**"
+  ],
+  "highlightLanguages": [
+    "bash",
+    "console",
+    "css",
+    "html",
+    "javascript",
+    "json",
+    "jsonc",
+    "json5",
+    "tsx",
+    "typescript",
+    "yaml",
+    "toml"
   ],
   "navigationLinks": {
     "GitHub": "https://github.com/plushie-ui/plushie-typescript"

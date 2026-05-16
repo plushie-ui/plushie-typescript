@@ -150,6 +150,25 @@ describe("plushie connect: address resolution", () => {
     );
   });
 
+  test("renderer-parent mode: app-file-shaped positional uses PLUSHIE_SOCKET as addr", async () => {
+    // In renderer-parent mode, the renderer sets PLUSHIE_SOCKET in the
+    // child env and invokes the CLI with only the app file as a positional.
+    // The CLI must not treat the app file as a socket address.
+    const env = {
+      ...process.env,
+      PLUSHIE_SOCKET: "/tmp/renderer-parent.sock",
+      PLUSHIE_TOKEN: "tok",
+    };
+    // src/main.tsx looks like an app file (has a .tsx extension), so the
+    // CLI should keep the env socket as the address and spawn the app.
+    // tsx is not installed in the temp cwd so the spawn will fail; we just
+    // need to confirm the address-resolution branch did not error.
+    const result = await runCli(["connect", "src/main.tsx"], env);
+    expect(result.stderr).not.toContain("renderer-parent connect requires an address");
+    // It should not have tried to connect to the app file as a socket.
+    expect(result.stdout + result.stderr).not.toContain("Connecting to src/main.tsx");
+  });
+
   test("positional address takes precedence over PLUSHIE_SOCKET", async () => {
     const env = {
       ...process.env,

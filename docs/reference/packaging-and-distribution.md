@@ -103,7 +103,7 @@ Package metadata and output flags:
 | `--target <target>` | Override package target such as `linux-x86_64`. |
 | `--renderer-kind stock\|custom` | Renderer selection. Auto-detected when absent. |
 | `--renderer-path <path>` | Use an existing renderer binary. |
-| `--package-config <path>` | Source package config path forwarded to `cargo plushie package assemble`. |
+| `--package-config <path>` | Source package config path forwarded to `bin/plushie package assemble`. |
 | `--write-package-config` | Write a `plushie-package.config.toml` template and exit. |
 
 `--app-id` is a reverse-DNS identifier in the
@@ -194,10 +194,12 @@ include those widget crates.
 
 Stock renderer resolution order:
 
-1. `--renderer-path <path>`.
-2. `PLUSHIE_BINARY_PATH`.
-3. `PLUSHIE_RUST_SOURCE_PATH` with `bin/plushie tools sync`.
-4. The downloaded binary at `bin/plushie-renderer`.
+1. `--renderer-path <path>` or `PLUSHIE_BINARY_PATH` (same precedence).
+2. `PLUSHIE_RUST_SOURCE_PATH`: runs `cargo run -p cargo-plushie --bin
+   plushie -- tools sync` from that workspace and uses the synced
+   renderer.
+3. The downloaded binary at `bin/plushie-renderer` (after a final
+   `bin/plushie tools sync` to confirm the version pin).
 
 Custom renderer packaging requires an explicit binary path so a
 stock renderer is not mislabeled as custom.
@@ -234,8 +236,10 @@ host can read it.
 
 For browser-style assets that should travel inside the SEA blob
 itself rather than as separate payload files, use SEA assets via
-`process.getAsset()`. Both work; payload-root files are simpler
-to update and debug, SEA assets are tamper-resistant.
+the `node:sea` module's `getAsset()` (declared in `sea-config.json`
+and read with `import sea from "node:sea"` / `sea.getAsset(name)`).
+Both work; payload-root files are simpler to update and debug, SEA
+assets are tamper-resistant.
 
 ### Package-level assets (package_assets/)
 
@@ -311,9 +315,12 @@ steps that `plushie package` runs for you:
 2. Run `node --experimental-sea-config sea-config.json` to
    produce the prep blob.
 3. Copy the current `node` executable to the payload location.
-4. Run `npx postject` to inject the prep blob into the copy.
-5. On macOS, strip and re-apply an ad-hoc code signature so the
-   injected binary launches.
+4. On macOS, strip the inherited code signature (with
+   `codesign --remove-signature`; failure is tolerated for cases
+   where the base node is unsigned).
+5. Run `npx postject` to inject the prep blob into the copy.
+6. On macOS, re-apply an ad-hoc code signature so the injected
+   binary launches.
 
 The Node executable used as the base is whichever `node` is
 running `plushie package`. Build on a runner that matches the
@@ -394,7 +401,10 @@ completed manifest adds:
 - `[start].working_dir` and `[start].forward_env` defaults from
   the package config.
 - A `[platform]` block if one is set in the package config.
-- An `[icon]` entry pointing at the materialized icon image.
+  `[platform].icon` is set to the materialized icon path inside
+  the payload (the package config's value when present, otherwise
+  `assets/default-app-icon-512.png` which cargo-plushie writes if
+  no icon was supplied).
 
 The split exists so that cargo-plushie owns the cross-SDK schema
 once. Every Plushie SDK writes a partial manifest in this shape
@@ -410,23 +420,19 @@ template with:
 npx plushie package --write-package-config
 ```
 
-The template includes all supported fields commented out:
+The template the SDK emits looks like this (only `[start].command`
+is uncommented; everything else is illustrative and commented out):
 
 ```toml
+# Plushie standalone package config.
+# Commit this file and edit it when the packaged app needs a
+# different entry point or forwarded environment.
+
 config_version = 1
 
 [start]
-command = ["bin/my-app-host"]
-# working_dir = "."
-# forward_env = [
-#   "PATH",
-#   "HOME",
-#   "LANG",
-#   "LC_ALL",
-#   "XDG_RUNTIME_DIR",
-#   "WAYLAND_DISPLAY",
-#   "DISPLAY",
-# ]
+# Structured argv. The first item is the packaged host executable.
+command = ["bin/connect"]
 
 # [assets]
 # # Project-relative directory copied verbatim into the payload root
@@ -435,19 +441,26 @@ command = ["bin/my-app-host"]
 # # convention if it exists.
 # dir = "package_assets"
 
+# Optional platform metadata. All fields are optional; omit the
+# [platform] section entirely when none apply.
+#
 # [platform]
-# publisher = "Your Name"
-# copyright = "Copyright 2026 Your Name"
+# publisher = "Example Corp"
+# copyright = "Copyright 2025 Example Corp"
 # category = "public.app-category.productivity"
-# description = "Short app description"
-# bundle_id = "com.example.app"
-
+# description = "A great app"
+# bundle_id = "com.example.myapp"
+#
 # [platform.macos]
 # bundle_version = "1"
-
+#
 # [platform.windows]
-# install_scope = "perUser"
+# install_scope = "perUser"   # perUser or perMachine
 ```
+
+`[start].working_dir` and `[start].forward_env` are not in the
+generated template but are accepted by `bin/plushie package
+assemble` if you add them by hand.
 
 `[start].working_dir` is relative to the extracted payload root.
 `[start].command` is a structured argv; the first element is the
@@ -511,17 +524,20 @@ reuse the extraction.
 ### OS-native installers
 
 ```bash
-bin/plushie package bundle --manifest dist/plushie-package.toml --formats appimage
-bin/plushie package bundle --manifest dist/plushie-package.toml --formats dmg,app
-bin/plushie package bundle --manifest dist/plushie-package.toml --formats nsis
+bin/plushie package bundle --manifest dist/plushie-package.toml --format appimage
+bin/plushie package bundle --manifest dist/plushie-package.toml --format dmg --format app
+bin/plushie package bundle --manifest dist/plushie-package.toml --format nsis
 ```
+
+`--format` is singular and repeatable; pass it once per format.
 
 Delegates to
 [cargo-packager](https://github.com/crabnebula-dev/cargo-packager)
-for AppImage (Linux), `.app` and `.dmg` (macOS), and `.nsis` and
-`.wix` (Windows). Format availability depends on the runner:
-Apple formats need a macOS runner, Windows formats need a Windows
-runner.
+for AppImage (Linux), `app` and `dmg` (macOS), and `nsis` and
+`wix` (Windows). The format names match cargo-packager's
+identifiers, not file extensions. Format availability depends on
+the runner: Apple formats need a macOS runner, Windows formats
+need a Windows runner.
 
 Both commands default to a strict-tools check: they verify that
 the launcher, renderer, and `plushie` itself match the
@@ -673,10 +689,23 @@ list of commands that run after the artifact is built. Pass
 to invoke them. Hooks are opt-in so release builds run them and
 local experimentation does not.
 
-Each hook is a structured argv. Use them for macOS notarization,
-Windows code signing, Linux checksum attestation, or whatever
-else the target platform needs. Plushie does not hold signing
-keys; the hook commands do.
+Each hook is an object with two required fields:
+
+- `phase` - when the hook runs. The only currently accepted value
+  is `"after-launcher-build"` (runs once the portable launcher
+  artifact has been built). cargo-plushie rejects any other value.
+- `command` - structured argv. Must be a non-empty array of
+  non-empty strings.
+
+```toml
+[[signing.hooks]]
+phase = "after-launcher-build"
+command = ["codesign", "--sign", "Developer ID Application: Example", "--options", "runtime"]
+```
+
+Use hooks for macOS notarization, Windows code signing, Linux
+checksum attestation, or whatever else the target platform needs.
+Plushie does not hold signing keys; the hook commands do.
 
 ## Updates
 
@@ -697,16 +726,23 @@ and spawns the TypeScript command with `PLUSHIE_SOCKET` pointing
 at it:
 
 ```bash
-plushie --listen \
+plushie-renderer --listen \
   --exec-bin npx \
   --exec-arg plushie \
   --exec-arg connect \
   --exec-arg src/main.tsx
 ```
 
-`plushie connect` reads the socket and connects. The SDK's
-socket transport detects `PLUSHIE_SOCKET` and either connects to
-the existing renderer or spawns its own.
+`--listen`, `--exec-bin`, and `--exec-arg` are flags of the
+`plushie-renderer` binary, not the TypeScript SDK's `plushie`
+CLI.
+
+The renderer sets `PLUSHIE_SOCKET` in the spawned environment, so
+`plushie connect` picks up the socket from the env and treats the
+remaining positional (`src/main.tsx`) as the app file to launch.
+The SDK's socket transport then connects to that socket. The
+transport never spawns its own renderer; if neither `opts.socket`
+nor `PLUSHIE_SOCKET` is set, it throws.
 
 The same SDK runtime is what the host SEA invokes in a packaged
 app, so driving a packaged app from an external renderer is

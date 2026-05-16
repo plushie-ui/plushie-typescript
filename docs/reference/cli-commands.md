@@ -250,6 +250,12 @@ cargo plushie package assemble --manifest <path> --payload-dir <dir> [--package-
 `cargo plushie package assemble` produces the archive, computes hashes,
 merges the source config, and prints the handoff message.
 
+See [Packaging and Distribution](packaging-and-distribution.md) for the
+end-to-end flow, including the partial-manifest schema, the
+`plushie-package.config.toml` reference, building portable or OS-native
+artifacts with `bin/plushie package portable` / `bundle`, signing hooks,
+and the host-first versus renderer-parent launch models.
+
 ## dev
 
 Run an app with file watching and hot reload.
