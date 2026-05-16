@@ -24,9 +24,12 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  writeFileSync,
 } from "node:fs"
+import { get as httpGet } from "node:http"
 import { get as httpsGet } from "node:https"
 import { basename, dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
 const PLUSHIE_RUST_VERSION = "0.7.1"
 const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-rust/releases/download"
@@ -121,10 +124,37 @@ async function main() {
   }
 }
 
+function isLocalHttpHost(hostname) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
+}
+
+function validateDownloadProtocol(parsed, previousProtocol) {
+  if (parsed.protocol === "http:" && previousProtocol === "https:") {
+    return `Refusing HTTPS to HTTP redirect for ${parsed.toString()}`
+  }
+  if (parsed.protocol === "http:" && !isLocalHttpHost(parsed.hostname)) {
+    return `Refusing non-local HTTP download URL: ${parsed.toString()}`
+  }
+  return undefined
+}
+
 function releaseBaseUrl() {
   const value = (process.env[RELEASE_BASE_URL_ENV] ?? RELEASE_BASE_URL).trim().replace(/\/+$/, "")
   if (value === "") {
     throw new Error(`${RELEASE_BASE_URL_ENV} must not be empty`)
+  }
+  let parsed
+  try {
+    parsed = new URL(value)
+  } catch {
+    throw new Error(`${RELEASE_BASE_URL_ENV} is not a valid URL: ${value}`)
+  }
+  const protocolError = validateDownloadProtocol(parsed, undefined)
+  if (protocolError !== undefined) {
+    throw new Error(protocolError)
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:" && parsed.protocol !== "file:") {
+    throw new Error(`${RELEASE_BASE_URL_ENV} must use https://, file://, or loopback http://`)
   }
   return value
 }
@@ -185,7 +215,7 @@ function copyConfiguredRenderer() {
 }
 
 async function installVerifiedFile(url, destPath) {
-  const fileTempPath = await downloadToTemp(url, destPath)
+  let fileTempPath = await downloadToTemp(url, destPath)
   let checksumTempPath
   try {
     checksumTempPath = await downloadToTemp(`${url}.sha256`, `${destPath}.sha256`)
@@ -200,8 +230,12 @@ async function installVerifiedFile(url, destPath) {
       chmodSync(fileTempPath, 0o755)
     }
     renameSync(fileTempPath, destPath)
+    // Clear so the catch block does not attempt to remove a path that no longer exists.
+    fileTempPath = undefined
   } catch (err) {
-    rmSync(fileTempPath, { force: true })
+    if (fileTempPath !== undefined) {
+      rmSync(fileTempPath, { force: true })
+    }
     throw err
   } finally {
     if (checksumTempPath !== undefined) {
@@ -233,7 +267,7 @@ async function downloadToTemp(url, destPath) {
   throw lastError instanceof Error ? lastError : new Error(String(lastError))
 }
 
-function downloadOnce(currentUrl, tempPath, depth) {
+function downloadOnce(currentUrl, tempPath, depth, previousProtocol) {
   if (depth > MAX_REDIRECTS) {
     return Promise.reject(new DownloadFailure("too many redirects", false))
   }
@@ -247,12 +281,25 @@ function downloadOnce(currentUrl, tempPath, depth) {
       return
     }
 
-    if (parsed.protocol !== "https:") {
-      reject(new DownloadFailure(`refusing non-HTTPS download URL: ${currentUrl}`, false))
+    const protocolError = validateDownloadProtocol(parsed, previousProtocol)
+    if (protocolError !== undefined) {
+      reject(new DownloadFailure(protocolError, false))
       return
     }
 
-    const request = httpsGet(
+    if (parsed.protocol === "file:") {
+      try {
+        writeFileSync(tempPath, readFileSync(fileURLToPath(parsed)), { flag: "wx" })
+        resolve()
+      } catch (err) {
+        reject(toDownloadFailure(err))
+      }
+      return
+    }
+
+    const get = parsed.protocol === "http:" ? httpGet : httpsGet
+
+    const request = get(
       currentUrl,
       { headers: { "User-Agent": "plushie-ts-sdk" } },
       (response) => {
@@ -264,7 +311,7 @@ function downloadOnce(currentUrl, tempPath, depth) {
             ? response.headers.location[0]
             : response.headers.location
           const nextUrl = new URL(location, currentUrl).toString()
-          downloadOnce(nextUrl, tempPath, depth + 1).then(resolve, reject)
+          downloadOnce(nextUrl, tempPath, depth + 1, parsed.protocol).then(resolve, reject)
           return
         }
 
