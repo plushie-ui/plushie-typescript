@@ -241,4 +241,49 @@ describe("plushie package", () => {
       'command = ["bin/connect"]',
     );
   });
+
+  test("rejects --renderer-kind stock when native widgets are declared", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "plushie-cli-pkg-native-"));
+    tempDirs.push(dir);
+
+    const projectDir = join(dir, "project");
+    const binDir = join(dir, "bin");
+    mkdirSync(projectDir, { recursive: true });
+    mkdirSync(binDir, { recursive: true });
+
+    writeFileSync(
+      join(projectDir, "plushie.extensions.json"),
+      JSON.stringify({
+        extensions: [{ rustCrate: "my-native-widget" }],
+      }),
+      "utf-8",
+    );
+    writeFileSync(
+      join(projectDir, "package.json"),
+      JSON.stringify({ name: "native-pkg-test", version: "0.1.0" }),
+      "utf-8",
+    );
+
+    const { PLUSHIE_RUST_SOURCE_PATH: _ignored, ...baseEnv } = process.env;
+    const result = await runCliWithOutput(
+      [
+        "package",
+        "--app-id",
+        "dev.plushie.native-test",
+        "--host-bin",
+        join(binDir, "host"),
+        "--renderer-kind",
+        "stock",
+      ],
+      projectDir,
+      { ...baseEnv, PATH: `${binDir}${delimiter}${baseEnv["PATH"] ?? ""}` },
+    );
+
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain(
+      "Native widget packaging requires a custom renderer. Use --renderer-kind custom.",
+    );
+    // Payload directory must not have been created
+    expect(existsSync(join(projectDir, "dist"))).toBe(false);
+  });
 });

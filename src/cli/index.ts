@@ -70,8 +70,17 @@ interface ProjectConfig {
   bin_file?: string;
   wasm_dir?: string;
   source_path?: string;
-  extensions?: unknown[];
+  extensions?: Array<{ rustCrate?: string }>;
   binaryName?: string;
+}
+
+/**
+ * Returns true when the project declares native widget extensions
+ * (i.e. at least one entry in plushie.extensions.json has a rustCrate field).
+ * These require a custom renderer build; the stock binary cannot include them.
+ */
+function appHasNativeWidgets(config: ProjectConfig = readProjectConfig()): boolean {
+  return (config.extensions ?? []).some((e) => Boolean(e.rustCrate));
 }
 
 /**
@@ -177,25 +186,14 @@ async function handleDownload(
     // Block precompiled download when native extensions are configured.
     // The stock binary doesn't include native extensions; users must
     // build a custom binary with `npx plushie build` instead.
-    const extConfigPath = resolve("plushie.extensions.json");
-    if (existsSync(extConfigPath)) {
-      try {
-        const raw = JSON.parse(readFileSync(extConfigPath, "utf-8")) as {
-          extensions?: Array<{ rustCrate?: string }>;
-        };
-        const nativeExts = (raw.extensions ?? []).filter((e) => e.rustCrate);
-        if (nativeExts.length > 0) {
-          console.error(
-            `Cannot download precompiled binary: plushie.extensions.json declares ` +
-              `native widget(s) that require a custom build.\n` +
-              `Run \`npx plushie build\` instead.`,
-          );
-          process.exitCode = 1;
-          return;
-        }
-      } catch {
-        // Config exists but can't be parsed; let it through, build will catch it
-      }
+    if (appHasNativeWidgets(config)) {
+      console.error(
+        `Cannot download precompiled binary: plushie.extensions.json declares ` +
+          `native widget(s) that require a custom build.\n` +
+          `Run \`npx plushie build\` instead.`,
+      );
+      process.exitCode = 1;
+      return;
     }
     const sourcePath = process.env["PLUSHIE_RUST_SOURCE_PATH"] ?? config?.source_path;
     await handleDownloadBinary(force, resolvedBinFile, sourcePath);
@@ -1035,6 +1033,14 @@ async function handlePackage(
   const rendererKind = valueFlags.has("--renderer-kind")
     ? parseRendererKind(valueFlags.get("--renderer-kind"))
     : undefined;
+
+  if (rendererKind === "stock" && appHasNativeWidgets()) {
+    console.error(
+      "Native widget packaging requires a custom renderer. Use --renderer-kind custom.",
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   const result = prepareNodePackagePayload({
     appId,
