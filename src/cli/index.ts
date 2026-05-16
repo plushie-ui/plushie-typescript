@@ -122,7 +122,6 @@ Options:
   --sea-output <p>  Optional SEA executable with an embedded renderer (package)
   --renderer <kind> Renderer kind: stock or custom (package)
   --renderer-bin <p> Use an existing renderer binary (package)
-  --renderer-source <s> Renderer provenance string (package)
   --package-config <p> Source package config path (package)
   --write-package-config Write a package config template and exit (package)
   --icon <path>     App icon copied into the package payload (package)
@@ -1013,9 +1012,6 @@ async function handlePackage(
     outputDir,
     ...(valueFlags.has("--renderer-bin") ? { rendererBin: valueFlags.get("--renderer-bin")! } : {}),
     ...(rendererKind !== undefined ? { rendererKind } : {}),
-    ...(valueFlags.has("--renderer-source")
-      ? { rendererSource: valueFlags.get("--renderer-source")! }
-      : {}),
     ...(valueFlags.has("--package-config")
       ? { packageConfig: valueFlags.get("--package-config")! }
       : {}),
@@ -1226,7 +1222,6 @@ async function main(argv: string[]): Promise<void> {
     "--sea-output",
     "--renderer",
     "--renderer-bin",
-    "--renderer-source",
     "--package-config",
     "--icon",
     "--portable-out",

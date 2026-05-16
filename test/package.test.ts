@@ -89,7 +89,6 @@ describe("package manifest", () => {
       appVersion: "0.1.0",
       target: "linux-x86_64",
       rendererKind: "custom",
-      rendererSource: "local-build",
       rendererPath: "bin/plushie-renderer",
       startCommand: ["bin/host", "--flag"],
       platformIcon: "assets/icon.png",
@@ -113,7 +112,6 @@ describe("package manifest", () => {
     );
     expect(toml).toContain('[renderer]\npath = "bin/plushie-renderer"');
     expect(toml).toContain('kind = "custom"');
-    expect(toml).toContain('source = "local-build"');
     expect(toml).toContain("[platform]");
     expect(toml).toContain('icon = "assets/icon.png"');
   });
@@ -348,7 +346,6 @@ describe("prepareNodePackagePayload", () => {
       target: "linux-x86_64",
       renderer: {
         kind: "stock",
-        source: "local-resolve",
         sourcePath: renderer,
         payloadPath: "bin/plushie-renderer",
       },
@@ -404,7 +401,6 @@ describe("prepareNodePackagePayload", () => {
       target: "linux-x86_64",
       renderer: {
         kind: "stock",
-        source: "local-resolve",
         sourcePath: renderer,
         payloadPath: "bin/plushie-renderer",
       },
@@ -433,7 +429,6 @@ describe("resolvePackageRenderer", () => {
         env: {},
       });
 
-      expect(result.source).toBe("local-path");
       expect(result.sourcePath).toBe(renderer);
     } finally {
       process.chdir(oldCwd);
@@ -480,7 +475,6 @@ describe("resolvePackageRenderer", () => {
       process.env["PATH"] = oldPath;
     }
 
-    expect(result?.source).toBe("local-build");
     expect(result?.sourcePath).toBe(renderer);
   });
 
@@ -508,7 +502,6 @@ describe("resolvePackageRenderer", () => {
         log: () => {},
       });
 
-      expect(result.source).toBe("local-resolve");
       expect(result.sourcePath).toBe(join(dir, "bin", "plushie-renderer"));
     } finally {
       process.chdir(oldCwd);
@@ -540,7 +533,6 @@ describe("resolvePackageRenderer", () => {
       });
 
       expect(result.kind).toBe("custom");
-      expect(result.source).toBe("local-path");
       expect(result.sourcePath).toBe(renderer);
     } finally {
       process.chdir(oldCwd);

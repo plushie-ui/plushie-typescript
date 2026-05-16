@@ -226,7 +226,6 @@ Renderer flags:
 | `--renderer stock` | Package a stock renderer. This is the default. |
 | `--renderer custom` | Package a custom renderer. Requires `--renderer-bin` or `PLUSHIE_BINARY_PATH`. |
 | `--renderer-bin <path>` | Copy this renderer binary into the payload. |
-| `--renderer-source <s>` | Record a provenance string in `[renderer].source`. |
 
 Stock renderer resolution uses `--renderer-bin`, then
 `PLUSHIE_BINARY_PATH`, then `PLUSHIE_RUST_SOURCE_PATH` with

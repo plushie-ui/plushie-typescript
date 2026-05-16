@@ -36,7 +36,6 @@ import { PROTOCOL_VERSION } from "./client/protocol.js";
 import { generateSEAConfig } from "./sea.js";
 
 export type RendererKind = "stock" | "custom";
-export type RendererSource = "local-resolve" | "local-build" | "local-path" | string;
 const DEFAULT_FORWARD_ENV = [
   "PATH",
   "HOME",
@@ -70,7 +69,6 @@ const RESERVED_FORWARD_ENV = new Set([
 
 export interface RendererManifest {
   readonly kind: RendererKind;
-  readonly source: RendererSource;
   readonly path: string;
 }
 
@@ -101,7 +99,6 @@ export interface PackagePlatformManifest {
 
 export interface ResolvedRenderer {
   readonly kind: RendererKind;
-  readonly source: RendererSource;
   readonly sourcePath: string;
   readonly payloadPath: string;
 }
@@ -109,7 +106,6 @@ export interface ResolvedRenderer {
 export interface ResolveRendererOptions {
   readonly rendererBin?: string;
   readonly rendererKind?: RendererKind;
-  readonly rendererSource?: RendererSource;
   readonly env?: NodeJS.ProcessEnv;
   readonly log?: (message: string) => void;
 }
@@ -133,7 +129,6 @@ export interface PrepareNodePackagePayloadOptions {
   readonly renderer?: ResolvedRenderer;
   readonly rendererBin?: string;
   readonly rendererKind?: RendererKind;
-  readonly rendererSource?: RendererSource;
   readonly icon?: string;
   readonly defaultIcon?: boolean;
   readonly seaOutput?: string;
@@ -206,7 +201,6 @@ export function manifestForPayload(opts: {
   payloadArchive: string;
   target?: string;
   rendererKind?: RendererKind;
-  rendererSource?: RendererSource;
   platformIcon?: string;
   workingDir?: string;
   forwardEnv?: readonly string[];
@@ -219,7 +213,6 @@ export function manifestForPayload(opts: {
     target: opts.target ?? packageTarget(),
     renderer: {
       kind: opts.rendererKind ?? "stock",
-      source: opts.rendererSource ?? "local-resolve",
       path: opts.rendererPath,
     },
     ...(opts.platformIcon !== undefined ? { platform: { icon: opts.platformIcon } } : {}),
@@ -253,7 +246,6 @@ export function renderPackageManifest(manifest: PackageManifest): string {
     "[renderer]",
     `path = ${tomlString(manifest.renderer.path)}`,
     `kind = ${tomlString(manifest.renderer.kind)}`,
-    `source = ${tomlString(manifest.renderer.source)}`,
     "",
   );
   if (manifest.platform?.icon !== undefined) {
@@ -411,13 +403,11 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
   const explicitPath = opts.rendererBin ?? env["PLUSHIE_BINARY_PATH"];
 
   if (explicitPath !== undefined && explicitPath !== "") {
-    const source = opts.rendererSource ?? "local-path";
     const sourcePath = resolve(explicitPath);
     validateExecutable(sourcePath, "renderer binary");
     ensurePortablePackageToolsAvailable();
     return {
       kind,
-      source,
       sourcePath,
       payloadPath: join("bin", basename(sourcePath)),
     };
@@ -432,12 +422,10 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
 
   const rustSourcePath = env["PLUSHIE_RUST_SOURCE_PATH"];
   if (rustSourcePath !== undefined && rustSourcePath !== "") {
-    const source = opts.rendererSource ?? "local-build";
     const sourcePath = syncManagedPackageToolsFromSource(rustSourcePath, env, opts.log);
     validateExecutable(sourcePath, "renderer binary");
     return {
       kind,
-      source,
       sourcePath,
       payloadPath: join("bin", basename(sourcePath)),
     };
@@ -445,11 +433,9 @@ export function resolvePackageRenderer(opts: ResolveRendererOptions = {}): Resol
 
   const syncedPath = syncManagedPackageTools(env, opts.log);
   if (syncedPath !== undefined) {
-    const source = opts.rendererSource ?? "local-resolve";
     validateExecutable(syncedPath, "renderer binary");
     return {
       kind,
-      source,
       sourcePath: syncedPath,
       payloadPath: join("bin", basename(syncedPath)),
     };
@@ -618,7 +604,6 @@ export function prepareNodePackagePayload(
     appVersion: opts.appVersion,
     ...(opts.target !== undefined ? { target: opts.target } : {}),
     rendererKind: renderer.kind,
-    rendererSource: renderer.source,
     rendererPath: renderer.payloadPath,
     startCommand: startConfig?.command ?? [join("bin", opts.hostName)],
     workingDir: startConfig?.workingDir ?? ".",

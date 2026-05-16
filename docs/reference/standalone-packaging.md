@@ -113,7 +113,7 @@ validate and run the payload:
 - `protocol_version`
 - `target`
 - `[payload]` archive, hash, and size
-- `[renderer]` kind and source
+- `[renderer]` kind
 
 The demo artifact postcheck runs the portable launcher from a
 temporary working directory with a narrowed runtime `PATH`. It writes a
