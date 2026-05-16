@@ -113,7 +113,6 @@ export interface ResolveRendererOptions {
 export interface BuildSEAExecutableOptions {
   readonly main: string;
   readonly output: string;
-  readonly binaryPath?: string;
   readonly nodePath?: string;
   readonly postjectCommand?: string;
 }
@@ -131,7 +130,6 @@ export interface PrepareNodePackagePayloadOptions {
   readonly rendererKind?: RendererKind;
   readonly icon?: string;
   readonly defaultIcon?: boolean;
-  readonly seaOutput?: string;
   readonly packageConfig?: string;
   readonly target?: string;
   readonly env?: NodeJS.ProcessEnv;
@@ -142,7 +140,6 @@ export interface PreparedNodePackagePayload {
   readonly manifest: PackageManifest;
   readonly manifestPath: string;
   readonly payloadArchivePath: string;
-  readonly seaOutput?: string;
   readonly renderer: ResolvedRenderer;
 }
 
@@ -367,7 +364,6 @@ export function buildSEAExecutable(opts: BuildSEAExecutableOptions): void {
   const config = generateSEAConfig({
     main: opts.main,
     output: seaPrepPath,
-    ...(opts.binaryPath !== undefined ? { binaryPath: opts.binaryPath } : {}),
   });
   writeFileSync(seaConfigPath, JSON.stringify(config, null, 2), "utf-8");
 
@@ -567,15 +563,6 @@ export function prepareNodePackagePayload(
   rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(join(payloadRoot, "bin"), { recursive: true });
 
-  if (opts.main !== undefined && opts.seaOutput !== undefined) {
-    log("Building SEA with embedded renderer...");
-    buildSEAExecutable({
-      main: opts.main,
-      output: opts.seaOutput,
-      binaryPath: renderer.sourcePath,
-    });
-  }
-
   const hostPayloadPath = join(payloadRoot, "bin", opts.hostName);
   if (opts.main !== undefined) {
     log("Building host SEA for shared launcher payload...");
@@ -618,7 +605,6 @@ export function prepareNodePackagePayload(
     manifest,
     manifestPath,
     payloadArchivePath: archivePath,
-    ...(opts.seaOutput !== undefined ? { seaOutput: resolve(opts.seaOutput) } : {}),
     renderer,
   };
 }

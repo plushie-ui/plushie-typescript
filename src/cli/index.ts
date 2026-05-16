@@ -118,7 +118,6 @@ Options:
   --host-bin <path> Prepared host executable to copy into the payload (package)
   --host-name <name> Payload-local host executable name (package)
   --output <dir>    Package output directory (package)
-  --sea-output <p>  Optional SEA executable with an embedded renderer (package)
   --renderer-kind <kind> Renderer kind: stock or custom (package)
   --renderer-path <p> Use an existing renderer binary (package)
   --package-config <p> Source package config path (package)
@@ -983,15 +982,11 @@ async function handlePackage(
       : {}),
     ...(valueFlags.has("--icon") ? { icon: valueFlags.get("--icon")! } : {}),
     defaultIcon: !valueFlags.has("--icon"),
-    ...(valueFlags.has("--sea-output") ? { seaOutput: valueFlags.get("--sea-output")! } : {}),
     ...(valueFlags.has("--target") ? { target: valueFlags.get("--target")! } : {}),
     log: console.log,
   });
 
   console.log();
-  if (result.seaOutput !== undefined) {
-    console.log(`Standalone executable: ${result.seaOutput}`);
-  }
   console.log(`Shared launcher payload: ${result.payloadArchivePath}`);
   console.log(`Shared launcher manifest: ${result.manifestPath}`);
   console.log();
@@ -1170,7 +1165,6 @@ async function main(argv: string[]): Promise<void> {
     "--host-bin",
     "--host-name",
     "--output",
-    "--sea-output",
     "--renderer-kind",
     "--renderer-path",
     "--package-config",

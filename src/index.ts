@@ -225,7 +225,7 @@ export type { Instruction, RunResult, Script, ScriptHeader } from "./script.js";
 export { parseScript, parseScriptFile, runScript } from "./script.js";
 export type { SEAConfig } from "./sea.js";
 // Node.js SEA support.
-export { extractBinaryFromSEA, generateSEAConfig, isSEA } from "./sea.js";
+export { generateSEAConfig } from "./sea.js";
 export type { WasmPaths } from "./wasm.js";
 // WASM renderer support.
 export { DEFAULT_WASM_DIR, resolveWasm, WASM_BG_FILE, WASM_JS_FILE } from "./wasm.js";

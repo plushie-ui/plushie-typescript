@@ -9,10 +9,9 @@
  * ## Resolution order
  *
  * 1. `PLUSHIE_BINARY_PATH` env var (must exist, error if file missing)
- * 2. SEA-bundled binary (if running in Node.js Single Executable context)
- * 3. Downloaded binary at `bin/plushie-renderer`
- * 4. Common local paths: `./plushie-renderer`, `../plushie-rust/target/release/plushie-renderer`
- * 5. Error with guidance to download
+ * 2. Downloaded binary at `bin/plushie-renderer`
+ * 3. Common local paths: `./plushie-renderer`, `../plushie-rust/target/release/plushie-renderer`
+ * 4. Error with guidance to download
  *
  * @module
  */
@@ -34,10 +33,29 @@ import { get as httpsGet } from "node:https";
 import { basename, dirname, join, resolve } from "node:path";
 import { arch, platform } from "node:process";
 import { fileURLToPath } from "node:url";
-import { extractBinaryFromSEA, isSEA } from "../sea.js";
+
+function readPlushieRustVersion(): string {
+  // Walk up from this file to find the nearest package.json that has
+  // plushieRustVersion. Works in source (tsx, vitest) and in compiled
+  // chunks at any nesting depth under the package root.
+  let dir = dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 5; i++) {
+    const candidate = join(dir, "package.json");
+    if (existsSync(candidate)) {
+      const pkg = JSON.parse(readFileSync(candidate, "utf-8")) as {
+        plushieRustVersion?: string;
+      };
+      if (typeof pkg.plushieRustVersion === "string") {
+        return pkg.plushieRustVersion;
+      }
+    }
+    dir = dirname(dir);
+  }
+  throw new Error("could not find plushieRustVersion in any parent package.json");
+}
 
 /** plushie-rust release version matching this SDK release. */
-export const PLUSHIE_RUST_VERSION = "0.7.1";
+export const PLUSHIE_RUST_VERSION = readPlushieRustVersion();
 
 /** GitHub release base URL. */
 export const RELEASE_BASE_URL = "https://github.com/plushie-ui/plushie-rust/releases/download";
@@ -159,16 +177,7 @@ export function resolveBinary(): string {
     return resolved;
   }
 
-  // 2. SEA-bundled binary (if running in a Node.js Single Executable)
-  if (isSEA()) {
-    try {
-      return extractBinaryFromSEA();
-    } catch {
-      // Asset not bundled; fall through to filesystem checks
-    }
-  }
-
-  // 3. Downloaded or cargo-plushie-installed binary in project-root bin/.
+  // 2. Downloaded or cargo-plushie-installed binary in project-root bin/.
   //    `npx plushie build` copies its output here, so stock downloads
   //    and custom renderers share the same resolution step.
   const downloadDir = resolve("bin");
@@ -178,12 +187,11 @@ export function resolveBinary(): string {
     return downloadPath;
   }
 
-  // 4. Common local paths (for development against local builds).
-  //    Skipped when running as a SEA bundle or inside a packaged app
-  //    (PLUSHIE_PACKAGE_DIR set by the launcher), where the launcher
-  //    always provides PLUSHIE_BINARY_PATH and these dev paths should
-  //    never be reached.
-  const isPackaged = isSEA() || process.env["PLUSHIE_PACKAGE_DIR"] !== undefined;
+  // 3. Common local paths (for development against local builds).
+  //    Skipped when inside a packaged app (PLUSHIE_PACKAGE_DIR set by
+  //    the launcher), where the launcher always provides
+  //    PLUSHIE_BINARY_PATH and these dev paths should never be reached.
+  const isPackaged = process.env["PLUSHIE_PACKAGE_DIR"] !== undefined;
   if (!isPackaged) {
     const localPaths = [
       resolve("plushie-renderer"),
