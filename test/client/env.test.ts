@@ -35,7 +35,7 @@ describe("buildRendererEnv", () => {
     }
   });
 
-  test("forwards PLUSHIE_ prefixed variables", () => {
+  test("forwards PLUSHIE_NO_CATCH_UNWIND to renderer", () => {
     const original = process.env["PLUSHIE_NO_CATCH_UNWIND"];
     process.env["PLUSHIE_NO_CATCH_UNWIND"] = "1";
     const env = buildRendererEnv();
@@ -44,6 +44,44 @@ describe("buildRendererEnv", () => {
       process.env["PLUSHIE_NO_CATCH_UNWIND"] = original;
     } else {
       delete process.env["PLUSHIE_NO_CATCH_UNWIND"];
+    }
+  });
+
+  test("blocks host-side and secret PLUSHIE_* vars from renderer env", () => {
+    // These are host-side, launcher-set, or secret variables that must not
+    // reach the renderer subprocess. Enumerate known names explicitly so any
+    // future relaxation is a deliberate, reviewed change.
+    const blocked = [
+      "PLUSHIE_TOKEN",
+      "PLUSHIE_SOCKET",
+      "PLUSHIE_TRANSPORT",
+      "PLUSHIE_FORMAT",
+      "PLUSHIE_RUST_SOURCE_PATH",
+      "PLUSHIE_BINARY_PATH",
+      "PLUSHIE_PACKAGE_DIR",
+      "PLUSHIE_PACKAGE_READY_FILE",
+      "PLUSHIE_RELEASE_BASE_URL",
+      "PLUSHIE_CACHE_DIR",
+    ];
+
+    const saved: Record<string, string | undefined> = {};
+    for (const name of blocked) {
+      saved[name] = process.env[name];
+      process.env[name] = "should-not-reach-renderer";
+    }
+
+    const env = buildRendererEnv();
+
+    for (const name of blocked) {
+      expect(env[name], `${name} must not reach renderer`).toBeUndefined();
+    }
+
+    for (const name of blocked) {
+      if (saved[name] !== undefined) {
+        process.env[name] = saved[name];
+      } else {
+        delete process.env[name];
+      }
     }
   });
 

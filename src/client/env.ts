@@ -7,8 +7,9 @@
  *
  * The whitelist matches the canonical list shared across every host
  * SDK: exact entries for display/rendering/locale/accessibility/font
- * vars, prefix entries for families (`LC_`, `MESA_`, etc.), and the
- * `PLUSHIE_` prefix for plushie-reserved debug toggles.
+ * vars, prefix entries for families (`LC_`, `MESA_`, etc.), and an
+ * explicit closed list of `PLUSHIE_*` variables the renderer actually
+ * reads.
  *
  * @module
  */
@@ -36,14 +37,13 @@ const EXACT_WHITELIST = new Set([
   "RUST_BACKTRACE",
   "HOME",
   "USER",
+  // The renderer subprocess in spawn mode reads at most PLUSHIE_NO_CATCH_UNWIND
+  // from inherited env. Other PLUSHIE_* names are host-side, launcher-set, or
+  // secrets (e.g. PLUSHIE_TOKEN) that must not leak across the process boundary.
+  "PLUSHIE_NO_CATCH_UNWIND",
 ]);
 
-/**
- * Prefix-based forwarding: any variable starting with these.
- *
- * `PLUSHIE_` is a catch-all for plushie-reserved debug/diagnostic
- * toggles read by the renderer (e.g. `PLUSHIE_NO_CATCH_UNWIND`).
- */
+/** Prefix-based forwarding: any variable starting with these. */
 const PREFIX_WHITELIST = [
   "LC_",
   "MESA_",
@@ -53,7 +53,6 @@ const PREFIX_WHITELIST = [
   "GALLIUM_",
   "AT_SPI_",
   "FONTCONFIG_",
-  "PLUSHIE_",
 ];
 
 /**
