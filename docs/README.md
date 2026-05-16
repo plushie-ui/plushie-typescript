@@ -41,7 +41,7 @@ Lookup material organized by topic. Each page is self-contained.
 - [JSX and Bundlers](reference/jsx-and-bundlers.md) - tsconfig, pragma, bundler integration, WASM, Node SEA
 - [JSX and Functions](reference/jsx-and-functions.md) - the dual API, children, handler dispatch
 - [Scoped IDs](reference/scoped-ids.md) - ID scoping rules, scope matching, command paths
-- [Standalone Packaging](reference/standalone-packaging.md) - SEA host payloads wrapped by the shared Rust launcher
+- [Packaging and Distribution](reference/packaging-and-distribution.md) - host SEA payloads, manifests, portable and OS-native artifacts
 - [Subscriptions](reference/subscriptions.md) - timer, keyboard, pointer, window, catch-all subscriptions
 - [Testing](reference/testing.md) - test sessions, backends, helpers, screenshots, scripts
 - [Themes and Styling](reference/themes-and-styling.md) - built-in themes, custom palettes, style maps

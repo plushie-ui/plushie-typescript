@@ -316,7 +316,7 @@ The SEA bundles the TypeScript host; the Rust launcher owns the
 outer executable, payload extraction, and renderer startup. The
 renderer is a payload-local binary, not embedded inside the SEA.
 
-See [Standalone Packaging](standalone-packaging.md) for the full
+See [Packaging and Distribution](../reference/packaging-and-distribution.md) for the full
 packaging workflow. The SDK's `generateSEAConfig` helper produces
 the SEA configuration object for the host-only build:
 
