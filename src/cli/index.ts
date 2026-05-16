@@ -12,7 +12,7 @@
  *   plushie run <app>       :  run an app
  *   plushie stdio <app>     :  run in renderer-parent stdio mode
  *   plushie inspect <app>   :  print the initial view tree as JSON
- *   plushie connect <addr>  :  connect to a plushie --listen instance
+ *   plushie connect [<addr>] :  connect to a plushie --listen instance
  *   plushie script          :  run .plushie test scripts
  *   plushie replay <file>   :  replay a .plushie script with real windows
  *   plushie package         :  prepare a shared-launcher package payload
@@ -35,6 +35,7 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import { basename, dirname, join, relative, resolve } from "node:path";
+import { createInterface } from "node:readline";
 import {
   downloadFileWithChecksum,
   downloadTool,
@@ -98,7 +99,7 @@ Commands:
   run <app>         Run an app
   stdio <app>       Run an app in renderer-parent stdio mode
   inspect <app>     Print the initial view tree as formatted JSON
-  connect <addr>    Connect to a plushie --listen instance
+  connect [<addr>]  Connect to a plushie --listen instance
   script [files]    Run .plushie test scripts
   replay <file>     Replay a .plushie script with real windows
   package           Prepare a standalone package payload
@@ -687,25 +688,96 @@ function installRendererBinary(src: string, binDestFile: string | undefined): st
 // Connect
 // =========================================================================
 
+/**
+ * Read a single line from stdin with a timeout.
+ * Resolves with the line (trimmed) on success, or null on timeout/close.
+ */
+function readStdinLine(timeoutMs: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
+    let done = false;
+
+    const finish = (value: string | null): void => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      rl.close();
+      resolve(value);
+    };
+
+    const timer = setTimeout(() => finish(null), timeoutMs);
+
+    rl.once("line", (line: string) => finish(line.trim()));
+    rl.once("close", () => finish(null));
+  });
+}
+
+/**
+ * Resolve the negotiation token using the precedence chain:
+ *   --token flag > PLUSHIE_TOKEN env > stdin JSON line (1s timeout)
+ *
+ * Returns the token string, or throws with a descriptive error message.
+ */
+async function resolveToken(tokenOverride: string | undefined): Promise<string | undefined> {
+  if (tokenOverride !== undefined) return tokenOverride;
+  if (process.env["PLUSHIE_TOKEN"] !== undefined) return process.env["PLUSHIE_TOKEN"];
+
+  const line = await readStdinLine(1_000);
+  if (line === null || line === "") {
+    return undefined;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(line);
+  } catch {
+    throw new Error("renderer-parent token stdin must be JSON object with 'token' string");
+  }
+
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("token" in parsed) ||
+    typeof (parsed as Record<string, unknown>)["token"] !== "string"
+  ) {
+    throw new Error("renderer-parent token stdin must be JSON object with 'token' string");
+  }
+
+  return (parsed as { token: string }).token;
+}
+
 async function handleConnect(
   positional: string[],
   flags: string[],
   binaryOverride: string | undefined,
   tokenOverride: string | undefined,
 ): Promise<void> {
-  const addr = positional[0];
+  const addr = positional[0] ?? process.env["PLUSHIE_SOCKET"];
   const appFile = positional[1];
   if (!addr) {
-    console.error("Usage: plushie connect <address> [app]\n");
-    console.error("Address: /path, :port, host:port, or [IPv6]:port");
-    console.log(USAGE);
+    console.error("renderer-parent connect requires an address: pass <addr> or set PLUSHIE_SOCKET");
     process.exitCode = 1;
     return;
   }
 
   const jsonFlag = flags.includes("--json");
   const format = jsonFlag ? ("json" as const) : ("msgpack" as const);
-  const token = tokenOverride ?? process.env["PLUSHIE_TOKEN"];
+
+  let token: string | undefined;
+  try {
+    token = await resolveToken(tokenOverride);
+  } catch (err) {
+    console.error(String(err instanceof Error ? err.message : err));
+    process.exitCode = 1;
+    return;
+  }
+  if (token === undefined) {
+    console.error(
+      "renderer-parent token not provided: pass --token, set PLUSHIE_TOKEN, or write a JSON token line on stdin",
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   if (appFile) {
     // App file provided: spawn it with tsx and socket env vars

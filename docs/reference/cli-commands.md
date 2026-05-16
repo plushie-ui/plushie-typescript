@@ -335,6 +335,7 @@ plushie connect /tmp/plushie.sock src/main.tsx    # spawn app
 plushie connect :4567 --json                      # TCP loopback, JSON
 plushie connect 192.168.1.10:4567                 # TCP host:port
 plushie connect "[::1]:4567"                      # IPv6
+plushie connect                                   # address from PLUSHIE_SOCKET
 ```
 
 Two modes:
@@ -349,6 +350,12 @@ Two modes:
   transport picks up the env vars and connects automatically. The
   Settings message carries `token_sha256`, not the plaintext token.
 
+### Address resolution
+
+The socket address is taken from the positional argument when present.
+When no positional is given, `PLUSHIE_SOCKET` is used. If neither is
+set, the command exits with an error.
+
 ### Address formats
 
 | Form | Meaning |
@@ -357,6 +364,21 @@ Two modes:
 | `:4567` | TCP on loopback at the given port. |
 | `host:4567` | TCP on the given host and port. |
 | `[::1]:4567` | TCP on an IPv6 address. Brackets required. |
+
+### Token resolution
+
+The negotiation token is required. Precedence:
+
+1. `--token <value>` CLI flag.
+2. `PLUSHIE_TOKEN` environment variable.
+3. A single JSON line read from stdin within a 1-second timeout,
+   in the form `{"token": "..."}`.
+
+The stdin fallback covers environments where env vars cannot be
+forwarded (SSH exec, sandboxed launches). If none of the three
+sources provides a token, the command exits with an error. If stdin
+provides a line that is not valid JSON or does not match the expected
+shape, the command also exits with an error.
 
 ## script
 
@@ -400,7 +422,7 @@ and visual QA. On a headless host, run behind a display server.
 | `PLUSHIE_FORMAT` | Wire format (`msgpack` or `json`). Set automatically by `--json`. |
 | `PLUSHIE_TRANSPORT` | Transport kind (`stdio`, `socket`, or unset for spawn). Set automatically by `stdio` and `connect`. |
 | `PLUSHIE_SOCKET` | Socket address consumed by the SDK's socket transport. Set automatically by `connect <addr> <app>`. |
-| `PLUSHIE_TOKEN` | Fallback authentication token for socket connect. The SDK sends `settings.token_sha256`. |
+| `PLUSHIE_TOKEN` | Authentication token for socket connect (second in precedence after `--token`). The SDK sends `settings.token_sha256`. |
 
 `--binary <path>` on the CLI is exported as `PLUSHIE_BINARY_PATH`
 in the child process for `dev`, `run`, `stdio`, `inspect`, and
